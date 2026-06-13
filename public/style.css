@@ -79,6 +79,12 @@ body { font: var(--type-body); background: var(--color-surface); color: var(--co
 /* v0.3.6: 移动端方向感知 body class */
 body.orientation-portrait {}
 body.orientation-landscape {}
+/* GPU acceleration hints for animations */
+#drawer, #glCanvas, #overlayCanvas, .md-card-content, .fab, .modal, .toast, .export-menu {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -146,7 +152,7 @@ body.orientation-landscape {}
 .icon-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 #app-bar-title { font: var(--type-title); font-size: 18px; flex: 1; }
 .app-bar-chip { font: var(--type-mono); font-size: 11px; background: var(--color-surface-highest); padding: 4px 8px; border-radius: var(--shape-full); color: var(--color-on-surface-variant); }
-#canvas-container { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; }
+#canvas-container { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; contain: layout style paint; overscroll-behavior: none; }
 #glCanvas, #overlayCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; touch-action: none; transition: filter 0.3s ease, opacity 0.3s ease; }
 #glCanvas.lod-active, #overlayCanvas.lod-active { filter: blur(1.5px) brightness(0.9); opacity: 0.85; }
 #overlayCanvas { pointer-events: none; z-index: 5; }
@@ -196,6 +202,9 @@ body.orientation-landscape {}
     #menu-btn { display: flex; }
     .app-bar-chip { display: none; }
     #selection-card { left: var(--space-8); right: var(--space-8); bottom: var(--space-8); }
+    /* Mobile touch optimizations */
+    body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    input, select, textarea { font-size: 16px !important; } /* Prevent iOS zoom on focus */
 }
 @media (min-width: 861px) {
     #menu-btn { display: none; }
