@@ -2937,25 +2937,7 @@ function createApp(initialSize) {
             const currentHTML = document.documentElement.outerHTML;
             let modified = '<!DOCTYPE html>\n' + currentHTML;
             const oldVerPattern = /const VERSION = ['"][^'"]+['"];/;
-            modified = modified.replace(oldVerPattern, `const VERSION = '0.3.12-preview';
-
-// ── Shader file loader (v0.3.12: loaded from /shaders/) ──
-(function() {
-    var vsEl = document.getElementById('vs-quad');
-    var fsEl = document.getElementById('fs-map');
-    if (vsEl && vsEl.textContent.trim() === '') {
-        fetch('/shaders/vs-quad.vert')
-            .then(function(r) { return r.text(); })
-            .then(function(t) { vsEl.textContent = t; });
-    }
-    if (fsEl && fsEl.textContent.trim() === '') {
-        fetch('/shaders/fs-map.frag')
-            .then(function(r) { return r.text(); })
-            .then(function(t) { fsEl.textContent = t; });
-    }
-})();
-
-`);
+            modified = modified.replace(oldVerPattern, `const VERSION = '${verInfo.fullVersion}';`);
             const titlePattern = /<title>[^<]*<\/title>/;
             modified = modified.replace(titlePattern, `<title>Material Map Generator v${verInfo.fullVersion}</title>`);
             const splashVerPattern = /<div class="splash-version">[^<]*<\/div>/;
