@@ -1,0 +1,589 @@
+==============================================================================================================
+ MAPGEN RELEASES - FULL ANALYSIS SUMMARY
+ Total releases with assets analyzed: 37
+==============================================================================================================
+
+--- 1) PER-RELEASE DETAIL ---
+TAG                       FILE                                                SIZE    LINES  FMT VERSION/PROJECT                         
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+v0.0.1                    mapgen_v0.0.1.html                                89,853    2,543 html Material Map Generator v0.0.1</title>   
+v0.0.2                    mapgen_v0.0.2.html                                79,846      776 html Material Map Generator v0.0.2</title>   
+v0.1.0                    mapgen_v0.1.0.html                                84,826      940 html Material Map Generator v0.1.0</title>   
+v0.1.1                    mapgen_v0.1.1.html                                97,576    1,499 html Material Map Generator v0.1.1</title>   
+v0.2.0                    mapgen_v0.2.0.html                               100,316    1,594 html Material Map Generator v0.2.0</title>   
+v0.2.1                    mapgen_v0.2.1.html                               106,070    1,701 html Material Map Generator v0.2.1</title>   
+v0.2.2                    mapgen_v0.2.2.html                               125,655    1,945 html Material Map Generator v0.2.2</title>   
+v0.2.3                    mapgen_v0.2.3.html                               107,476    2,144 html Material Map Generator v0.2.3</title>   
+v0.2.4                    mapgen_v0.2.4.html                               107,478    2,144 html Material Map Generator v0.2.4</title>   
+v0.2.5                    mapgen_v0.2.5.html                               112,376    2,235 html Material Map Generator v0.2.5</title>   
+v0.2.6                    mapgen_v0.2.6.html                               123,022    2,532 html Material Map Generator v0.2.6</title>   
+v0.2.7                    mapgen_v0.2.7.html                               123,405    1,466 html Material Map Generator v0.2.7</title>   
+v0.2.8-preview            mapgen_v0.2.8-preview.html                       128,469    1,627 html Material Map Generator v0.2.8</title>   
+v0.2.8                    mapgen_v0.2.8.html                               142,025    1,836 html Material Map Generator v0.2.8 — Performa
+v0.3.0                    mapgen_v0.3.0.html                               167,540    2,290 html Material Map Generator v0.3.0 — Terrain 
+v0.3.1-preview-b          mapgen_v0.3.1-preview-b.html                     175,030    2,377 html Material Map Generator v0.3.1 — Terrain 
+v0.3.1-preview-a          mapgen_v0.3.1-preview-a.html                     186,419    2,589 html Material Map Generator v0.3.1 — Terrain 
+v0.3.1                    mapgen_v0.3.1.html                               189,467    2,617 html Material Map Generator v0.3.1 — Terrain 
+v0.3.2-preview            mapgen_v0.3.2-preview.html                       217,214    3,009 html Material Map Generator v0.3.2-preview — 
+v0.3.2                    mapgen_v0.3.2.html                               238,722    3,321 html Material Map Generator v0.3.2 — Terrain 
+v0.3.3                    mapgen_v0.3.3.html                               238,970    3,324 html Material Map Generator v0.3.3 — Mobile O
+v0.3.4-preview            mapgen_v0.3.4-preview.html                       253,891    3,587 html Material Map Generator v0.3.4-preview — 
+v0.3.4                    mapgen_v0.3.4.html                               260,269    3,731 html Material Map Generator v0.3.4 — Mobile O
+v0.3.5-preview-b          mapgen_v0.3.5-preview-b.html                     280,389    4,120 html Material Map Generator v0.3.5-preview-b 
+v0.3.5-preview-a          mapgen_v0.3.5-preview-a.html                     281,090    4,238 html Material Map Generator v0.3.5-preview-a 
+v0.3.7-preview            mapgen_v0.3.7-preview.html                       304,018    4,635 html Material Map Generator v0.3.6 — Splash &
+v0.3.8-preview-update     mapgen_v0.3.8-preview-update.html                340,154    5,217 html Material Map Generator v0.3.8 — Regions 
+v0.3.8-preview            mapgen_v0.3.8-preview.html                       336,732    5,210 html Material Map Generator v0.3.8 — Regions 
+v0.3.8                    mapgen_v0.3.8.html                               327,371    5,104 html Material Map Generator v0.3.8</title>   
+v0.3.9-preview-fixed      mapgen_v0.3.9-preview-fixed.html                 342,228    5,336 html Material Map Generator v0.3.9-preview</t
+v0.3.9-preview            mapgen_v0.3.9-preview.html                       341,433    5,326 html Material Map Generator v0.3.9-preview</t
+v0.3.9                    mapgen_v0.3.9.html                               344,559    5,372 html Material Map Generator v0.3.9-preview</t
+v0.3.10-preview-fixed     mapgen_v0.3.10-preview-fixed.html                348,104    5,446 html Material Map Generator v0.3.10-preview</
+v0.3.10-preview           mapgen_v0.3.10-preview.html                      345,839    5,395 html Material Map Generator v0.3.10-preview</
+v0.3.11-update            mapgen_v0.3.11-update.js                         474,774    6,219   js Material Map Generator v0.3.11 -- Local 
+v0.3.11                   mapgen_v0.3.11.js                                470,903    3,960   js Material Map Generator v0.3.11 -- Local 
+v0.3.11-update-2          mapgen_v0.3.11-update-2.js                       478,543    6,279   js Material Map Generator v0.3.11 -- Local 
+
+
+--- 2) FEATURE MATRIX ---
+TAG                    TITLE/DESC                           FMT  WGL  SHD  SRV  B64  FUNCS   LINES KEY_FEATURES
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+v0.0.1                 Material Map Generator v0.0.1       html    y    y    -    -     60   2,543 noise, fbm, tectonic, plate, moisture, coast, ridge, WebGL2, shader, canvas
+v0.0.2                 Material Map Generator v0.0.2       html    y    y    -    -     58     776 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.1.0                 Material Map Generator v0.1.0       html    y    y    -    -     63     940 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.1.1                 Material Map Generator v0.1.1       html    y    y    -    -     65   1,499 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.0                 Material Map Generator v0.2.0       html    y    y    -    -     68   1,594 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.1                 Material Map Generator v0.2.1       html    y    y    -    -     71   1,701 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.2                 Material Map Generator v0.2.2       html    y    y    -    -     67   1,945 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.3                 Material Map Generator v0.2.3       html    y    y    -    -     68   2,144 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.4                 Material Map Generator v0.2.4       html    y    y    -    -     68   2,144 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.5                 Material Map Generator v0.2.5       html    y    y    -    -     68   2,235 noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n
+v0.2.6                 Material Map Generator v0.2.6       html    y    y    -    -     68   2,532 noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas
+v0.2.7                 Material Map Generator v0.2.7       html    y    y    -    -     68   1,466 noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas
+v0.2.8-preview         Material Map Generator v0.2.8       html    y    y    -    -     69   1,627 noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas
+v0.2.8                 Material Map Generator v0.2.8 — Per html    y    y    -    -     78   1,836 noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas
+v0.3.0                 Material Map Generator v0.3.0 — Ter html    y    y    -    -     84   2,290 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.1-preview-b       Material Map Generator v0.3.1 — Ter html    y    y    -    -     84   2,377 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.1-preview-a       Material Map Generator v0.3.1 — Ter html    y    y    -    -     93   2,589 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.1                 Material Map Generator v0.3.1 — Ter html    y    y    -    -     93   2,617 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.2-preview         Material Map Generator v0.3.2-previ html    y    y    -    -    100   3,009 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.2                 Material Map Generator v0.3.2 — Ter html    y    y    -    -    100   3,321 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.3                 Material Map Generator v0.3.3 — Mob html    y    y    -    -    100   3,324 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.4-preview         Material Map Generator v0.3.4-previ html    y    y    -    -    109   3,587 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.4                 Material Map Generator v0.3.4 — Mob html    y    y    -    -    118   3,731 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.5-preview-b       Material Map Generator v0.3.5-previ html    y    y    -    -    123   4,120 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.5-preview-a       Material Map Generator v0.3.5-previ html    y    y    -    -    127   4,238 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.7-preview         Material Map Generator v0.3.6 — Spl html    y    y    -    -    130   4,635 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.8-preview-update  Material Map Generator v0.3.8 — Reg html    y    y    -    -    139   5,217 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.8-preview         Material Map Generator v0.3.8 — Reg html    y    y    -    -    139   5,210 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.8                 Material Map Generator v0.3.8       html    y    y    -    -    148   5,104 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.9-preview-fixed   Material Map Generator v0.3.9-previ html    y    y    -    -    155   5,336 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.9-preview         Material Map Generator v0.3.9-previ html    y    y    -    -    155   5,326 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.9                 Material Map Generator v0.3.9-previ html    y    y    -    -    156   5,372 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.10-preview-fixed  Material Map Generator v0.3.10-prev html    y    y    -    -    158   5,446 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.10-preview        Material Map Generator v0.3.10-prev html    y    y    -    -    157   5,395 noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature
+v0.3.11-update                                               js    -    -    y    y      1   6,219 fbm, snow, child_process, execSync, Material Map
+v0.3.11                                                      js    -    -    y    y      1   3,960 fbm, snow, child_process, execSync, Material Map
+v0.3.11-update-2                                             js    -    -    y    y      1   6,279 fbm, snow, gzip, child_process, execSync, Material Map
+
+
+--- 3) CODE SIZE EVOLUTION ---
+v0.0.1                      89,853 B █████████████████████████████████████████████████
+v0.0.2                      79,846 B ████████████████████████████████████████████
+v0.1.0                      84,826 B ███████████████████████████████████████████████
+v0.1.1                      97,576 B ██████████████████████████████████████████████████████
+v0.2.0                     100,316 B ███████████████████████████████████████████████████████
+v0.2.1                     106,070 B ██████████████████████████████████████████████████████████
+v0.2.2                     125,655 B █████████████████████████████████████████████████████████████████████
+v0.2.3                     107,476 B ███████████████████████████████████████████████████████████
+v0.2.4                     107,478 B ███████████████████████████████████████████████████████████
+v0.2.5                     112,376 B ██████████████████████████████████████████████████████████████
+v0.2.6                     123,022 B ████████████████████████████████████████████████████████████████████
+v0.2.7                     123,405 B ████████████████████████████████████████████████████████████████████
+v0.2.8-preview             128,469 B ███████████████████████████████████████████████████████████████████████
+v0.2.8                     142,025 B ██████████████████████████████████████████████████████████████████████████████
+v0.3.0                     167,540 B █████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.1-preview-b           175,030 B █████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.1-preview-a           186,419 B ███████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.1                     189,467 B █████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.2-preview             217,214 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.2                     238,722 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.3                     238,970 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.4-preview             253,891 B █████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.4                     260,269 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.5-preview-b           280,389 B ███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.5-preview-a           281,090 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.7-preview             304,018 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.8-preview-update      340,154 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.8-preview             336,732 B ███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.8                     327,371 B █████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.9-preview-fixed       342,228 B ██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.9-preview             341,433 B █████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.9                     344,559 B ███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.10-preview-fixed      348,104 B █████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.10-preview            345,839 B ████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.11-update             474,774 B ███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.11                    470,903 B █████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+v0.3.11-update-2           478,543 B █████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████
+
+
+--- 4) FORMAT EVOLUTION ---
+v0.0.1                    -> HTML (2,543 lines, 89,853 B)
+v0.0.2                    -> HTML (776 lines, 79,846 B)
+v0.1.0                    -> HTML (940 lines, 84,826 B)
+v0.1.1                    -> HTML (1,499 lines, 97,576 B)
+v0.2.0                    -> HTML (1,594 lines, 100,316 B)
+v0.2.1                    -> HTML (1,701 lines, 106,070 B)
+v0.2.2                    -> HTML (1,945 lines, 125,655 B)
+v0.2.3                    -> HTML (2,144 lines, 107,476 B)
+v0.2.4                    -> HTML (2,144 lines, 107,478 B)
+v0.2.5                    -> HTML (2,235 lines, 112,376 B)
+v0.2.6                    -> HTML (2,532 lines, 123,022 B)
+v0.2.7                    -> HTML (1,466 lines, 123,405 B)
+v0.2.8-preview            -> HTML (1,627 lines, 128,469 B)
+v0.2.8                    -> HTML (1,836 lines, 142,025 B)
+v0.3.0                    -> HTML (2,290 lines, 167,540 B)
+v0.3.1-preview-b          -> HTML (2,377 lines, 175,030 B)
+v0.3.1-preview-a          -> HTML (2,589 lines, 186,419 B)
+v0.3.1                    -> HTML (2,617 lines, 189,467 B)
+v0.3.2-preview            -> HTML (3,009 lines, 217,214 B)
+v0.3.2                    -> HTML (3,321 lines, 238,722 B)
+v0.3.3                    -> HTML (3,324 lines, 238,970 B)
+v0.3.4-preview            -> HTML (3,587 lines, 253,891 B)
+v0.3.4                    -> HTML (3,731 lines, 260,269 B)
+v0.3.5-preview-b          -> HTML (4,120 lines, 280,389 B)
+v0.3.5-preview-a          -> HTML (4,238 lines, 281,090 B)
+v0.3.7-preview            -> HTML (4,635 lines, 304,018 B)
+v0.3.8-preview-update     -> HTML (5,217 lines, 340,154 B)
+v0.3.8-preview            -> HTML (5,210 lines, 336,732 B)
+v0.3.8                    -> HTML (5,104 lines, 327,371 B)
+v0.3.9-preview-fixed      -> HTML (5,336 lines, 342,228 B)
+v0.3.9-preview            -> HTML (5,326 lines, 341,433 B)
+v0.3.9                    -> HTML (5,372 lines, 344,559 B)
+v0.3.10-preview-fixed     -> HTML (5,446 lines, 348,104 B)
+v0.3.10-preview           -> HTML (5,395 lines, 345,839 B)
+v0.3.11-update            -> JS (6,219 lines, 474,774 B)
+v0.3.11                   -> JS (3,960 lines, 470,903 B)
+v0.3.11-update-2          -> JS (6,279 lines, 478,543 B)
+
+
+--- 5) DETAILED PER-RELEASE FINDINGS ---
+
+【v0.0.1】 mapgen_v0.0.1.html
+  Page title:     Material Map Generator v0.0.1
+  Version string: Material Map Generator v0.0.1</title>
+  Meta desc:      
+  Format: html  |  Size: 89,853 B  |  Lines: 2,543
+  <script> blocks: 3  |  Function defs: 60  |  Shader lines: 330
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, coast, ridge, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: generate, random, export, title, subtitle, seed_base, world_seed, map_size
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.0.1/mapgen_v0.0.1.html
+
+【v0.0.2】 mapgen_v0.0.2.html
+  Page title:     Material Map Generator v0.0.2
+  Version string: Material Map Generator v0.0.2</title>
+  Meta desc:      
+  Format: html  |  Size: 79,846 B  |  Lines: 776
+  <script> blocks: 3  |  Function defs: 58  |  Shader lines: 57
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.0.2/mapgen_v0.0.2.html
+
+【v0.1.0】 mapgen_v0.1.0.html
+  Page title:     Material Map Generator v0.1.0
+  Version string: Material Map Generator v0.1.0</title>
+  Meta desc:      
+  Format: html  |  Size: 84,826 B  |  Lines: 940
+  <script> blocks: 3  |  Function defs: 63  |  Shader lines: 82
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.1.0/mapgen_v0.1.0.html
+
+【v0.1.1】 mapgen_v0.1.1.html
+  Page title:     Material Map Generator v0.1.1
+  Version string: Material Map Generator v0.1.1</title>
+  Meta desc:      
+  Format: html  |  Size: 97,576 B  |  Lines: 1,499
+  <script> blocks: 3  |  Function defs: 65  |  Shader lines: 80
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.1.1/mapgen_v0.1.1.html
+
+【v0.2.0】 mapgen_v0.2.0.html
+  Page title:     Material Map Generator v0.2.0
+  Version string: Material Map Generator v0.2.0</title>
+  Meta desc:      
+  Format: html  |  Size: 100,316 B  |  Lines: 1,594
+  <script> blocks: 3  |  Function defs: 68  |  Shader lines: 79
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.0/mapgen_v0.2.0.html
+
+【v0.2.1】 mapgen_v0.2.1.html
+  Page title:     Material Map Generator v0.2.1
+  Version string: Material Map Generator v0.2.1</title>
+  Meta desc:      
+  Format: html  |  Size: 106,070 B  |  Lines: 1,701
+  <script> blocks: 3  |  Function defs: 71  |  Shader lines: 234
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.1/mapgen_v0.2.1.html
+
+【v0.2.2】 mapgen_v0.2.2.html
+  Page title:     Material Map Generator v0.2.2
+  Version string: Material Map Generator v0.2.2</title>
+  Meta desc:      
+  Format: html  |  Size: 125,655 B  |  Lines: 1,945
+  <script> blocks: 3  |  Function defs: 67  |  Shader lines: 231
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.2/mapgen_v0.2.2.html
+
+【v0.2.3】 mapgen_v0.2.3.html
+  Page title:     Material Map Generator v0.2.3
+  Version string: Material Map Generator v0.2.3</title>
+  Meta desc:      
+  Format: html  |  Size: 107,476 B  |  Lines: 2,144
+  <script> blocks: 3  |  Function defs: 68  |  Shader lines: 207
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.3/mapgen_v0.2.3.html
+
+【v0.2.4】 mapgen_v0.2.4.html
+  Page title:     Material Map Generator v0.2.4
+  Version string: Material Map Generator v0.2.4</title>
+  Meta desc:      
+  Format: html  |  Size: 107,478 B  |  Lines: 2,144
+  <script> blocks: 3  |  Function defs: 68  |  Shader lines: 207
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.4/mapgen_v0.2.4.html
+
+【v0.2.5】 mapgen_v0.2.5.html
+  Page title:     Material Map Generator v0.2.5
+  Version string: Material Map Generator v0.2.5</title>
+  Meta desc:      
+  Format: html  |  Size: 112,376 B  |  Lines: 2,235
+  <script> blocks: 3  |  Function defs: 68  |  Shader lines: 207
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.5/mapgen_v0.2.5.html
+
+【v0.2.6】 mapgen_v0.2.6.html
+  Page title:     Material Map Generator v0.2.6
+  Version string: Material Map Generator v0.2.6</title>
+  Meta desc:      
+  Format: html  |  Size: 123,022 B  |  Lines: 2,532
+  <script> blocks: 3  |  Function defs: 68  |  Shader lines: 207
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.6/mapgen_v0.2.6.html
+
+【v0.2.7】 mapgen_v0.2.7.html
+  Page title:     Material Map Generator v0.2.7
+  Version string: Material Map Generator v0.2.7</title>
+  Meta desc:      
+  Format: html  |  Size: 123,405 B  |  Lines: 1,466
+  <script> blocks: 3  |  Function defs: 68  |  Shader lines: 230
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.7/mapgen_v0.2.7.html
+
+【v0.2.8-preview】 mapgen_v0.2.8-preview.html
+  Page title:     Material Map Generator v0.2.8
+  Version string: Material Map Generator v0.2.8</title>
+  Meta desc:      
+  Format: html  |  Size: 128,469 B  |  Lines: 1,627
+  <script> blocks: 3  |  Function defs: 69  |  Shader lines: 209
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.8-preview/mapgen_v0.2.8-preview.html
+
+【v0.2.8】 mapgen_v0.2.8.html
+  Page title:     Material Map Generator v0.2.8 — Performance &amp; Stability
+  Version string: Material Map Generator v0.2.8 — Performance &amp; Stability</title>
+  Meta desc:      
+  Format: html  |  Size: 142,025 B  |  Lines: 1,836
+  <script> blocks: 3  |  Function defs: 78  |  Shader lines: 209
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, moisture, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.2.8/mapgen_v0.2.8.html
+
+【v0.3.0】 mapgen_v0.3.0.html
+  Page title:     Material Map Generator v0.3.0 — Terrain System
+  Version string: Material Map Generator v0.3.0 — Terrain System</title>
+  Meta desc:      
+  Format: html  |  Size: 167,540 B  |  Lines: 2,290
+  <script> blocks: 3  |  Function defs: 84  |  Shader lines: 375
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.0/mapgen_v0.3.0.html
+
+【v0.3.1-preview-b】 mapgen_v0.3.1-preview-b.html
+  Page title:     Material Map Generator v0.3.1 — Terrain System
+  Version string: Material Map Generator v0.3.1 — Terrain System</title>
+  Meta desc:      
+  Format: html  |  Size: 175,030 B  |  Lines: 2,377
+  <script> blocks: 3  |  Function defs: 84  |  Shader lines: 382
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.1-preview-b/mapgen_v0.3.1-preview-b.html
+
+【v0.3.1-preview-a】 mapgen_v0.3.1-preview-a.html
+  Page title:     Material Map Generator v0.3.1 — Terrain System
+  Version string: Material Map Generator v0.3.1 — Terrain System</title>
+  Meta desc:      
+  Format: html  |  Size: 186,419 B  |  Lines: 2,589
+  <script> blocks: 3  |  Function defs: 93  |  Shader lines: 375
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.1-preview-a/mapgen_v0.3.1-preview-a.html
+
+【v0.3.1】 mapgen_v0.3.1.html
+  Page title:     Material Map Generator v0.3.1 — Terrain System
+  Version string: Material Map Generator v0.3.1 — Terrain System</title>
+  Meta desc:      
+  Format: html  |  Size: 189,467 B  |  Lines: 2,617
+  <script> blocks: 3  |  Function defs: 93  |  Shader lines: 382
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.1/mapgen_v0.3.1.html
+
+【v0.3.2-preview】 mapgen_v0.3.2-preview.html
+  Page title:     Material Map Generator v0.3.2-preview — Terrain System
+  Version string: Material Map Generator v0.3.2-preview — Terrain System</title>
+  Meta desc:      
+  Format: html  |  Size: 217,214 B  |  Lines: 3,009
+  <script> blocks: 3  |  Function defs: 100  |  Shader lines: 391
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.2-preview/mapgen_v0.3.2-preview.html
+
+【v0.3.2】 mapgen_v0.3.2.html
+  Page title:     Material Map Generator v0.3.2 — Terrain System
+  Version string: Material Map Generator v0.3.2 — Terrain System</title>
+  Meta desc:      
+  Format: html  |  Size: 238,722 B  |  Lines: 3,321
+  <script> blocks: 4  |  Function defs: 100  |  Shader lines: 391
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.2/mapgen_v0.3.2.html
+
+【v0.3.3】 mapgen_v0.3.3.html
+  Page title:     Material Map Generator v0.3.3 — Mobile Optimized
+  Version string: Material Map Generator v0.3.3 — Mobile Optimized</title>
+  Meta desc:      
+  Format: html  |  Size: 238,970 B  |  Lines: 3,324
+  <script> blocks: 4  |  Function defs: 100  |  Shader lines: 391
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.3/mapgen_v0.3.3.html
+
+【v0.3.4-preview】 mapgen_v0.3.4-preview.html
+  Page title:     Material Map Generator v0.3.4-preview — Mobile Optimized
+  Version string: Material Map Generator v0.3.4-preview — Mobile Optimized</title>
+  Meta desc:      
+  Format: html  |  Size: 253,891 B  |  Lines: 3,587
+  <script> blocks: 4  |  Function defs: 109  |  Shader lines: 516
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.4-preview/mapgen_v0.3.4-preview.html
+
+【v0.3.4】 mapgen_v0.3.4.html
+  Page title:     Material Map Generator v0.3.4 — Mobile Optimized
+  Version string: Material Map Generator v0.3.4 — Mobile Optimized</title>
+  Meta desc:      
+  Format: html  |  Size: 260,269 B  |  Lines: 3,731
+  <script> blocks: 4  |  Function defs: 118  |  Shader lines: 516
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.4/mapgen_v0.3.4.html
+
+【v0.3.5-preview-b】 mapgen_v0.3.5-preview-b.html
+  Page title:     Material Map Generator v0.3.5-preview-b — Splash &amp; Glow
+  Version string: Material Map Generator v0.3.5-preview-b — Splash &amp; Glow</title>
+  Meta desc:      
+  Format: html  |  Size: 280,389 B  |  Lines: 4,120
+  <script> blocks: 4  |  Function defs: 123  |  Shader lines: 516
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.5-preview-b/mapgen_v0.3.5-preview-b.html
+
+【v0.3.5-preview-a】 mapgen_v0.3.5-preview-a.html
+  Page title:     Material Map Generator v0.3.5-preview-a — Mobile Optimized
+  Version string: Material Map Generator v0.3.5-preview-a — Mobile Optimized</title>
+  Meta desc:      
+  Format: html  |  Size: 281,090 B  |  Lines: 4,238
+  <script> blocks: 4  |  Function defs: 127  |  Shader lines: 516
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, storage_title, close, title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.5-preview-a/mapgen_v0.3.5-preview-a.html
+
+【v0.3.7-preview】 mapgen_v0.3.7-preview.html
+  Page title:     Material Map Generator v0.3.6 — Splash &amp; Glow
+  Version string: Material Map Generator v0.3.6 — Splash &amp; Glow</title>
+  Meta desc:      
+  Format: html  |  Size: 304,018 B  |  Lines: 4,635
+  <script> blocks: 4  |  Function defs: 130  |  Shader lines: 532
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, generate, random, save, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.7-preview/mapgen_v0.3.7-preview.html
+
+【v0.3.8-preview-update】 mapgen_v0.3.8-preview-update.html
+  Page title:     Material Map Generator v0.3.8 — Regions &amp; Labels
+  Version string: Material Map Generator v0.3.8 — Regions &amp; Labels</title>
+  Meta desc:      
+  Format: html  |  Size: 340,154 B  |  Lines: 5,217
+  <script> blocks: 4  |  Function defs: 139  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.8-preview-update/mapgen_v0.3.8-preview-update.html
+
+【v0.3.8-preview】 mapgen_v0.3.8-preview.html
+  Page title:     Material Map Generator v0.3.8 — Regions &amp; Labels
+  Version string: Material Map Generator v0.3.8 — Regions &amp; Labels</title>
+  Meta desc:      
+  Format: html  |  Size: 336,732 B  |  Lines: 5,210
+  <script> blocks: 4  |  Function defs: 139  |  Shader lines: 532
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, Material Design, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.8-preview/mapgen_v0.3.8-preview.html
+
+【v0.3.8】 mapgen_v0.3.8.html
+  Page title:     Material Map Generator v0.3.8
+  Version string: Material Map Generator v0.3.8</title>
+  Meta desc:      Material Map Generator - Procedural noise & tectonic simulation
+  Format: html  |  Size: 327,371 B  |  Lines: 5,104
+  <script> blocks: 4  |  Function defs: 148  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.8/mapgen_v0.3.8.html
+
+【v0.3.9-preview-fixed】 mapgen_v0.3.9-preview-fixed.html
+  Page title:     Material Map Generator v0.3.9-preview
+  Version string: Material Map Generator v0.3.9-preview</title>
+  Meta desc:      Material Map Generator - Procedural noise & tectonic simulation
+  Format: html  |  Size: 342,228 B  |  Lines: 5,336
+  <script> blocks: 4  |  Function defs: 155  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.9-preview-fixed/mapgen_v0.3.9-preview-fixed.html
+
+【v0.3.9-preview】 mapgen_v0.3.9-preview.html
+  Page title:     Material Map Generator v0.3.9-preview
+  Version string: Material Map Generator v0.3.9-preview</title>
+  Meta desc:      Material Map Generator - Procedural noise & tectonic simulation
+  Format: html  |  Size: 341,433 B  |  Lines: 5,326
+  <script> blocks: 4  |  Function defs: 155  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.9-preview/mapgen_v0.3.9-preview.html
+
+【v0.3.9】 mapgen_v0.3.9.html
+  Page title:     Material Map Generator v0.3.9-preview
+  Version string: Material Map Generator v0.3.9-preview</title>
+  Meta desc:      Material Map Generator - Procedural noise & tectonic simulation
+  Format: html  |  Size: 344,559 B  |  Lines: 5,372
+  <script> blocks: 5  |  Function defs: 156  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.9/mapgen_v0.3.9.html
+
+【v0.3.10-preview-fixed】 mapgen_v0.3.10-preview-fixed.html
+  Page title:     Material Map Generator v0.3.10-preview
+  Version string: Material Map Generator v0.3.10-preview</title>
+  Meta desc:      Material Map Generator - Procedural noise & tectonic simulation
+  Format: html  |  Size: 348,104 B  |  Lines: 5,446
+  <script> blocks: 5  |  Function defs: 158  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.10-preview-fixed/mapgen_v0.3.10-preview-fixed.html
+
+【v0.3.10-preview】 mapgen_v0.3.10-preview.html
+  Page title:     Material Map Generator v0.3.10-preview
+  Version string: Material Map Generator v0.3.10-preview</title>
+  Meta desc:      Material Map Generator - Procedural noise & tectonic simulation
+  Format: html  |  Size: 345,839 B  |  Lines: 5,395
+  <script> blocks: 5  |  Function defs: 157  |  Shader lines: 536
+  WebGL: YES  |  Shaders: YES  |  Node server: no  |  Base64 embed: no
+  Features: noise, fbm, tectonic, plate, biome, erosion, river, contour, moisture, temperature, snow, mountain, coast, ridge, jagged, localStorage, WebGL2, shader, canvas, i18n, procedural, download, export, PNG, JPEG, Material Map, plateCount, landmass, noiseType
+  UI strings: close-modal, close-test, label-cancel, label-confirm, generate, title, splash_loading, gen_progress_title
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.10-preview/mapgen_v0.3.10-preview.html
+
+【v0.3.11-update】 mapgen_v0.3.11-update.js
+  Page title:     
+  Version string: Material Map Generator v0.3.11 -- Local Server
+  Meta desc:      
+  Format: js  |  Size: 474,774 B  |  Lines: 6,219
+  <script> blocks: 0  |  Function defs: 1  |  Shader lines: 0
+  WebGL: no  |  Shaders: no  |  Node server: YES  |  Base64 embed: YES
+  Features: fbm, snow, child_process, execSync, Material Map
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.11-update/mapgen_v0.3.11-update.js
+
+【v0.3.11】 mapgen_v0.3.11.js
+  Page title:     
+  Version string: Material Map Generator v0.3.11 -- Local Server
+  Meta desc:      
+  Format: js  |  Size: 470,903 B  |  Lines: 3,960
+  <script> blocks: 0  |  Function defs: 1  |  Shader lines: 0
+  WebGL: no  |  Shaders: no  |  Node server: YES  |  Base64 embed: YES
+  Features: fbm, snow, child_process, execSync, Material Map
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.11/mapgen_v0.3.11.js
+
+【v0.3.11-update-2】 mapgen_v0.3.11-update-2.js
+  Page title:     
+  Version string: Material Map Generator v0.3.11 -- Local Server
+  Meta desc:      
+  Format: js  |  Size: 478,543 B  |  Lines: 6,279
+  <script> blocks: 0  |  Function defs: 1  |  Shader lines: 0
+  WebGL: no  |  Shaders: no  |  Node server: YES  |  Base64 embed: YES
+  Features: fbm, snow, gzip, child_process, execSync, Material Map
+  URL: https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.11-update-2/mapgen_v0.3.11-update-2.js
+
+
+--- 6) OVERALL PROJECT SUMMARY ---
+  Releases analyzed: 37
+  Total file size:   8,472,052 bytes (~8.1 MB)
+  Total line count:  ~123,684 lines across all releases (non-unique)
+  HTML releases:     34
+  JS (Node) releases: 3
+  Project: Material Map Generator - procedural noise / tectonic simulation map generator
+  Languages: HTML, CSS (Material Design style), JavaScript, GLSL (WebGL shaders)
+  Tech: Canvas 2D + WebGL2, Node.js (for local server variant)
+  Features across project: noise/fbm generation, tectonic plates, biome/temperature/moisture,
+    mountain folding, erosion simulation, rivers, coastlines, ridges, snow line, contour lines,
+    image export (PNG/JPEG), localStorage persistence, Material Design UI, i18n/multilingual,
+    procedural map generation pipeline
