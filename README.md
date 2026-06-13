@@ -2,7 +2,7 @@
 
 Procedural noise & tectonic simulation map generator. Generate terrain, climate, biome maps with WebGL shaders.
 
-**v0.3.12-preview** — Multi-file architecture. Node.js local server.
+**v0.3.14** — Multi-file architecture. Node.js local server.
 
 ## Quick Start
 
@@ -10,7 +10,7 @@ Procedural noise & tectonic simulation map generator. Generate terrain, climate,
 
 ```bash
 # Unix / macOS / Linux / Termux
-bash <(curl -sL https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.12-preview/start.sh)
+bash <(curl -sL https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.14/start.sh)
 
 # Or clone and run
 git clone https://github.com/qwerrrtttyyy/mapgen.git
@@ -22,7 +22,7 @@ node server.js
 
 ```bat
 # PowerShell
-irm https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.12-preview/start.ps1 | iex
+irm https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.14/start.ps1 | iex
 
 # Or clone and run
 git clone https://github.com/qwerrrtttyyy/mapgen.git
@@ -35,8 +35,8 @@ node server.js
 Download the `.js` file from [Releases](https://github.com/qwerrrtttyyy/mapgen/releases) and run directly:
 
 ```bash
-curl -LO https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.12-preview/mapgen_v0.3.12-preview.js
-node mapgen_v0.3.12-preview.js
+curl -LO https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.14/mapgen_v0.3.14.js
+node mapgen_v0.3.14.js
 ```
 
 ## Features
@@ -97,7 +97,7 @@ MAPGEN_PORT=8080 MAPGEN_HOST=0.0.0.0 node server.js
 
 ## Changelog
 
-- **v0.3.12-preview** — Multi-file architecture (server / public / src separation), new WebGL shader loading system, improved HTTP server
+- **v0.3.14** — Multi-file architecture (server / public / src separation), new WebGL shader loading system, improved HTTP server
 - **v0.3.11** — Node.js local server with base64-embedded HTML
 - **v0.3.10** — Regions & Labels system, mobile optimization
 - **v0.3.5** — Material Design UI, splash loading animation

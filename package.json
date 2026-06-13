@@ -1,6 +1,6 @@
 {
   "name": "mapgen",
-  "version": "0.3.13-preview",
+  "version": "0.3.14",
   "description": "Material Map Generator - Procedural noise & tectonic simulation",
   "main": "server.js",
   "type": "module",
