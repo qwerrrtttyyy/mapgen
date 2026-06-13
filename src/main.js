@@ -1,4 +1,4 @@
-const VERSION = '0.3.12-preview';
+const VERSION = '0.3.13-preview';
 
 // ── Shader file loader (v0.3.12: loaded from /shaders/) ──
 (function() {

@@ -55,14 +55,14 @@ const server = http.createServer(function(req, res) {
     /* /health — health check */
     if (urlPath === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ok', version: '0.3.12-preview' }));
+        res.end(JSON.stringify({ status: 'ok', version: '0.3.13-preview' }));
         return;
     }
 
     /* /api/version — version info */
     if (urlPath === '/api/version') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ version: '0.3.12-preview', arch: 'multi-file' }));
+        res.end(JSON.stringify({ version: '0.3.13-preview', arch: 'multi-file' }));
         return;
     }
 
@@ -148,10 +148,10 @@ server.listen(PORT, HOST, function() {
     const url = `http://${HOST}:${PORT}`;
     console.log('');
     console.log('  +---------------------------------------------+');
-    console.log('  |  Material Map Generator  v0.3.12-preview     |');
+    console.log('  |  Material Map Generator  v0.3.13-preview     |');
     console.log('  +---------------------------------------------+');
     console.log('');
-    console.log('  Multi-file architecture (v0.3.12+)');
+    console.log('  Multi-file architecture (v0.3.13+)');
     console.log(`  ${url}`);
     console.log('  Ctrl+C to stop');
     console.log('');
