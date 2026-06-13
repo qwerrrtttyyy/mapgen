@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#141218">
+<title>Material Map Generator v0.3.12-preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" onerror="this.remove()">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"></noscript>
+<meta name="description" content="Material Map Generator - Procedural noise & tectonic simulation">
+<link rel="stylesheet" href="/style.css"></head>
+<body data-ui="classic">
+<!-- ========================================== v0.3.6: Splash 启动屏 ========================================== -->
+<div id="splash-screen" role="status" aria-label="应用加载中">
+    <div class="splash-glow-container" aria-hidden="true">
+        <div class="splash-glow-orb"></div>
+        <div class="splash-glow-orb"></div>
+        <div class="splash-glow-orb"></div>
+    </div>
+    <div class="splash-content">
+        <div class="splash-logo" aria-hidden="true"><svg viewBox="0 0 48 48" width="48" height="48" fill="none"><circle cx="24" cy="24" r="22" fill="var(--c-primary-30)" stroke="var(--c-primary-80)" stroke-width="1.5"/><path d="M10 28c3-4 7-2 10-6s5-8 9-7 5 6 8 4 4-5 7-3" stroke="var(--c-primary-80)" stroke-width="1.2" fill="none"/><path d="M8 20c4-3 8 1 12-2s6-5 10-3 5 4 9 2" stroke="var(--c-primary-90)" stroke-width="0.8" fill="none" opacity="0.6"/></svg></div>
+        <div class="splash-title" data-i18n="title">地图生成器</div>
+        <div class="splash-version">v0.3.11</div>
+        <div class="splash-loader" aria-hidden="true"><div class="splash-loader-bar"></div></div>
+        <div class="splash-subtitle" data-i18n="splash_loading">正在初始化渲染引擎...</div>
+    </div>
+</div>
+<script>
+<script src="/src/config.js"></script>
+</script>
+<div id="scrim"></div>
+<div id="toast-container"></div>
+<!-- ========================================== v0.3.6: 生成进度遮罩 ========================================== -->
+<div id="gen-overlay" role="alert" aria-live="polite">
+    <div class="gen-overlay-card">
+        <div class="gen-overlay-title" data-i18n="gen_progress_title">正在生成地图</div>
+        <div class="gen-overlay-phase" id="gen-phase" data-i18n="gen_phase_init">初始化参数...</div>
+        <div class="gen-overlay-progress" aria-hidden="true">
+            <div class="gen-overlay-progress-bar" id="gen-progress-bar-overlay"></div>
+        </div>
+        <div class="gen-overlay-pct" id="gen-pct">0%</div>
+    </div>
+</div>
+<div class="modal" id="storage-modal" role="dialog" aria-modal="true" aria-labelledby="storage-title">
+    <h3 data-i18n="storage_title" id="storage-title">存储管理</h3>
+    <div class="modal-list" id="storage-list" role="list"></div>
+    <div class="md-btn-row"><button class="md-btn md-btn-tonal" id="btn-close-modal" data-i18n="close">关闭</button></div>
+</div>
+<div class="modal" id="test-modal" role="dialog" aria-modal="true" aria-labelledby="test-title">
+    <h3 id="test-title">系统诊断报告</h3>
+    <div class="test-summary" id="test-summary">准备就绪...</div>
+    <div class="test-log" id="test-log" role="log" aria-live="polite"></div>
+    <div class="md-btn-row"><button class="md-btn md-btn-tonal" id="btn-close-test">关闭</button></div>
+</div>
+<!-- v0.3.8: 标签编辑 modal -->
+<div class="modal" id="label-edit-modal" role="dialog" aria-modal="true" aria-labelledby="label-edit-title">
+    <h3 id="label-edit-title" data-i18n="label_edit_title">编辑标签</h3>
+    <div class="md-field" style="margin-bottom:12px">
+        <span id="label-edit-original" style="font:var(--type-body-s);color:var(--color-on-surface-variant);margin-bottom:8px;display:block"></span>
+        <input type="text" class="md-input" id="label-edit-input" maxlength="24" placeholder="输入新名称...">
+    </div>
+    <div class="md-btn-row">
+        <button class="md-btn md-btn-text" id="btn-label-cancel" data-i18n="label_cancel">取消</button>
+        <button class="md-btn md-btn-filled" id="btn-label-confirm" data-i18n="label_confirm">确认</button>
+    </div>
+</div>
+<nav id="drawer" aria-label="控制面板">
+    <div class="sheet-drag-handle" aria-label="拖动调整面板大小"></div>
+    <div class="drawer-header">
+        <h1 data-i18n="title">地图生成器 <span class="version-badge">v0.3.9-preview</span></h1>
+    </div>
+    <div class="drawer-content">
+        <div class="md-card" id="card-seed">
+            <div class="md-card-title" data-toggle="card-seed" role="button" tabindex="0" aria-expanded="true" aria-controls="card-seed-content">
+                <span class="title-text"><span data-i18n="seed_base">种子与世界</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-seed-content">
+                <div class="card-inner">
+                    <div class="md-field">
+                        <label class="md-label" for="in-seed" data-i18n="world_seed">世界种子</label>
+                        <input type="text" class="md-input" id="in-seed" value="Terra2026" maxlength="32">
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" for="in-size" data-i18n="map_size">地图尺寸</label>
+                        <select class="md-select" id="in-size">
+                            <option value="256">256² 迷你</option>
+                            <option value="512">512²</option>
+                            <option value="768">768²</option>
+                            <option value="1024" selected>1024²</option>
+                            <option value="1536">1536²</option>
+                            <option value="2048">2048²</option>
+                        </select>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" for="in-aspect" data-i18n="map_aspect">地图比例</label>
+                        <select class="md-select" id="in-aspect">
+                            <option value="1:1" selected>1:1 正方形</option>
+                            <option value="4:3">4:3 横版</option>
+                            <option value="16:9">16:9 宽屏</option>
+                            <option value="3:4">3:4 竖版</option>
+                            <option value="9:16">9:16 竖屏</option>
+                        </select>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-world-scale" data-i18n="world_scale">世界比例尺</span>
+                        <input type="range" class="md-slider" id="in-world-scale" min="1" max="10" value="3">
+                        <span class="md-value" id="val-world-scale">3</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-show-grid" data-i18n="show_grid">比例网格</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-show-grid">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <!-- v0.3.8: 海拔尺 -->
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-elev-scale" data-i18n="show_elev_scale">显示海拔尺</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-elev-scale">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-plates" data-i18n="plate_count">板块数量</span>
+                        <input type="range" class="md-slider" id="in-plates" min="4" max="32" value="14">
+                        <span class="md-value" id="val-plates">14</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-landmass" data-i18n="land_ratio">大陆比例</span>
+                        <input type="range" class="md-slider" id="in-landmass" min="10" max="80" value="35">
+                        <span class="md-value" id="val-landmass">35%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-noise">
+            <div class="md-card-title" data-toggle="card-noise" role="button" tabindex="0" aria-expanded="false" aria-controls="card-noise-content">
+                <span class="title-text"><span data-i18n="noise_fbm">噪声与 FBM</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-noise-content">
+                <div class="card-inner">
+                    <div class="md-field">
+                        <label class="md-label" for="in-noise" data-i18n="base_noise">基础噪声</label>
+                        <select class="md-select" id="in-noise">
+                            <option value="simplex" selected>Simplex</option>
+                            <option value="perlin">Perlin</option>
+                            <option value="value">Value</option>
+                            <option value="worley">Worley</option>
+                        </select>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" for="in-fbm" data-i18n="fbm_variant">FBM 变体</label>
+                        <select class="md-select" id="in-fbm">
+                            <option value="standard" selected>Standard</option>
+                            <option value="ridged">Ridged</option>
+                            <option value="billowy">Billowy</option>
+                            <option value="warped">Domain Warp</option>
+                        </select>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-octaves">Octaves</span>
+                        <input type="range" class="md-slider" id="in-octaves" min="1" max="8" value="6">
+                        <span class="md-value" id="val-octaves">6</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-lacunarity">Lacunarity</span>
+                        <input type="range" class="md-slider" id="in-lacunarity" min="15" max="35" value="20">
+                        <span class="md-value" id="val-lacunarity">2.0</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-persistence">Persistence</span>
+                        <input type="range" class="md-slider" id="in-persistence" min="20" max="80" value="50">
+                        <span class="md-value" id="val-persistence">0.50</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-terrain">
+            <div class="md-card-title" data-toggle="card-terrain" role="button" tabindex="0" aria-expanded="false" aria-controls="card-terrain-content">
+                <span class="title-text"><span data-i18n="terrain_bounds">地形与边界</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-terrain-content">
+                <div class="card-inner">
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-sea" data-i18n="sea_level">海平面</span>
+                        <input type="range" class="md-slider" id="in-sea" min="0" max="100" value="45">
+                        <span class="md-value" id="val-sea">0.45</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-boundaries" data-i18n="show_bounds">显示边界</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-boundaries" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-boundary-width" data-i18n="bound_width">边界宽度</span>
+                        <input type="range" class="md-slider" id="in-boundary-width" min="1" max="10" value="3">
+                        <span class="md-value" id="val-boundary-width">3</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-boundary-color" data-i18n="bound_color">边界颜色</span>
+                        <input type="color" class="md-color" id="in-boundary-color" value="#ff3320">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-terrain-system">
+            <div class="md-card-title" data-toggle="card-terrain-system" role="button" tabindex="0" aria-expanded="false" aria-controls="card-terrain-system-content">
+                <span class="title-text">🌍 <span data-i18n="terrain_system">地形系统</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-terrain-system-content">
+                <div class="card-inner">
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-erosion-strength" data-i18n="erosion_strength">侵蚀强度</span>
+                        <input type="range" class="md-slider" id="in-erosion-strength" min="0" max="100" value="30">
+                        <span class="md-value" id="val-erosion-strength">30</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-erosion-iterations" data-i18n="erosion_iterations">侵蚀迭代</span>
+                        <input type="range" class="md-slider" id="in-erosion-iterations" min="5" max="50" value="20">
+                        <span class="md-value" id="val-erosion-iterations">20</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-mountain-fold" data-i18n="mountain_fold">山脉褶皱度</span>
+                        <input type="range" class="md-slider" id="in-mountain-fold" min="0" max="100" value="50">
+                        <span class="md-value" id="val-mountain-fold">50</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-temp-offset" data-i18n="temp_offset">温度偏移</span>
+                        <input type="range" class="md-slider" id="in-temp-offset" min="-20" max="20" value="0">
+                        <span class="md-value" id="val-temp-offset">0</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-snow-line" data-i18n="snow_line">雪线高度</span>
+                        <input type="range" class="md-slider" id="in-snow-line" min="0" max="100" value="65">
+                        <span class="md-value" id="val-snow-line">65</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-show-rivers" data-i18n="show_rivers">显示河流</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-show-rivers" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-contour-interval" data-i18n="contour_interval">等高线间距</span>
+                        <input type="range" class="md-slider" id="in-contour-interval" min="1" max="20" value="5">
+                        <span class="md-value" id="val-contour-interval">5</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-coast-detail" data-i18n="coast_detail">海岸线细节</span>
+                        <input type="range" class="md-slider" id="in-coast-detail" min="0" max="100" value="40">
+                        <span class="md-value" id="val-coast-detail">40</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-lake-density" data-i18n="lake_density">湖泊密度</span>
+                        <input type="range" class="md-slider" id="in-lake-density" min="0" max="100" value="20">
+                        <span class="md-value" id="val-lake-density">20</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-show-climate" data-i18n="show_climate">气候分区</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-show-climate">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-geo-labels" data-i18n="geo_labels">地理标注</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-geo-labels">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-layers">
+            <div class="md-card-title" data-toggle="card-layers" role="button" tabindex="0" aria-expanded="false" aria-controls="card-layers-content">
+                <span class="title-text"><span data-i18n="layer_control">图层控制</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-layers-content">
+                <div class="card-inner">
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-terrain" data-i18n="layer_terrain">地形底图</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-terrain" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-boundaries" data-i18n="layer_boundaries">板块边界</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-boundaries" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-rivers" data-i18n="layer_rivers">河流水系</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-rivers" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-contours" data-i18n="layer_contours">等高线</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-contours" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-names" data-i18n="layer_names">板块名称</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-names" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-selection" data-i18n="layer_selection">选中高亮</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-selection" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <!-- v0.3.8: 地形区标注 -->
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-layer-regions" data-i18n="region_labels">地形区标注</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-layer-regions" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- v0.3.8: 标签管理面板 -->
+        <div class="md-card collapsed" id="card-label-manager">
+            <div class="md-card-title" data-toggle="card-label-manager" role="button" tabindex="0" aria-expanded="false" aria-controls="card-label-manager-content">
+                <span class="title-text">🏷 <span data-i18n="label_manager">标签管理</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-label-manager-content">
+                <div class="card-inner" id="label-manager-content"></div>
+            </div>
+        </div>
+        <!-- v0.3.6: 细节生成器 -->
+        <div class="md-card collapsed" id="card-detail">
+            <div class="md-card-title" data-toggle="card-detail" role="button" tabindex="0" aria-expanded="false" aria-controls="card-detail-content">
+                <span class="title-text"><span data-i18n="detail_generator">细节生成器</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-detail-content">
+                <div class="card-inner">
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_river_width">河流宽度</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-river-width" min="10" max="200" value="100">
+                            <span class="md-value" id="val-detail-river-width">100</span>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_river_curve">河流曲率</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-river-curve" min="0" max="100" value="50">
+                            <span class="md-value" id="val-detail-river-curve">50</span>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_coast_jagged">海岸线锯齿度</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-coast-jagged" min="0" max="100" value="40">
+                            <span class="md-value" id="val-detail-coast-jagged">40</span>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_ridge_density">山脊密度</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-ridge-density" min="0" max="100" value="50">
+                            <span class="md-value" id="val-detail-ridge-density">50</span>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_rainfall_offset">降雨带偏移</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-rainfall-offset" min="-50" max="50" value="0">
+                            <span class="md-value" id="val-detail-rainfall-offset">0</span>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_temp_gradient">温度梯度</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-temp-gradient" min="10" max="200" value="100">
+                            <span class="md-value" id="val-detail-temp-gradient">100</span>
+                        </div>
+                    </div>
+                    <div class="md-field">
+                        <label class="md-label" data-i18n="detail_biome_blend">群系混合度</label>
+                        <div class="md-field-row">
+                            <input type="range" class="md-slider" id="in-detail-biome-blend" min="0" max="100" value="30">
+                            <span class="md-value" id="val-detail-biome-blend">30</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-light">
+            <div class="md-card-title" data-toggle="card-light" role="button" tabindex="0" aria-expanded="false" aria-controls="card-light-content">
+                <span class="title-text"><span data-i18n="lighting">光照与氛围</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-light-content">
+                <div class="card-inner">
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-light" data-i18n="light_angle">平行光角度</span>
+                        <input type="range" class="md-slider" id="in-light" min="0" max="360" value="135">
+                        <span class="md-value" id="val-light">135°</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-point-light" data-i18n="enable_point_light">点光源</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-point-light">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-light-x">X</span>
+                        <input type="range" class="md-slider" id="in-light-x" min="0" max="100" value="30">
+                        <span class="md-value" id="val-light-x">0.30</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-light-y">Y</span>
+                        <input type="range" class="md-slider" id="in-light-y" min="0" max="100" value="30">
+                        <span class="md-value" id="val-light-y">0.70</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-light-intensity" data-i18n="light_intensity">强度</span>
+                        <input type="range" class="md-slider" id="in-light-intensity" min="0" max="200" value="100">
+                        <span class="md-value" id="val-light-intensity">1.00</span>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-light-color" data-i18n="light_color">光色</span>
+                        <input type="color" class="md-color" id="in-light-color" value="#fff4d6">
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-glow" data-i18n="atmospheric_glow">大气光晕</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-glow">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card" id="card-render">
+            <div class="md-card-title" data-toggle="card-render" role="button" tabindex="0" aria-expanded="true" aria-controls="card-render-content">
+                <span class="title-text"><span data-i18n="render_view">渲染与视角</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-render-content">
+                <div class="card-inner">
+                    <div class="md-field">
+                        <label class="md-label" for="in-style" data-i18n="render_style">渲染风格</label>
+                        <select class="md-select" id="in-style">
+                            <option value="lowpoly" selected>低多边形</option>
+                            <option value="terrain">地形高程</option>
+                            <option value="plates">板块着色</option>
+                            <option value="parchment">羊皮卷</option>
+                            <option value="satellite">卫星视图</option>
+                            <option value="terrain_detail">地形详情</option>
+                            <option value="biome">生物群落</option>
+                            <option value="contour">等高线</option>
+                            <option value="relief">地形浮雕</option>
+                            <option value="azgaar">Azgaar 风格</option>
+                        </select>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-show-names" data-i18n="show_names">显示板块名</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-show-names" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-perf" data-i18n="perf_monitor">性能监控</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-perf">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-laser">
+            <div class="md-card-title" data-toggle="card-laser" role="button" tabindex="0" aria-expanded="false" aria-controls="card-laser-content">
+                <span class="title-text"><span data-i18n="laser_pointer">激光指针</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-laser-content">
+                <div class="card-inner">
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-cursor" data-i18n="enable_cursor">光标</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-cursor">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-laser" data-i18n="enable_laser">启用激光</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-laser">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-laser-auto" data-i18n="auto_select">自动选区</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-laser-auto" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-trail" data-i18n="luminous_trail">流光轨迹</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-trail" checked>
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="md-field-row">
+                        <span class="md-label" for="in-laser-smooth" title="开启后激光移动更平滑，但会有轻微延迟">激光防抖</span>
+                        <label class="md-switch">
+                            <input type="checkbox" id="in-laser-smooth">
+                            <span class="md-switch-track"><span class="md-switch-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="md-card" style="background: transparent; padding: 0;">
+            <div class="md-btn-row">
+                <button class="md-btn md-btn-filled" id="btn-generate" data-i18n="generate">生成地图</button>
+                <button class="md-btn md-btn-tonal" id="btn-random" data-i18n="random">随机</button>
+            </div>
+            <div class="md-btn-row" style="margin-top:8px;">
+                <button class="md-btn md-btn-tonal" id="btn-save" data-i18n="save">保存</button>
+                <button class="md-btn md-btn-tonal" id="btn-load" data-i18n="load">加载</button>
+            </div>
+            <div class="export-dropdown" id="export-dropdown">
+                <button class="md-btn md-btn-text export-trigger" id="btn-export" style="width:100%; margin-top:8px;">
+                    <span data-i18n="export">导出 PNG</span>
+                    <span class="dropdown-arrow">▲</span>
+                </button>
+                <div class="export-menu" id="export-menu">
+                    <div class="export-menu-header" data-i18n="export_formats">图片格式</div>
+                    <div class="export-quality-row" id="export-quality-row" style="display:none;">
+                        <span class="md-label" data-i18n="export_quality">质量</span>
+                        <input type="range" class="md-slider" id="export-quality" min="10" max="100" value="92">
+                        <span class="md-value" id="export-quality-val">92%</span>
+                    </div>
+                    <div class="export-item" data-format="png">
+                        <div class="export-item-info">
+                            <span class="export-item-title">PNG</span>
+                            <span class="export-item-desc" data-i18n="desc_lossless">无损压缩，文件较大</span>
+                        </div>
+                        <span class="export-item-badge" data-i18n="badge_lossless">无损</span>
+                    </div>
+                    <div class="export-item" data-format="jpeg">
+                        <div class="export-item-info">
+                            <span class="export-item-title">JPEG</span>
+                            <span class="export-item-desc" data-i18n="desc_lossy_fast">有损压缩，体积小速度快</span>
+                        </div>
+                        <span class="export-item-badge" data-i18n="badge_fast">快速</span>
+                    </div>
+                    <div class="export-item" data-format="webp">
+                        <div class="export-item-info">
+                            <span class="export-item-title">WebP</span>
+                            <span class="export-item-desc" data-i18n="desc_webp">现代格式，体积与画质兼优</span>
+                        </div>
+                        <span class="export-item-badge" data-i18n="badge_recommended">推荐</span>
+                    </div>
+                    <div class="export-item" data-format="bmp">
+                        <div class="export-item-info">
+                            <span class="export-item-title">BMP</span>
+                            <span class="export-item-desc" data-i18n="desc_bmp">无压缩位图，导出最快</span>
+                        </div>
+                        <span class="export-item-badge" data-i18n="badge_fastest">极速</span>
+                    </div>
+                    <div class="export-divider"><span data-i18n="export_data">数据导出</span></div>
+                    <div class="export-item" data-format="heightmap">
+                        <div class="export-item-info">
+                            <span class="export-item-title" data-i18n="export_heightmap">高程数据 JSON</span>
+                            <span class="export-item-desc" data-i18n="desc_heightmap">包含高程、湿度、温度地图</span>
+                        </div>
+                        <span class="export-item-badge">JSON</span>
+                    </div>
+                    <div class="export-item" data-format="terraindata">
+                        <div class="export-item-info">
+                            <span class="export-item-title" data-i18n="export_terraindata">完整地形数据</span>
+                            <span class="export-item-desc" data-i18n="desc_terraindata">高程+板块+河流+配置参数</span>
+                        </div>
+                        <span class="export-item-badge">JSON</span>
+                    </div>
+                </div>
+            </div>
+            <button class="md-btn md-btn-text" id="btn-logs" style="width:100%; margin-top:8px;">导出运行日志</button>
+            <button class="md-btn md-btn-filled" id="btn-test" style="width:100%; margin-top:8px; background: var(--color-surface-highest); color: var(--color-primary); border: 1px solid var(--color-primary);">运行系统诊断</button>
+            <div class="progress-container" id="gen-progress" aria-live="polite">
+                <div class="progress-bar" id="gen-progress-bar"></div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-about">
+            <div class="md-card-title" data-toggle="card-about" role="button" tabindex="0" aria-expanded="false" aria-controls="card-about-content">
+                <span class="title-text"><span data-i18n="about">关于与版本</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-about-content">
+                <div class="card-inner">
+                    <div style="margin-bottom: 8px;"><span class="version-badge">v0.3.9-preview</span></div>
+                    <p style="font:var(--type-body-s);color:var(--color-on-surface-variant);line-height:1.6;" data-i18n="about_desc">
+                        Material Map Generator —— 基于程序化噪声与板块模拟的地图生成工具，支持地形渲染、气候分区、河流水系、地理标注与多风格可视化。
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="md-card collapsed" id="card-version-gen">
+            <div class="md-card-title" data-toggle="card-version-gen" role="button" tabindex="0" aria-expanded="false" aria-controls="card-version-gen-content">
+                <span class="title-text"><span data-i18n="version_gen">版本生成器</span></span>
+                <span class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+            <div class="md-card-content" id="card-version-gen-content">
+                <div class="card-inner">
+                    <div style="margin-bottom:8px;">
+                        <label class="md-label" data-i18n="vg_version_label">版本号</label>
+                        <input class="md-input" id="in-vg-version" type="text" value="0.4.0" style="width:100%;margin-top:4px;">
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label class="md-label" data-i18n="vg_suffix_label">后缀</label>
+                        <select class="md-select" id="in-vg-suffix" style="width:100%;margin-top:4px;">
+                            <option value="">正式版</option>
+                            <option value="-preview" selected>preview</option>
+                            <option value="-beta">beta</option>
+                            <option value="-alpha">alpha</option>
+                            <option value="-rc">rc</option>
+                            <option value="-nightly">nightly</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label class="md-label" data-i18n="vg_count_label">生成数量</label>
+                        <input class="md-input" id="in-vg-count" type="number" min="1" max="10" value="3" style="width:100%;margin-top:4px;">
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label class="md-label" data-i18n="vg_mode_label">版本递增模式</label>
+                        <select class="md-select" id="in-vg-mode" style="width:100%;margin-top:4px;">
+                            <option value="patch">补丁递增 (0.4.0 → 0.4.1 → 0.4.2)</option>
+                            <option value="minor">次版本递增 (0.4.0 → 0.5.0 → 0.6.0)</option>
+                            <option value="suffix">仅后缀变化 (0.4.0-alpha → beta → rc)</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label class="md-label" data-i18n="vg_extras_label">附加内容</label>
+                        <div style="margin-top:4px;font-size:12px;color:var(--color-on-surface-variant);">
+                            <label><input type="checkbox" id="in-vg-include-readme" checked> README.md</label><br>
+                            <label><input type="checkbox" id="in-vg-include-changelog" checked> CHANGELOG.md</label>
+                        </div>
+                    </div>
+                    <div id="vg-progress" style="display:none;margin-bottom:8px;">
+                        <div class="progress-container" aria-live="polite">
+                            <div class="progress-bar" id="vg-progress-bar"></div>
+                        </div>
+                        <span id="vg-status" style="font-size:11px;color:var(--color-on-surface-variant);"></span>
+                    </div>
+                    <button class="md-btn md-btn-filled" id="btn-vg-generate" style="width:100%;margin-top:4px;" data-i18n="vg_generate">生成多版本</button>
+                    <button class="md-btn md-btn-text" id="btn-vg-download-all" style="width:100%;display:none;margin-top:4px;" data-i18n="vg_download_all">打包下载全部</button>
+                    <div id="vg-results" style="margin-top:8px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+<main id="main">
+    <header id="app-bar">
+        <button class="icon-btn" id="menu-btn" aria-label="打开菜单">≡</button>
+        <span id="app-bar-title" data-i18n="title">地图生成器</span>
+        <span class="app-bar-chip" id="info-dim">1024²</span>
+        <span class="app-bar-chip" id="info-time">0ms</span>
+        <span class="app-bar-chip" id="info-fps">0 FPS</span>
+        <span class="app-bar-chip" id="info-lod">LOD:1</span>
+        <button class="icon-btn" id="ui-btn" title="切换UI风格" aria-label="切换UI风格" aria-pressed="false">◈</button>
+        <span class="orientation-badge" id="orientation-badge" style="display:none">🔄</span>
+        <button class="icon-btn" id="lang-btn" title="切换语言" aria-label="切换语言" aria-pressed="false">EN</button>
+    </header>
+    <div id="canvas-container">
+        <div class="zoom-indicator" id="zoom-indicator">1.0×</div>
+        <canvas id="glCanvas" role="img"></canvas>
+        <canvas id="overlayCanvas" aria-hidden="true"></canvas>
+        <div id="cursor-overlay">
+            <div class="cursor-ring pulse"></div>
+            <div class="cursor-dot"></div>
+            <div class="cursor-cross"></div>
+            <div class="cursor-label"></div>
+        </div>
+        <div id="cursor-controls">
+            <button class="cursor-ctrl-btn" id="btn-cursor-up" aria-label="上移光标">▲</button>
+            <button class="cursor-ctrl-btn" id="btn-cursor-left" aria-label="左移光标">◀</button>
+            <button class="cursor-ctrl-btn" id="btn-cursor-center" aria-label="居中光标">●</button>
+            <button class="cursor-ctrl-btn" id="btn-cursor-right" aria-label="右移光标">▶</button>
+            <button class="cursor-ctrl-btn" id="btn-cursor-down" aria-label="下移光标">▼</button>
+        </div>
+        <div class="overlay-card" id="stats-card"></div>
+        <div class="overlay-card" id="perf-card"></div>
+        <div class="overlay-card" id="selection-card"></div>
+    </div>
+</main>
+<div id="mobile-fab-group">
+    <button class="fab fab-primary" id="fab-generate" aria-label="生成地图">▶</button>
+    <button class="fab fab-secondary" id="fab-random" aria-label="随机">⟳</button>
+    <button class="fab fab-toggle" id="fab-panel" aria-label="面板">☰</button>
+</div>
+
+<!-- ========================================== [6] WebGL 着色器代码 ========================================== -->
+<script id="vs-quad" type="x-shader/x-vertex"></script>
+<script id="fs-map" type="x-shader/x-fragment"></script>
+
+<!-- ========================================== [7] JavaScript 核心逻辑 ========================================== -->
+<script src="/src/main.js" defer></script>
+</body>
+</html>
