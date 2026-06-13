@@ -10,13 +10,16 @@
  *   src/             — JavaScript modules (main.js, config.js)
  */
 
-'use strict';
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import zlib from 'zlib';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const zlib = require('zlib');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT   = parseInt(process.env.MAPGEN_PORT, 10) || 8765;
 const HOST   = process.env.MAPGEN_HOST || '127.0.0.1';
@@ -26,6 +29,7 @@ const MIME = {
     '.html': 'text/html; charset=utf-8',
     '.css':  'text/css; charset=utf-8',
     '.js':   'application/javascript; charset=utf-8',
+    '.mjs':  'application/javascript; charset=utf-8',
     '.vert': 'x-shader/x-vertex',
     '.frag': 'x-shader/x-fragment',
     '.glsl': 'x-shader/x-fragment',
@@ -46,7 +50,7 @@ function readFile(file) {
 
 /* ── HTTP server ── */
 const server = http.createServer(function(req, res) {
-    var urlPath = req.url.split('?')[0];
+    const urlPath = req.url.split('?')[0];
 
     /* /health — health check */
     if (urlPath === '/health') {
@@ -63,8 +67,8 @@ const server = http.createServer(function(req, res) {
     }
 
     /* static files */
-    var safePath = urlPath.replace(/\.\./g, '');
-    var file = readFile(safePath);
+    const safePath = urlPath.replace(/\.\./g, '');
+    let file = readFile(safePath);
 
     if (!file) {
         /* fallback to index.html for SPA routing */
@@ -74,12 +78,12 @@ const server = http.createServer(function(req, res) {
             res.end('404 Not Found');
             return;
         }
-        var headers = {
+        const headers = {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-cache',
             'Access-Control-Allow-Origin': '*',
         };
-        var acceptGzip = (req.headers['accept-encoding'] || '').indexOf('gzip') >= 0;
+        const acceptGzip = (req.headers['accept-encoding'] || '').includes('gzip');
         if (acceptGzip) {
             zlib.gzip(file, function(err, buf) {
                 if (!err) {
@@ -98,7 +102,7 @@ const server = http.createServer(function(req, res) {
         return;
     }
 
-    var headers = {
+    const headers = {
         'Content-Type': mime(safePath),
         'Cache-Control': 'no-cache',
         'Access-Control-Allow-Origin': '*',
@@ -109,18 +113,28 @@ const server = http.createServer(function(req, res) {
 
 /* ── open browser ── */
 function openBrowser(url) {
-    var p = os.platform();
+    const p = os.platform();
     try {
         if (p === 'darwin') {
-            execSync("open '" + url + "'", { timeout: 3000, stdio: 'ignore' });
+            execSync(`open '${url}'`, { timeout: 3000, stdio: 'ignore' });
         } else if (p === 'win32') {
-            execSync('start "" "' + url + '"', { timeout: 3000, stdio: 'ignore', shell: true });
+            execSync(`start "" "${url}"`, { timeout: 3000, stdio: 'ignore', shell: true });
         } else {
+            // Termux detection - check for termux-open command
             try {
                 execSync('which termux-open', { stdio: 'pipe' });
-                execSync("termux-open '" + url + "'", { timeout: 3000, stdio: 'ignore' });
+                execSync(`termux-open '${url}'`, { timeout: 3000, stdio: 'ignore' });
+                console.log('  Opened in Termux browser');
+                return;
             } catch(e) {
-                execSync("xdg-open '" + url + "'", { timeout: 3000, stdio: 'ignore' });
+                // Not Termux or termux-open not available
+            }
+            // Try common Linux openers
+            try {
+                execSync(`xdg-open '${url}'`, { timeout: 3000, stdio: 'ignore' });
+            } catch(e) {
+                console.log('  Open manually: ' + url);
+                return;
             }
         }
         console.log('  Browser opened');
@@ -129,28 +143,36 @@ function openBrowser(url) {
     }
 }
 
-const { execSync } = require('child_process');
-
 /* ── start ── */
 server.listen(PORT, HOST, function() {
-    var url = 'http://' + HOST + ':' + PORT;
+    const url = `http://${HOST}:${PORT}`;
     console.log('');
     console.log('  +---------------------------------------------+');
     console.log('  |  Material Map Generator  v0.3.12-preview     |');
     console.log('  +---------------------------------------------+');
     console.log('');
     console.log('  Multi-file architecture (v0.3.12+)');
-    console.log('  ' + url);
+    console.log(`  ${url}`);
     console.log('  Ctrl+C to stop');
     console.log('');
-    setTimeout(function() { openBrowser(url); }, 500);
+    
+    // Auto-open browser unless in Termux (user should manually open)
+    const isTermux = process.env.TERMUX_VERSION !== undefined || 
+                     os.platform() === 'android' ||
+                     process.env.PREFIX?.includes('com.termux');
+    
+    if (!isTermux) {
+        setTimeout(() => openBrowser(url), 500);
+    } else {
+        console.log('  Termux detected - open browser manually at the URL above');
+    }
 });
 
 server.on('error', function(err) {
     if (err.code === 'EADDRINUSE') {
-        console.error('Port ' + PORT + ' in use. Try: MAPGEN_PORT=8766 node server.js');
+        console.error(`Port ${PORT} in use. Try: MAPGEN_PORT=8766 node server.js`);
     } else {
-        console.error('Error: ' + err.message);
+        console.error(`Error: ${err.message}`);
     }
     process.exit(1);
 });
