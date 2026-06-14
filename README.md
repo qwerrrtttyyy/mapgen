@@ -1,111 +1,57 @@
-# Material Map Generator
+# React + TypeScript + Vite
 
-Procedural noise & tectonic simulation map generator. Generate terrain, climate, biome maps with WebGL shaders.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-**v0.3.14** — Multi-file architecture. Node.js local server.
+Currently, two official plugins are available:
 
-## Quick Start
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-### One-click (recommended)
+## Expanding the ESLint configuration
 
-```bash
-# Unix / macOS / Linux / Termux
-bash <(curl -sL https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.14/start.sh)
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-# Or clone and run
-git clone https://github.com/qwerrrtttyyy/mapgen.git
-cd mapgen
-node server.js
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
 
-### Windows
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-```bat
-# PowerShell
-irm https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.14/start.ps1 | iex
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-# Or clone and run
-git clone https://github.com/qwerrrtttyyy/mapgen.git
-cd mapgen
-node server.js
+export default tseslint.config({
+  extends: [
+    // other configs...
+    // Enable lint rules for React
+    reactX.configs['recommended-typescript'],
+    // Enable lint rules for React DOM
+    reactDom.configs.recommended,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
-
-### Single-file release
-
-Download the `.js` file from [Releases](https://github.com/qwerrrtttyyy/mapgen/releases) and run directly:
-
-```bash
-curl -LO https://github.com/qwerrrtttyyy/mapgen/releases/download/v0.3.14/mapgen_v0.3.14.js
-node mapgen_v0.3.14.js
-```
-
-## Features
-
-- Procedural terrain generation (noise / FBM / ridged multifractal)
-- Tectonic plate simulation
-- Climate system (temperature, moisture, biome)
-- Erosion simulation
-- Rivers and coastlines
-- Mountain ridges and snow lines
-- Contour lines
-- PNG / JPEG export
-- localStorage persistence
-- Material Design UI
-- i18n / multilingual
-- Mobile optimized
-
-## Architecture (v0.3.12+)
-
-```
-mapgen/
-├── server.js              # Node.js HTTP server
-├── package.json           # Package manifest
-├── public/                # Static assets
-│   ├── index.html         # HTML entry point
-│   ├── style.css          # Material Design styles
-│   └── shaders/
-│       ├── vs-quad.vert   # Vertex shader
-│       └── fs-map.frag    # Fragment shader
-├── src/
-│   ├── config.js          # App bootstrap
-│   └── main.js            # Application logic
-└── bin/
-    ├── start.sh           # Unix / macOS / Linux one-click script
-    └── start.ps1          # Windows PowerShell one-click script
-```
-
-## Configuration
-
-| Environment Variable | Default | Description |
-|---|---|---|
-| `MAPGEN_PORT` | `8765` | HTTP server port |
-| `MAPGEN_HOST` | `127.0.0.1` | HTTP server host |
-
-Example:
-
-```bash
-MAPGEN_PORT=8080 MAPGEN_HOST=0.0.0.0 node server.js
-```
-
-## Tech Stack
-
-- Node.js (local server)
-- HTML5 + CSS3 (Material Design)
-- JavaScript (ES6+)
-- WebGL2 + GLSL shaders
-- No build tools required — runs directly in browser
-
-## Changelog
-
-- **v0.3.14** — Multi-file architecture (server / public / src separation), new WebGL shader loading system, improved HTTP server
-- **v0.3.11** — Node.js local server with base64-embedded HTML
-- **v0.3.10** — Regions & Labels system, mobile optimization
-- **v0.3.5** — Material Design UI, splash loading animation
-- **v0.3.3** — Mobile optimized
-- **v0.3.0** — Full terrain system (biome, erosion, rivers, contours)
-
-Full release history: [Releases](https://github.com/qwerrrtttyyy/mapgen/releases)
-
-## License
-
-MIT
