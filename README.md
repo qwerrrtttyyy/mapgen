@@ -55,6 +55,39 @@ npm run build
 npm run check
 ```
 
+## 一键脚本
+
+无需克隆仓库，任何人可直接运行：
+
+```bash
+# 查看帮助
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh)
+
+# 安装依赖
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) install
+
+# 类型检查
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) check
+
+# 构建生产版本
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) build
+
+# 启动开发服务器
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) dev
+
+# 预览生产版本
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) preview
+
+# 克隆仓库到本地
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) clone
+
+# 列出所有 Release
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) releases
+
+# 创建 Release (需设置 GITHUB_TOKEN)
+GITHUB_TOKEN=ghp_xxx bash <(curl -sL ...) release v0.4.0
+```
+
 ## 项目结构
 
 ```
