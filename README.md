@@ -55,6 +55,26 @@ npm run build
 npm run check
 ```
 
+## Termux 支持
+
+在 Android 上使用 [Termux](https://termux.com/) 一键配置：
+
+```bash
+# 一键安装 Node.js + Git + 项目（推荐）
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) termux
+
+# 或使用专用脚本
+bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/termux.sh)
+```
+
+配置完成后运行：
+```bash
+cd ~/mapgen
+npm run dev
+```
+
+> Termux 浏览器访问 `http://localhost:5173`
+
 ## 一键脚本
 
 无需克隆仓库，任何人可直接运行：

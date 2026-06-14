@@ -5,13 +5,34 @@
 #   bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) install
 #   bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) build
 #   bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) release v0.4.0
+#   bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) termux
 
 set -e
 CMD="${1:-help}"
 GH_REPO="qwerrrtttyyy/mapgen"
 GH_API="https://api.github.com/repos/$GH_REPO"
-DESTDIR="${HOME}/.mapgen"
+DESTDIR="${HOME}/mapgen"
 TOKEN="${GITHUB_TOKEN:-}"
+IS_TERMUX=false
+
+# 检测 Termux 环境
+if [ -d "/data/data/com.termux/files/usr" ] || [ -n "$TERMUX_VERSION" ]; then
+    IS_TERMUX=true
+    DESTDIR="${HOME}/../usr/home/mapgen"
+fi
+
+termux_setup() {
+    echo "检测到 Termux 环境，正在配置..."
+    pkg update -y
+    pkg install nodejs git -y
+    cd ~
+    rm -rf mapgen 2>/dev/null || true
+    git clone https://github.com/$GH_REPO.git
+    cd mapgen
+    npm install
+    echo "Termux 配置完成!"
+    echo "运行: cd ~/mapgen && npm run dev"
+}
 
 install_deps() {
     echo "安装依赖..."
@@ -124,12 +145,14 @@ show_help() {
     echo "  clone            克隆仓库"
     echo "  push             推送代码"
     echo "  releases         列出所有版本"
+    echo "  termux           Termux 环境一键配置"
     echo "  help             显示帮助"
     echo ""
     echo "示例:"
     echo "  bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) install"
     echo "  bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) build"
     echo "  bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) release v0.4.0"
+    echo "  bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) termux"
 }
 
 case "$CMD" in
@@ -142,6 +165,7 @@ case "$CMD" in
     clone) clone_repo ;;
     push) push_code ;;
     releases) list_releases ;;
+    termux) termux_setup ;;
     help|--help|-h) show_help ;;
     *) show_help ;;
 esac
