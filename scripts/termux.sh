@@ -4,48 +4,47 @@
 
 set -e
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${YELLOW}=== Termux 环境配置 ===${NC}"
+echo "=== Termux 环境配置 ==="
+echo ""
 
 # 检查是否在 Termux 中运行
-if [ ! -d "/data/data/com.termux/files/usr" ]; then
-    echo -e "${RED}警告: 未检测到 Termux 环境${NC}"
+if [ ! -d "/data/data/com.termux/files/usr" ] && [ -z "$TERMUX_VERSION" ]; then
+    echo "警告: 未检测到 Termux 环境"
     echo "此脚本应在 Termux 中运行"
+    echo "下载: https://f-droid.org/en/packages/com.termux/"
 fi
 
 # 更新包列表
-echo -e "\n${YELLOW}[1/5] 更新包列表...${NC}"
+echo "[1/5] 更新包列表..."
 pkg update -y
 
 # 安装 Node.js
-echo -e "\n${YELLOW}[2/5] 安装 Node.js...${NC}"
+echo "[2/5] 安装 Node.js..."
 pkg install nodejs -y
 
 # 安装 Git
-echo -e "\n${YELLOW}[3/5] 安装 Git...${NC}"
+echo "[3/5] 安装 Git..."
 pkg install git -y
 
-# 安装可选依赖
-echo -e "\n${YELLOW}[4/5] 安装可选依赖...${NC}"
-pkg install python make g++ -y
-
 # 克隆仓库
-echo -e "\n${YELLOW}[5/5] 克隆仓库...${NC}"
-cd ~/ && rm -rf mapgen
+echo "[4/5] 克隆仓库..."
+cd "${HOME}"
+rm -rf mapgen
 git clone https://github.com/qwerrrtttyyy/mapgen.git
 cd mapgen
 
 # 安装项目依赖
-echo -e "\n${YELLOW}安装项目依赖...${NC}"
+echo "[5/5] 安装项目依赖..."
 npm install
 
-echo -e "\n${GREEN}=== 配置完成! ===${NC}"
 echo ""
-echo "下一步:"
-echo "  cd ~/mapgen"
-echo "  npm run dev    # 启动开发服务器"
-echo "  npm run build  # 构建生产版本"
+echo "=========================================="
+echo "  配置完成!"
+echo ""
+echo "  使用方法:"
+echo "    cd ~/mapgen"
+echo "    npm run dev    # 启动开发服务器"
+echo "    npm run build  # 构建生产版本"
+echo ""
+echo "  浏览器访问: http://localhost:5173"
+echo "=========================================="
