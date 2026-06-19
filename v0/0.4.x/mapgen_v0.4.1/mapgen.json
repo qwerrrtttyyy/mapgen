@@ -1,0 +1,7 @@
+{
+  "port": 8765,
+  "host": "127.0.0.1",
+  "openBrowser": true,
+  "autoPortFallback": true,
+  "ckptDir": ".checkpoints"
+}

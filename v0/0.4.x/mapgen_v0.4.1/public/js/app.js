@@ -1,8 +1,14 @@
-import { generateMap, restoreFromCheckpoint } from './engine/index.js';
+import { generateMap as clientGenerate, restoreFromCheckpoint } from './engine/index.js';
 import { createNoise, hashSeed } from './engine/noise.js';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { CheckpointManager, getCheckpointPhases } from './checkpoint.js';
+
+/* ── Config ── */
+const SERVER_GEN = window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost'
+  ? false
+  : true;
+const API_BASE = '';
 
 const defaultParams = {
   seedStr: String(Math.floor(Math.random() * 99999)),
@@ -16,6 +22,7 @@ const defaultParams = {
   lightAngle: 0.8, pointLightEnabled: false, pointLightPos: [0.5, 0.5],
   pointLightIntensity: 0.5, pointLightColor: [1.0, 0.8, 0.6],
   glowEnabled: false, laserActive: false, trailEnabled: false, cursorActive: false,
+  useServerGen: SERVER_GEN,
 };
 
 const RENDER_PARAM_MAP = {
@@ -34,7 +41,7 @@ const RENDER_PARAM_MAP = {
 };
 
 let renderer = null, checkpointMgr = null, latestMapData = null;
-let isGenerating = false, renderTimeout = null;
+let isGenerating = false, renderTimeout = null, eventSource = null;
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
@@ -62,6 +69,7 @@ function readParams() {
   const sx = document.getElementById('pointLightPosX');
   const sy = document.getElementById('pointLightPosY');
   p.pointLightPos = [parseFloat(sx?.value ?? 0.5), parseFloat(sy?.value ?? 0.5)];
+  p.useServerGen = document.getElementById('useServerGen')?.checked ?? SERVER_GEN;
   return p;
 }
 
@@ -84,6 +92,62 @@ function onProgress(fraction, phaseName) {
   if (txt) txt.textContent = phaseLabels[phaseName] || phaseName;
 }
 
+/* ── SSE progress ── */
+function connectSSE() {
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+  try {
+    eventSource = new EventSource(API_BASE + '/api/events');
+    eventSource.addEventListener('progress', e => {
+      try {
+        const data = JSON.parse(e.data);
+        onProgress(data.fraction, data.phase);
+      } catch {}
+    });
+    eventSource.addEventListener('connected', () => {});
+    eventSource.onerror = () => {};
+  } catch {}
+}
+
+/* ── Server-side generate ── */
+async function serverGenerate(params) {
+  connectSSE();
+  const res = await fetch(API_BASE + '/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Server generation failed');
+  }
+  const data = await res.json();
+
+  function toFloat32(arr) {
+    if (!arr || !arr.length) return new Float32Array();
+    return new Float32Array(arr);
+  }
+
+  return {
+    mapData: {
+      width: data.width,
+      height: data.height,
+      plateTex: toFloat32(data.plateTex),
+      elevTex: toFloat32(data.elevTex),
+      moistTex: toFloat32(data.moistTex),
+      riverTex: toFloat32(data.riverTex),
+      tempTex: toFloat32(data.tempTex),
+      plates: data.plates || [],
+      regions: data.regions || [],
+      rivers: data.rivers || [],
+      seed: data.seed || 0,
+    },
+  };
+}
+
+/* ── Generate ── */
 async function generate() {
   if (isGenerating) return;
   isGenerating = true;
@@ -98,7 +162,14 @@ async function generate() {
   await new Promise(r => setTimeout(r, 16));
   try {
     const params = readParams();
-    const result = generateMap(params, onProgress);
+    let result;
+
+    if (params.useServerGen) {
+      result = await serverGenerate(params);
+    } else {
+      result = clientGenerate(params, onProgress);
+    }
+
     latestMapData = result.mapData;
     renderer.uploadMapData(result.mapData);
     render();
@@ -148,6 +219,7 @@ function exportPNG() {
   a.click();
 }
 
+/* ── Checkpoints ── */
 async function updateCheckpointList() {
   if (!checkpointMgr) return;
   await checkpointMgr.load();
@@ -236,6 +308,8 @@ function applyDefaultParams() {
   if (yEl) yEl.value = defaultParams.pointLightPos[1];
   const pd = document.getElementById('pointLightPosDisplay');
   if (pd) pd.textContent = `(${defaultParams.pointLightPos[0]}, ${defaultParams.pointLightPos[1]})`;
+  const sg = document.getElementById('useServerGen');
+  if (sg) sg.checked = SERVER_GEN;
 }
 
 function bindUI() {
@@ -248,7 +322,7 @@ function bindUI() {
   $$('select').forEach(el => {
     el.addEventListener('change', generate);
   });
-  $$('input[type="checkbox"]').forEach(el => {
+  $$('input[type="checkbox"]:not(#useServerGen)').forEach(el => {
     el.addEventListener('change', scheduleRender);
   });
   $$('input[type="color"]').forEach(el => {
@@ -261,6 +335,7 @@ function bindUI() {
   byId('btn-generate')?.addEventListener('click', generate);
   byId('btn-export')?.addEventListener('click', exportPNG);
   byId('btn-save-checkpoint')?.addEventListener('click', saveCheckpoint);
+  byId('useServerGen')?.addEventListener('change', generate);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -275,6 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('WebGL2 unavailable, using Canvas2D:', e.message);
     renderer = new Canvas2DRenderer(canvas);
   }
+  if (SERVER_GEN) connectSSE();
   checkpointMgr = new CheckpointManager();
   await checkpointMgr.load();
   applyDefaultParams();

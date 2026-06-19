@@ -11,9 +11,26 @@
   <nav id="drawer">
     <div class="drawer-header">
       <h1>Map Generator</h1>
-      <div class="version">v0.4.1 — 检查点系统</div>
+      <div class="version">v0.4.1 — C/S 架构</div>
     </div>
     <div class="drawer-content">
+
+      <!-- 架构切换 -->
+      <div class="md-card">
+        <div class="md-card-title">架构模式 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>
+              <input type="checkbox" id="useServerGen" checked>
+              服务端生成（C/S 模式）
+            </label>
+            <div style="font-size:10px;color:var(--md-sys-on-surface-variant);margin-top:2px">
+              开启: 服务端计算地图，SSE 实时进度<br>
+              关闭: 浏览器本地生成
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- 种子 & 世界 -->
       <div class="md-card">
@@ -214,7 +231,7 @@
   <div id="main">
     <div id="app-bar">
       <span class="title">Material Map Generator</span>
-      <span style="font-size:11px;color:var(--md-sys-on-surface-variant)">v0.4.1</span>
+      <span style="font-size:11px;color:var(--md-sys-on-surface-variant)">v0.4.1 — C/S</span>
     </div>
     <div id="canvas-container">
       <canvas id="glCanvas"></canvas>
