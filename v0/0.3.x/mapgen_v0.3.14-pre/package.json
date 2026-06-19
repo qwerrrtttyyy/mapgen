@@ -1,0 +1,30 @@
+{
+  "name": "mapgen",
+  "version": "0.3.14",
+  "description": "Material Map Generator - Procedural noise & tectonic simulation",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "lint": "echo 'No linter configured'"
+  },
+  "keywords": [
+    "map-generator",
+    "procedural",
+    "noise",
+    "tectonic",
+    "webgl",
+    "shader",
+    "terrain"
+  ],
+  "author": "qwerrrtttyyy",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qwerrrtttyyy/mapgen"
+  }
+}
