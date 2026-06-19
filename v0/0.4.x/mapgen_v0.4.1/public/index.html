@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Material Map Generator v0.4.1</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <nav id="drawer">
+    <div class="drawer-header">
+      <h1>Map Generator</h1>
+      <div class="version">v0.4.1 — 检查点系统</div>
+    </div>
+    <div class="drawer-content">
+
+      <!-- 种子 & 世界 -->
+      <div class="md-card">
+        <div class="md-card-title">种子 &amp; 世界 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>种子字符串</label>
+            <div class="btn-row">
+              <input type="text" id="seedStr" value="12345" style="flex:1">
+              <button class="btn btn-secondary" id="btn-random-seed" style="padding:6px 10px">随机</button>
+            </div>
+          </div>
+          <div class="md-field">
+            <label>地图大小</label>
+            <select id="mapSize"><option value="128">128</option><option value="256" selected>256</option><option value="512">512</option></select>
+          </div>
+          <div class="md-field">
+            <label>宽高比</label>
+            <select id="mapAspect"><option value="1:1">1:1</option><option value="4:3">4:3</option><option value="16:9">16:9</option><option value="2:1">2:1</option><option value="3:2">3:2</option></select>
+          </div>
+          <div class="md-field">
+            <label>板块数量 <span class="value" id="plateCount-val">8</span></label>
+            <input type="range" id="plateCount" min="3" max="20" value="8">
+          </div>
+          <div class="md-field">
+            <label>陆地比例 <span class="value" id="landmass-val">0.4</span></label>
+            <input type="range" id="landmass" min="0.1" max="0.9" step="0.05" value="0.4">
+          </div>
+        </div>
+      </div>
+
+      <!-- 噪声 & FBM -->
+      <div class="md-card">
+        <div class="md-card-title">噪声 &amp; FBM <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>基础噪声</label>
+            <select id="noiseType"><option value="perlin">Perlin</option><option value="simplex">Simplex</option><option value="value">Value</option><option value="worley">Worley</option></select>
+          </div>
+          <div class="md-field">
+            <label>FBM 变体</label>
+            <select id="fbmType"><option value="standard">标准</option><option value="ridged">山脊</option><option value="billowy">膨胀</option><option value="warped">扭曲</option></select>
+          </div>
+          <div class="md-field">
+            <label>八度 <span class="value" id="octaves-val">5</span></label>
+            <input type="range" id="octaves" min="1" max="8" value="5">
+          </div>
+          <div class="md-field">
+            <label>拉库纳里蒂 <span class="value" id="lacunarity-val">2.0</span></label>
+            <input type="range" id="lacunarity" min="1.0" max="3.0" step="0.1" value="2.0">
+          </div>
+          <div class="md-field">
+            <label>持久性 <span class="value" id="persistence-val">0.5</span></label>
+            <input type="range" id="persistence" min="0.1" max="1.0" step="0.05" value="0.5">
+          </div>
+        </div>
+      </div>
+
+      <!-- 地形 -->
+      <div class="md-card">
+        <div class="md-card-title">地形 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>海平面 <span class="value" id="seaLevel-val">0.45</span></label>
+            <input type="range" id="seaLevel" min="0.1" max="0.8" step="0.01" value="0.45">
+          </div>
+          <div class="md-field">
+            <label>山脉褶皱 <span class="value" id="mountainFold-val">0.3</span></label>
+            <input type="range" id="mountainFold" min="0" max="1" step="0.05" value="0.3">
+          </div>
+          <div class="md-field">
+            <label>海岸细节 <span class="value" id="coastDetail-val">0.5</span></label>
+            <input type="range" id="coastDetail" min="0" max="1" step="0.05" value="0.5">
+          </div>
+          <div class="md-field">
+            <label>侵蚀强度 <span class="value" id="erosionStrength-val">1.0</span></label>
+            <input type="range" id="erosionStrength" min="0" max="3" step="0.1" value="1.0">
+          </div>
+          <div class="md-field">
+            <label>侵蚀迭代 <span class="value" id="erosionIterations-val">50</span></label>
+            <input type="range" id="erosionIterations" min="0" max="200" value="50">
+          </div>
+          <div class="md-field">
+            <label>湖泊密度 <span class="value" id="lakeDensity-val">0.02</span></label>
+            <input type="range" id="lakeDensity" min="0" max="0.1" step="0.005" value="0.02">
+          </div>
+        </div>
+      </div>
+
+      <!-- 气候 -->
+      <div class="md-card">
+        <div class="md-card-title">气候 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>温度偏移 <span class="value" id="tempOffset-val">0</span></label>
+            <input type="range" id="tempOffset" min="-0.5" max="0.5" step="0.05" value="0">
+          </div>
+          <div class="md-field">
+            <label>雪线 <span class="value" id="snowLine-val">0.5</span></label>
+            <input type="range" id="snowLine" min="0.1" max="1.0" step="0.05" value="0.5">
+          </div>
+        </div>
+      </div>
+
+      <!-- 渲染 -->
+      <div class="md-card">
+        <div class="md-card-title">渲染 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>渲染风格</label>
+            <select id="style"><option value="0">地形</option><option value="1">板块</option><option value="2">羊皮纸</option><option value="3">卫星</option><option value="4">低多边形</option><option value="5">地形详情</option><option value="6">生物群落</option><option value="7">等高线</option><option value="8">浮雕</option><option value="9">Azgaar</option></select>
+          </div>
+          <div class="md-field">
+            <label>光照角度 <span class="value" id="lightAngle-val">0.8</span></label>
+            <input type="range" id="lightAngle" min="0" max="6.28" step="0.05" value="0.8">
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showBoundaries" checked> 显示边界</label>
+          </div>
+          <div class="md-field">
+            <label>边界宽度 <span class="value" id="boundaryWidth-val">0.8</span></label>
+            <input type="range" id="boundaryWidth" min="0.1" max="2" step="0.1" value="0.8">
+          </div>
+          <div class="md-field">
+            <label>边界颜色</label>
+            <input type="color" id="boundaryColor" value="#ff4d33">
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showRivers" checked> 显示河流</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showContours"> 等高线</label>
+          </div>
+          <div class="md-field">
+            <label>等高线间隔 <span class="value" id="contourInterval-val">0.05</span></label>
+            <input type="range" id="contourInterval" min="0.01" max="0.2" step="0.005" value="0.05">
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showClimate"> 气候分区</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showGrid"> 网格</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showTerrain" checked> 地形底图</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="showSelection" checked> 选中高亮</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 光照 -->
+      <div class="md-card">
+        <div class="md-card-title">光照 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label><input type="checkbox" id="pointLightEnabled"> 点光源</label>
+          </div>
+          <div class="md-field">
+            <label>光源位置 X <span class="value" id="pointLightPosX-val">0.5</span></label>
+            <input type="range" id="pointLightPosX" min="0" max="1" step="0.05" value="0.5">
+          </div>
+          <div class="md-field">
+            <label>光源位置 Y <span class="value" id="pointLightPosY-val">0.5</span></label>
+            <input type="range" id="pointLightPosY" min="0" max="1" step="0.05" value="0.5">
+          </div>
+          <div class="md-field">
+            <label>光源强度 <span class="value" id="pointLightIntensity-val">0.5</span></label>
+            <input type="range" id="pointLightIntensity" min="0" max="2" step="0.1" value="0.5">
+          </div>
+          <div class="md-field">
+            <label>光源颜色</label>
+            <input type="color" id="pointLightColor" value="#ffcc99">
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="glowEnabled"> 辉光</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="btn-row" style="padding:8px">
+        <button class="btn btn-primary" id="btn-generate" style="flex:1">生成地图</button>
+        <button class="btn btn-secondary" id="btn-export">导出 PNG</button>
+      </div>
+
+    </div>
+
+    <!-- 检查点 -->
+    <div id="checkpoint-section">
+      <div class="section-title">检查点</div>
+      <div id="checkpoint-list"></div>
+      <button class="btn btn-success" id="btn-save-checkpoint" style="width:100%;margin-top:4px;display:none">保存当前为检查点</button>
+    </div>
+  </nav>
+
+  <div id="main">
+    <div id="app-bar">
+      <span class="title">Material Map Generator</span>
+      <span style="font-size:11px;color:var(--md-sys-on-surface-variant)">v0.4.1</span>
+    </div>
+    <div id="canvas-container">
+      <canvas id="glCanvas"></canvas>
+      <div id="progress-container">
+        <div id="progress-text">初始化...</div>
+        <div id="progress-bar-track"><div id="progress-bar"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="js/checkpoint.js"></script>
+<script type="module" src="js/engine/noise.js"></script>
+<script type="module" src="js/engine/tectonic.js"></script>
+<script type="module" src="js/engine/erosion.js"></script>
+<script type="module" src="js/engine/rivers.js"></script>
+<script type="module" src="js/engine/regions.js"></script>
+<script type="module" src="js/engine/index.js"></script>
+<script type="module" src="js/renderer/webgl.js"></script>
+<script type="module" src="js/renderer/canvas2d.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

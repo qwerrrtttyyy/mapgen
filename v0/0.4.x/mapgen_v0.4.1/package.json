@@ -1,0 +1,16 @@
+{
+  "name": "mapgen",
+  "version": "0.4.1",
+  "description": "Material Map Generator - Procedural noise & tectonic simulation with checkpoints",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["map-generator","procedural","noise","tectonic","webgl","checkpoint"],
+  "author": "qwerrrtttyyy",
+  "license": "MIT",
+  "engines": { "node": ">=16.0.0" },
+  "repository": { "type": "git", "url": "https://github.com/qwerrrtttyyy/mapgen" }
+}
