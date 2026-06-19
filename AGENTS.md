@@ -4,12 +4,14 @@
 
 Procedural noise & tectonic simulation tool rendering on WebGL with a Material Design 3 UI. Generates terrain/material maps in the browser.
 
-- **Latest:** `v0/0.4.x/mapgen_v0.4.1/` (Node.js built-in server + checkpoint system)
+- **Latest:** `v0/0.4.x/mapgen_v0.4.1/` (C/S architecture, server-side generation + SSE)
 - **Language:** zh-CN primary
 - **Previous:** `v0/0.4.x/mapgen_v0.4.0/` (React + TypeScript + Vite)
 - **Previous stable:** `v0/0.3.x/mapgen_v0.3.12-preview.js` (single-file)
 - **Runtime:** Node.js only (v0.4.1, v0.3.11–v0.3.14), Node.js + Vite (v0.4.0), browser file:// (≤v0.3.10)
-- **Build / test / lint:** v0.4.0 only (vite, tsc, eslint); v0.4.1 has none
+- **Build / test / lint:** v0.4.0 only (vite, tsc, eslint); v0.4.1: bin/setup.sh (dependency check)
+- **GitHub:** https://github.com/qwerrrtttyyy/mapgen
+- **Latest release:** v0.4.1 — https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.4.1
 
 ## Run
 
