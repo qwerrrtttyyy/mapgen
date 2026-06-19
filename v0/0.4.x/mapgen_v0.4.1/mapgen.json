@@ -1,0 +1,8 @@
+{
+  "port": 25999,
+  "host": "127.0.0.1",
+  "openBrowser": true,
+  "autoPortFallback": true,
+  "ckptDir": ".checkpoints",
+  "mountainFold": 0.75
+}

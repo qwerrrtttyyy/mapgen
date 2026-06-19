@@ -1,0 +1,3 @@
+node_modules/
+.checkpoints/
+headless-debug.png

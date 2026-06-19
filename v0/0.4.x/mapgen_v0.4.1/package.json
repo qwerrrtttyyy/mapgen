@@ -1,0 +1,21 @@
+{
+  "name": "mapgen",
+  "version": "0.4.3",
+  "description": "Material Map Generator - C/S Architecture with checkpoint system",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+"start": "node server.js",
+  "dev": "node --watch server.js",
+  "setup": "bash bin/setup.sh",
+  "run": "bash bin/run.sh",
+"test": "node --test tests/unit/*.test.js tests/integration/*.test.js",
+    "test:verbose": "node --test tests/unit/*.test.js tests/integration/*.test.js --test-reporter=spec"
+  },
+  "keywords": ["map-generator","procedural","noise","tectonic","webgl","checkpoint","client-server"],
+  "author": "qwerrrtttyyy",
+  "license": "MIT",
+  "engines": { "node": ">=18.0.0" },
+  "bin": { "mapgen": "server.js" },
+  "repository": { "type": "git", "url": "https://github.com/qwerrrtttyyy/mapgen" }
+}

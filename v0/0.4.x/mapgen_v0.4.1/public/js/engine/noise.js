@@ -1,0 +1,232 @@
+const GRAD3 = [
+  [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
+  [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
+  [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
+];
+
+function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function lerp(a, b, t) { return a + t * (b - a); }
+function grad(hash, x, y) {
+  const g = GRAD3[hash & 11];
+  return g[0] * x + g[1] * y;
+}
+
+export class NoiseEngine {
+  constructor(seed) {
+    this.seed = seed;
+    this.perm = new Uint8Array(512);
+    this.seedPermutation(seed);
+  }
+
+  seedPermutation(seed) {
+    const p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    let s = seed >>> 0;
+    for (let i = 255; i > 0; i--) {
+      s = (s * 16807 + 0) % 2147483647;
+      const j = s % (i + 1);
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+  }
+
+  perlin2(x, y) {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    x -= Math.floor(x);
+    y -= Math.floor(y);
+    const u = fade(x);
+    const v = fade(y);
+    const A = this.perm[X] + Y;
+    const B = this.perm[X + 1] + Y;
+    return lerp(
+      lerp(grad(this.perm[A], x, y), grad(this.perm[B], x - 1, y), u),
+      lerp(grad(this.perm[A + 1], x, y - 1), grad(this.perm[B + 1], x - 1, y - 1), u),
+      v
+    );
+  }
+
+  simplex2(x, y) {
+    const F2 = 0.5 * (Math.sqrt(3) - 1);
+    const G2 = (3 - Math.sqrt(3)) / 6;
+    let n0 = 0, n1 = 0, n2 = 0;
+    const s = (x + y) * F2;
+    const i = Math.floor(x + s);
+    const j = Math.floor(y + s);
+    const t = (i + j) * G2;
+    const X0 = i - t;
+    const Y0 = j - t;
+    const x0 = x - X0;
+    const y0 = y - Y0;
+    let i1 = 0, j1 = 0;
+    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+    const x1 = x0 - i1 + G2;
+    const y1 = y0 - j1 + G2;
+    const x2 = x0 - 1 + 2 * G2;
+    const y2 = y0 - 1 + 2 * G2;
+    const ii = i & 255;
+    const jj = j & 255;
+    let t0 = 0.5 - x0 * x0 - y0 * y0;
+    if (t0 >= 0) {
+      t0 *= t0;
+      const gi0 = this.perm[ii + this.perm[jj]] % 12;
+      n0 = t0 * t0 * (GRAD3[gi0][0] * x0 + GRAD3[gi0][1] * y0);
+    }
+    let t1 = 0.5 - x1 * x1 - y1 * y1;
+    if (t1 >= 0) {
+      t1 *= t1;
+      const gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
+      n1 = t1 * t1 * (GRAD3[gi1][0] * x1 + GRAD3[gi1][1] * y1);
+    }
+    let t2 = 0.5 - x2 * x2 - y2 * y2;
+    if (t2 >= 0) {
+      t2 *= t2;
+      const gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12;
+      n2 = t2 * t2 * (GRAD3[gi2][0] * x2 + GRAD3[gi2][1] * y2);
+    }
+    return 70 * (n0 + n1 + n2);
+  }
+
+  value2(x, y) {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    x -= Math.floor(x);
+    y -= Math.floor(y);
+    const u = fade(x);
+    const v = fade(y);
+    const A = this.perm[X] + Y;
+    const B = this.perm[X + 1] + Y;
+    return lerp(
+      lerp(this.perm[A] / 255, this.perm[B] / 255, u),
+      lerp(this.perm[A + 1] / 255, this.perm[B + 1] / 255, u),
+      v
+    ) * 2 - 1;
+  }
+
+  worley2(x, y) {
+    const X = Math.floor(x);
+    const Y = Math.floor(y);
+    let minDist = 9999;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cx = X + dx;
+        const cy = Y + dy;
+        let s = this._hash(cx, cy);
+        const px = cx + (s / 2147483647);
+        s = (s * 16807) % 2147483647;
+        const py = cy + (s / 2147483647);
+        const d = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+        if (d < minDist) minDist = d;
+      }
+    }
+    return 1 - Math.min(minDist * 2, 1);
+  }
+
+  _hash(x, y) {
+    let h = this.seed + x * 374761393 + y * 668265263;
+    h = (h ^ (h >> 13)) * 1274126177;
+    return Math.abs(h);
+  }
+
+  fbm(x, y, octaves, lacunarity, persistence, type) {
+    let total = 0;
+    let amplitude = 1;
+    let frequency = 1;
+    let maxValue = 0;
+    for (let i = 0; i < octaves; i++) {
+      const n = this.sample(x * frequency, y * frequency);
+      let v = n;
+      if (type === 'ridged') v = 1 - Math.abs(n);
+      else if (type === 'billowy') v = Math.abs(n);
+      else if (type === 'warped') {
+        const warp = this.sample(x * frequency + n * 0.5, y * frequency + n * 0.5);
+        v = warp;
+      }
+      total += v * amplitude;
+      maxValue += amplitude;
+      amplitude *= persistence;
+      frequency *= lacunarity;
+    }
+    return total / maxValue;
+  }
+
+  sample(x, y) {
+    return this.perlin2(x, y);
+  }
+}
+
+export function createNoise(seed, type) {
+  const engine = new NoiseEngine(seed);
+  if (type === 'simplex') engine.sample = engine.simplex2.bind(engine);
+  else if (type === 'value') engine.sample = engine.value2.bind(engine);
+  else if (type === 'worley') engine.sample = engine.worley2.bind(engine);
+  else engine.sample = engine.perlin2.bind(engine);
+  return engine;
+}
+
+export function hashSeed(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h << 5) - h + str.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h) || 1;
+}
+
+function _bilinear(engine, x, y) {
+  const X = Math.floor(x) & 255;
+  const Y = Math.floor(y) & 255;
+  x -= Math.floor(x);
+  y -= Math.floor(y);
+  const u = fade(x);
+  const v = fade(y);
+  const A = engine.perm[X] + Y;
+  const B = engine.perm[X + 1] + Y;
+  return lerp(
+    lerp(grad(engine.perm[A], x, y), grad(engine.perm[B], x - 1, y), u),
+    lerp(grad(engine.perm[A + 1], x, y - 1), grad(engine.perm[B + 1], x - 1, y - 1), u),
+    v
+  );
+}
+
+export function warpedFbm(x, y, octaves = 5, lacunarity = 2.0, persistence = 0.5, seed = 0) {
+  const noise = createNoise(seed, 'simplex');
+  const wx = x + noise.simplex2(x * 1.7, y * 1.7) * 0.8;
+  const wy = y + noise.simplex2(x * 1.7 + 5.2, y * 1.7 + 1.3) * 0.8;
+  let val = 0, amp = 1, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    val += amp * noise.simplex2(wx * freq, wy * freq);
+    max += amp; amp *= persistence; freq *= lacunarity;
+  }
+  return val / max;
+}
+
+export function billowyFbm(x, y, octaves = 5, lacunarity = 2.0, persistence = 0.5, seed = 0) {
+  const noise = createNoise(seed, 'simplex');
+  let val = 0, amp = 1, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    const n = Math.abs(noise.simplex2(x * freq, y * freq));
+    val += amp * n; max += amp; amp *= persistence; freq *= lacunarity;
+  }
+  return val / max;
+}
+
+export function ridgedFbm(x, y, octaves = 5, lacunarity = 2.0, persistence = 0.5, seed = 0) {
+  const noise = createNoise(seed, 'simplex');
+  let val = 0, amp = 1, freq = 1, max = 0;
+  for (let i = 0; i < octaves; i++) {
+    let n = noise.simplex2(x * freq, y * freq);
+    n = 1 - Math.abs(n);
+    n = n * n; // n*n squaring for sharper ridges
+    val += amp * n; max += amp; amp *= persistence; freq *= lacunarity;
+  }
+  return val / max;
+}
+
+export function worleyDetail(x, y, seed = 0) {
+  const noise = createNoise(seed, 'worley');
+  const w1 = noise.worley2(x, y);
+  const w2 = noise.worley2(x * 2.0, y * 2.0) * 0.5;
+  const w3 = noise.worley2(x * 4.0, y * 4.0) * 0.25;
+  return (w1 + w2 + w3) / 1.75;
+}
