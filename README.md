@@ -1,168 +1,132 @@
 # Material Map Generator
 
-基于程序化噪声与板块构造模拟的高性能地图生成工具。
+基于程序化噪声与板块构造模拟的地图生成工具。**v0.4.1 全面采用 C/S 架构**，支持一键启动与服务端生成。
 
-[在线演示](https://qwerrrtttyyy.github.io/mapgen) | [Releases](https://github.com/qwerrrtttyyy/mapgen/releases)
+[GitHub](https://github.com/qwerrrtttyyy/mapgen) | [Releases](https://github.com/qwerrrtttyyy/mapgen/releases)
 
-## 特性
+---
 
-### 核心引擎
-- **程序化噪声**: Simplex / Perlin / Value / Worley 四种噪声算法
-- **FBM 变体**: Standard / Ridged / Billowy / Domain Warp
-- **板块构造模拟**: 支持 4-32 个板块，自动生成大陆/海洋边界
-- **水力侵蚀**: 真实的侵蚀与沉积模拟
-- **河流网络**: 自动生成流向湖泊或海洋的河流系统
-
-### 渲染管线
-- **WebGL2 GPU 渲染**: 高性能 WebGL2 着色器渲染
-- **Canvas2D 降级**: 当 WebGL2 不可用时自动切换
-- **10 种渲染风格**: 低多边形、地形高程、板块着色、羊皮卷、卫星视图、地形详情、生物群落、等高线、地形浮雕、Azgaar 风格
-
-### 交互系统
-- **激光指针**: 点击选中板块
-- **流光轨迹**: 鼠标拖拽产生光效
-- **光标系统**: 实时显示海拔、温度、湿度信息
-- **触控缩放**: 支持移动设备双指缩放/平移
-
-### 数据管理
-- **本地存储**: IndexedDB 保存/加载地图
-- **多格式导出**: PNG / JPEG / WebP / JSON
-- **双语界面**: 中文 / English
-- **双主题**: Modern / Classic
-
-## 技术栈
-
-- **框架**: React 18 + TypeScript
-- **构建**: Vite
-- **状态管理**: Zustand
-- **渲染**: WebGL2 (原生, 无 Three.js)
-- **样式**: Tailwind CSS
-- **图标**: Lucide React
-
-## 快速开始
+## 快速开始（v0.4.1）
 
 ```bash
-# 安装依赖
-npm install
-
-# 开发模式
-npm run dev
-
-# 构建生产版本
-npm run build
-
-# 类型检查
-npm run check
+cd v0/0.4.x/mapgen_v0.4.1
+node server.js
+# 浏览器打开 http://127.0.0.1:8765
 ```
 
-## Termux 支持
-
-在 Android 上使用 [Termux](https://termux.com/) 一键配置：
+或一键脚本：
 
 ```bash
-# 一键安装 Node.js + Git + 项目（推荐）
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) termux
-
-# 或使用专用脚本
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/termux.sh)
+bash v0/0.4.x/mapgen_v0.4.1/bin/run.sh
 ```
 
-配置完成后运行：
-```bash
-cd ~/mapgen
-npm run dev
-```
-
-> Termux 浏览器访问 `http://localhost:5173`
-
-## 一键脚本
-
-无需克隆仓库，任何人可直接运行：
+或 npm：
 
 ```bash
-# 查看帮助
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh)
-
-# 安装依赖
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) install
-
-# 类型检查
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) check
-
-# 构建生产版本
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) build
-
-# 启动开发服务器
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) dev
-
-# 预览生产版本
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) preview
-
-# 克隆仓库到本地
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) clone
-
-# 列出所有 Release
-bash <(curl -sL https://raw.githubusercontent.com/qwerrrtttyyy/mapgen/main/scripts/quick.sh) releases
-
-# 创建 Release (需设置 GITHUB_TOKEN)
-GITHUB_TOKEN=ghp_xxx bash <(curl -sL ...) release v0.4.0
+cd v0/0.4.x/mapgen_v0.4.1
+npm run setup   # 依赖检查与修复
+npm start       # 启动服务器
 ```
 
-## 项目结构
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `MAPGEN_PORT` | `8765` | 服务器端口 |
+| `MAPGEN_HOST` | `127.0.0.1` | 绑定地址 |
+| `MAPGEN_CONFIG` | `./mapgen.json` | 配置文件路径 |
+
+---
+
+## v0.4.1 特性（最新）
+
+### 一键脚本
+- **`bin/run.sh`** — 自动检测 Node.js ≥ 16，通过 nvm/fnm 自动安装，端口回退，自动打开浏览器
+- **`bin/setup.sh`** — 依赖修正：检查 Node.js/npm/项目结构/磁盘空间/端口/脚本权限
+
+### C/S 架构
+- **服务端生成**: `POST /api/generate` — 服务端执行地图生成算法，复用前端 engine 模块
+- **SSE 实时进度**: `GET /api/events` — 服务端推送生成进度事件
+- **配置持久化**: `mapgen.json` — 支持运行时读写配置
+- **健康监控**: `GET /api/health` — 运行时间、内存、检查点数量
+- **端口回退**: 默认端口被占用时自动 +1 重试
+- **架构切换**: UI 可随时切换"服务端生成" / "浏览器本地生成"
+
+### 检查点系统
+- 保存/恢复/删除中间生成状态
+- 支持 tectonic / elevation / erosion / climate / rivers / full 各阶段
+- 数据持久化至服务端 `.checkpoints/` 目录
+
+### 渲染
+- WebGL2 GPU 渲染（Canvas2D 自动降级）
+- 10 种渲染风格：地形 / 板块 / 羊皮纸 / 卫星 / 低多边形 / 地形详情 / 生物群落 / 等高线 / 浮雕 / Azgaar
+
+### 零依赖
+- 纯 Node.js 内置模块：`http`, `fs`, `path`, `zlib`, `crypto`
+- 无需 npm install
+
+---
+
+## 目录结构
 
 ```
-src/
-├── engine/           # 地图生成引擎
-│   ├── noise.ts      # 噪声算法
-│   ├── tectonic.ts   # 板块构造
-│   ├── erosion.ts    # 水力侵蚀
-│   ├── rivers.ts     # 河流生成
-│   └── regions.ts    # 地形区分析
-├── renderer/         # 渲染管线
-│   ├── webgl.ts      # WebGL2 渲染器
-│   ├── canvas2d.ts   # Canvas2D 降级
-│   └── shaders/      # GLSL 着色器
-├── components/       # React 组件
-├── hooks/           # 交互逻辑
-├── store/           # Zustand 状态
-├── utils/           # 工具函数
-└── i18n/            # 国际化
+v0/0.4.x/mapgen_v0.4.1/
+├── server.js            # HTTP 服务器（C/S 架构）
+├── mapgen.json          # 服务器配置
+├── package.json         # npm scripts
+├── bin/
+│   ├── run.sh           # 一键启动脚本
+│   ├── setup.sh         # 依赖修正脚本
+│   ├── start.sh         # 快捷启动
+│   └── start.ps1        # Windows 启动
+├── public/
+│   ├── index.html       # UI 入口
+│   ├── style.css        # MD3 样式
+│   ├── js/
+│   │   ├── app.js       # 主应用逻辑（C/S 模式切换）
+│   │   ├── checkpoint.js
+│   │   └── engine/      # 地图生成引擎
+│   │       ├── noise.js, tectonic.js, erosion.js
+│   │       ├── rivers.js, regions.js, index.js
+│   │   └── renderer/
+│   │       ├── webgl.js  # WebGL2 渲染器
+│   │       └── canvas2d.js
+│   └── shaders/
+│       ├── fs-map.frag  # 10 种渲染风格
+│       └── vs-quad.vert
+└── .checkpoints/        # 检查点数据目录
 ```
 
-## 渲染风格预览
+---
 
-| 风格 | 描述 |
-|------|------|
-| 低多边形 | 简约几何风格 |
-| 地形高程 | 蓝白渐变高程图 |
-| 板块着色 | 大陆/海洋分色 |
-| 羊皮卷 | 复古手绘风格 |
-| 卫星视图 | 卫星照片风格 |
-| 地形详情 | 细节丰富的地形 |
-| 生物群落 | 按生态类型着色 |
-| 等高线 |  contour lines |
-| 地形浮雕 | 浮雕阴影效果 |
-| Azgaar 风格 | 参考 Azgaar fantasy map |
+## 历史版本
 
-## 参数说明
+| 版本 | 架构 | 依赖 | 启动 |
+|------|------|------|------|
+| v0.4.1 | C/S (Node.js + browser) | 零依赖 | `node server.js` |
+| v0.4.0 | React + Vite + TypeScript | npm | `npm run dev` |
+| v0.3.14 | Node.js + multi-file | 零依赖 | `node server.js` |
+| v0.3.12 | 单文件 Node.js | 零依赖 | `node *.js` |
+| v0.0.x–v0.3.10 | 单文件 HTML | 无 | 浏览器打开 |
 
-### 生成参数
-- `seed`: 随机种子，支持任意字符串
-- `mapSize`: 地图尺寸 (512 / 1024 / 2048)
-- `plateCount`: 板块数量 (4-32)
-- `landmass`: 陆地比例 (0.1-0.9)
-- `noiseType`: 噪声类型
-- `fbmType`: FBM 变体
-- `octaves`: 倍频数 (1-10)
-- `seaLevel`: 海平面高度
-- `erosionStrength`: 侵蚀强度
+---
 
-### 渲染参数
-- `style`: 渲染风格 (0-9)
-- `showBoundaries`: 显示板块边界
-- `showRivers`: 显示河流水系
-- `showContours`: 显示等高线
-- `lightAngle`: 光照角度
+## 渲染风格
+
+| 索引 | 风格 | 描述 |
+|------|------|------|
+| 0 | 地形 | 蓝白渐变高程图 |
+| 1 | 板块 | 大陆/海洋分色 |
+| 2 | 羊皮纸 | 复古手绘风格 |
+| 3 | 卫星 | 卫星照片风格 |
+| 4 | 低多边形 | 简约几何 |
+| 5 | 地形详情 | 细节丰富的地形 |
+| 6 | 生物群落 | 按生态类型着色 |
+| 7 | 等高线 | contour lines |
+| 8 | 浮雕 | 浮雕阴影效果 |
+| 9 | Azgaar | 参考 Azgaar fantasy map |
+
+---
 
 ## License
 
