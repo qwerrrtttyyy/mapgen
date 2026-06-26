@@ -397,13 +397,20 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
 @media (max-width: 600px) {
   #drawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; width: min(340px, 85vw); display: flex; transform: translateX(-100%); pointer-events: none; }
   #drawer.open { transform: translateX(0); pointer-events: auto; }
+  /* 禁用桌面端的 drawer-enter 入场动画：其 animation-fill-mode: both 会保持
+     transform: translateX(0)，覆盖上方移动端的 translateX(-100%)，导致 drawer
+     在关闭状态下仍然占据屏幕、挡住地图。移动端 drawer 由 .open 类控制显隐。 */
+  #app.launcher-done #drawer { animation: none; }
   #menu-toggle { display: block !important; }
   #drawer-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; opacity: 0; visibility: hidden; transition: opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard), visibility var(--md-motion-duration-medium); }
   #drawer-backdrop.open { opacity: 1; visibility: visible; }
+  #app-bar { height: 52px; padding: 0 12px; }
   #app-bar .title { font-size: 13px; }
   #app-bar span:last-child { display: none; }
   .btn-row { flex-direction: column; }
   .btn-row .btn { width: 100%; }
+  .btn { padding: 10px 16px; font-size: 13px; }
   #progress-container { bottom: 8px; left: 8px; right: 8px; }
-  .launcher-content { padding: 32px 40px; width: 90%; max-width: 320px; }
+  .launcher-content { padding: 28px 24px; width: 92%; max-width: 320px; max-height: 88vh; overflow-y: auto; }
+  .launcher-preset-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 }
