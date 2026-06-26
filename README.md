@@ -1,113 +1,83 @@
 # Material Map Generator
 
-基于程序化噪声和构造模拟的地图生成工具，使用 WebGL 渲染，Material Design 3 UI。
+[![Version](https://img.shields.io/github/v/release/qwerrrtttyyy/mapgen?label=version)](https://github.com/qwerrrtttyyy/mapgen/releases)
+[![License](https://img.shields.io/github/license/qwerrrtttyyy/mapgen)](LICENSE)
+[![Build](https://img.shields.io/badge/build-monorepo-blue)](https://github.com/qwerrrtttyyy/mapgen)
 
-## 架构
+基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。纯前端，无需服务器。
 
-**Monorepo 结构**（Turborepo + npm workspaces）
+## 截图
 
-```
-mapgen/
-├── packages/
-│   ├── shared/          # 共享引擎模块（TypeScript）
-│   │   ├── src/
-│   │   │   ├── noise.ts       # 噪声生成（Perlin, Simplex, Value, Worley）
-│   │   │   ├── tectonic.ts    # 板块构造
-│   │   │   ├── erosion.ts     # 侵蚀模拟
-│   │   │   ├── rivers.ts      # 河流生成
-│   │   │   ├── regions.ts     # 区域分析
-│   │   │   └── index.ts       # 主入口
-│   │   ├── dist/              # 编译输出
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   └── web/             # 前端应用（TypeScript + Vite）
-│       ├── public/
-│       │   ├── index.html
-│       │   ├── style.css
-│       │   ├── shaders/
-│       │   │   ├── fs-map.frag
-│       │   │   └── vs-quad.vert
-│       │   └── favicon.svg
-│       ├── src/
-│       │   ├── app.ts           # 主应用逻辑
-│       │   ├── checkpoint.ts    # 检查点管理
-│       │   └── renderer/
-│       │       ├── webgl.ts     # WebGL 渲染器
-│       │       └── canvas2d.ts  # Canvas2D 渲染器
-│       ├── dist/                # 构建输出
-│       ├── package.json
-│       ├── tsconfig.json
-│       └── vite.config.ts
-├── package.json         # 根配置
-├── turbo.json           # Turborepo 配置
-└── README.md
-```
+<img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=A%20screenshot%20of%20a%20procedural%20terrain%20map%20generator%20web%20application%20with%20Material%20Design%203%20dark%20theme%20UI,%20showing%20a%20colorful%20topographic%20world%20map%20with%20oceans,%20continents,%20mountains,%20and%20plate%20boundaries%20rendered%20in%20WebGL2,%20with%20a%20sidebar%20panel%20on%20the%20left%20containing%20generation%20parameters&image_size=landscape_16_9" alt="Map Generator Screenshot" width="800">
+
+## 发行版
+
+| 版本 | 日期 | 说明 |
+|------|------|------|
+| [v0.0.1](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.1) | 2026-06-26 | Monorepo 重写版 — WebGL2 + Material Design 3 |
+| [v0.4.3](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.4.3) | 2026-06-19 | 旧版最终版 — 模块化重写 |
+| [v0.4.0](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.4.0) | 2026-06-14 | 旧版 — React + WebGL2 重构 |
+
+完整历史：[CHANGELOG.md](CHANGELOG.md) · [GitHub Releases](https://github.com/qwerrrtttyyy/mapgen/releases)
 
 ## 快速开始
 
 ```bash
-# 安装依赖
 npm install
-
-# 开发模式（启动所有包）
-npm run dev
-
-# 构建所有包
-npm run build
-
-# 仅构建核心库
-npm run build --workspace=@mapgen/core
-
-# 仅构建前端
-npm run build --workspace=@mapgen/web
+npm run dev      # 开发模式 → http://localhost:3000
+npm run build    # 生产构建
+npm run typecheck # 类型检查
 ```
 
-开发服务器运行在 `http://127.0.0.1:3000`
+## 功能
 
-## 包说明
+| 类别 | 功能 |
+|------|------|
+| 噪声 | Perlin, Simplex, Value, Worley |
+| FBM | 标准, 山脊, 膨胀, 扭曲 |
+| 构造 | 板块生成, 边界计算, 碰撞检测 |
+| 侵蚀 | 水力侵蚀, 湖泊生成, 河流网络 |
+| 气候 | 温度, 湿度, 生物群落分带 |
+| 渲染 | 地形, 板块, 羊皮纸, 卫星, 低多边形, 生物群落, 等高线, 浮雕, Azgaar |
+| 交互 | 板块选区, 激光工具, 光标悬停, 检查点保存/恢复 |
+| 界面 | Material Design 3, 深色主题, 响应式布局, 移动端适配 |
 
-### @mapgen/core
+## 架构
 
-核心引擎库，包含所有地图生成算法：
-
-- **噪声生成**: Perlin, Simplex, Value, Worley
-- **FBM 变体**: 标准, 山脊, 膨胀, 扭曲
-- **构造模拟**: 板块生成, 边界计算
-- **侵蚀系统**: 水力侵蚀, 湖泊生成
-- **河流生成**: 河流网络, 宽度/深度计算
-- **区域分析**: 生物群落, 气候计算
-
-### @mapgen/web
-
-前端应用，使用 TypeScript + Vite 构建：
-
-- **WebGL2 渲染**: 高性能 GPU 加速渲染
-- **Canvas2D 回退**: 兼容性支持
-- **Material Design 3**: 现代化 UI 设计
-- **检查点系统**: 保存/恢复生成状态
-
-## 功能特性
-
-- ✅ 多种噪声类型和 FBM 变体
-- ✅ 板块构造模拟
-- ✅ 水力侵蚀和河流生成
-- ✅ 气候系统和生物群落
-- ✅ 多种渲染风格（地形、板块、羊皮纸、卫星等）
-- ✅ 检查点系统
-- ✅ 响应式设计
-- ✅ TypeScript 类型安全
-
-## 环境变量
-
-- `MAPGEN_PORT` - 开发服务器端口（默认 3000）
+```
+mapgen/
+├── packages/
+│   ├── shared/          @mapgen/core — 核心引擎（TypeScript）
+│   │   └── src/
+│   │       ├── noise.ts       # 噪声生成
+│   │       ├── tectonic.ts    # 板块构造
+│   │       ├── erosion.ts     # 侵蚀模拟
+│   │       ├── rivers.ts      # 河流生成
+│   │       └── regions.ts     # 区域分析
+│   └── web/             @mapgen/web — 前端应用（TypeScript + Vite）
+│       ├── public/
+│       │   ├── shaders/       # GLSL ES 3.00 着色器
+│       │   └── style.css      # Material Design 3 令牌
+│       └── src/
+│           ├── app.ts         # 应用主逻辑
+│           └── renderer/
+│               ├── webgl.ts   # WebGL2 渲染器
+│               └── canvas2d.ts # Canvas2D 回退
+├── turbo.json           # Turborepo 配置
+├── CHANGELOG.md         # 更新日志
+└── AGENTS.md            # AI Agent 上下文
+```
 
 ## 技术栈
 
-- **前端**: TypeScript + Vite
-- **渲染**: WebGL2 / Canvas2D
-- **样式**: Material Design 3 (CSS Custom Properties)
-- **构建工具**: Turborepo
-- **包管理**: npm workspaces
+| 层 | 技术 |
+|----|------|
+| 语言 | TypeScript (ES2020, strict) |
+| 渲染 | WebGL2 / Canvas2D |
+| 样式 | Material Design 3 (CSS Custom Properties) |
+| 着色器 | GLSL ES 3.00 |
+| 构建 | Turborepo + Vite + tsc |
+| 包管理 | npm workspaces |
 
 ## 许可证
 
