@@ -1,8 +1,7 @@
 import type { MapData } from '@mapgen/core';
+import type { RenderParams, UniformValue } from './renderParams.js';
 
-export interface RenderParams {
-  [key: string]: number | boolean | number[];
-}
+export type { RenderParams } from './renderParams.js';
 
 export class WebGLRenderer {
   private canvas: HTMLCanvasElement;
@@ -115,27 +114,35 @@ export class WebGLRenderer {
     const gl = this.gl;
     this.mapWidth = data.width;
     this.mapHeight = data.height;
-    
+
     const texNames = ['u_plateTex', 'u_elevTex', 'u_moistTex', 'u_riverTex', 'u_tempTex'];
     const texData = [data.plateTex, data.elevTex, data.moistTex, data.riverTex, data.tempTex];
-    
+
+    const floatExt = gl.getExtension('EXT_color_buffer_float');
+    const floatLinearExt = gl.getExtension('OES_texture_float_linear');
+    const useFloat = floatExt && floatLinearExt;
+
     for (let i = 0; i < texNames.length; i++) {
       gl.bindTexture(gl.TEXTURE_2D, this.textures[texNames[i]]);
-      const ext1 = gl.getExtension('EXT_color_buffer_float');
-      if (ext1 && gl.getExtension('OES_texture_float_linear')) {
+      if (useFloat) {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.width, data.height, 0, gl.RGBA, gl.FLOAT, texData[i]);
       } else {
-        const norm = new Uint8Array(texData[i].length);
-        for (let j = 0; j < texData[i].length; j++) {
-          norm[j] = Math.max(0, Math.min(255, (texData[i][j] + 1.0) * 127.5));
-        }
+        const norm = WebGLRenderer._normalizeToUint8(texData[i]);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, norm);
       }
     }
-    
+
     const selMask = new Uint8Array(256);
     gl.bindTexture(gl.TEXTURE_2D, this.textures.u_selectionMaskTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 256, 1, 0, gl.RED, gl.UNSIGNED_BYTE, selMask);
+  }
+
+  private static _normalizeToUint8(src: Float32Array): Uint8Array {
+    const out = new Uint8Array(src.length);
+    for (let j = 0; j < src.length; j++) {
+      out[j] = Math.max(0, Math.min(255, (src[j] + 1.0) * 127.5));
+    }
+    return out;
   }
 
   updateSelectMask(selected: number[]): void {
@@ -153,7 +160,7 @@ export class WebGLRenderer {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.pixels);
   }
 
-  setUniform(name: string, value: number | boolean | number[]): void {
+  setUniform(name: string, value: UniformValue): void {
     const gl = this.gl;
     const loc = this.uniformLoc[name];
     if (loc === undefined) return;
@@ -185,8 +192,8 @@ export class WebGLRenderer {
     for (const [name, tex] of Object.entries(this.textures)) {
       gl.activeTexture(gl.TEXTURE0 + texUnit);
       gl.bindTexture(gl.TEXTURE_2D, tex);
-      const loc = gl.getUniformLocation(this.program, name);
-      if (loc) gl.uniform1i(loc, texUnit);
+      const loc = this.uniformLoc[name];
+      if (loc !== undefined) gl.uniform1i(loc, texUnit);
       texUnit++;
     }
 

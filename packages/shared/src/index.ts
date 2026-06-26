@@ -68,10 +68,11 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   ];
   const totalWeight = phases.reduce((s, p) => s + p.weight, 0);
   let progress = 0;
+  const phaseMap = new Map(phases.map(p => [p.name, p.weight / totalWeight]));
 
   function advance(phaseName: string) {
-    const p = phases.find(x => x.name === phaseName);
-    if (p) progress += p.weight / totalWeight;
+    const w = phaseMap.get(phaseName);
+    if (w) progress += w;
     if (onProgress) onProgress(progress, phaseName);
   }
 
@@ -128,41 +129,52 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     plateTypeArr[i] = plates[i].type === 'continent' ? 1 : 0;
   }
 
+  const invPlateCount = 1 / params.plateCount;
+  const inv4 = 0.25;
+  const inv8 = 1 / 8;
+  const seaLevel = params.seaLevel;
+  const snowLine = params.snowLine;
+
+  function classifyBiome(elev: number, temp: number, moist: number): number {
+    if (elev <= seaLevel) return 0;
+    if (temp < snowLine && elev > 0.6) return 1;
+    if (elev > 0.7) return 2;
+    if (moist < 0.2 && temp > 0.5) return 3;
+    if (moist > 0.7 && temp > 0.4) return 4;
+    if (moist > 0.5 && temp > 0.3) return 5;
+    if (temp < 0.2) return 6;
+    return 7;
+  }
+
   for (let i = 0; i < size; i++) {
-    const pid = Math.floor(plateId[i]);
+    const pid = plateId[i] | 0;
     const i4 = i * 4;
-    plateTex[i4 + 0] = pid / params.plateCount;
+    const elev = elevation[i];
+    const temp = temperature[i];
+    const moist = moisture[i];
+    const tz = tempZone[i] * inv4;
+
+    plateTex[i4 + 0] = pid * invPlateCount;
     plateTex[i4 + 1] = plateTypeArr[pid];
     plateTex[i4 + 2] = boundary[i];
     plateTex[i4 + 3] = plateDist[i];
-    elevTex[i4 + 0] = elevation[i];
+    elevTex[i4 + 0] = elev;
     elevTex[i4 + 1] = slope[i];
     elevTex[i4 + 2] = ridge[i];
     elevTex[i4 + 3] = ridgeMask[i];
-    moistTex[i4 + 0] = moisture[i];
+    moistTex[i4 + 0] = moist;
     moistTex[i4 + 1] = rainfall[i];
-    moistTex[i4 + 2] = temperature[i];
-    moistTex[i4 + 3] = tempZone[i] / 4;
+    moistTex[i4 + 2] = temp;
+    moistTex[i4 + 3] = tz;
     riverTex[i4 + 0] = riverMask[i];
     riverTex[i4 + 1] = riverWidth[i];
     riverTex[i4 + 2] = riverDepth[i];
     riverTex[i4 + 3] = lakes[i];
 
-    const elev = elevation[i];
-    const temp = temperature[i];
-    const moist = moisture[i];
-    let biome = 0;
-    if (elev <= params.seaLevel) biome = 0;
-    else if (temp < params.snowLine && elev > 0.6) biome = 1;
-    else if (elev > 0.7) biome = 2;
-    else if (moist < 0.2 && temp > 0.5) biome = 3;
-    else if (moist > 0.7 && temp > 0.4) biome = 4;
-    else if (moist > 0.5 && temp > 0.3) biome = 5;
-    else if (temp < 0.2) biome = 6;
-    else biome = 7;
-    tempTex[i4 + 0] = temperature[i];
-    tempTex[i4 + 1] = tempZone[i] / 4;
-    tempTex[i4 + 2] = biome / 8;
+    const biome = classifyBiome(elev, temp, moist);
+    tempTex[i4 + 0] = temp;
+    tempTex[i4 + 1] = tz;
+    tempTex[i4 + 2] = biome * inv8;
     tempTex[i4 + 3] = 0;
   }
 

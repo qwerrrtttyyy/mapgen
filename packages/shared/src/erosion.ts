@@ -1,6 +1,8 @@
 import { createNoise, type NoiseType, type FbmType } from './noise.js';
 import type { Plate } from './tectonic.js';
 
+const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
+
 export function generateElevation(
   width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[], boundary: Float32Array,
   noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
@@ -19,12 +21,19 @@ export function generateElevation(
     plateTypes[i] = plates[i].type === 'continent' ? 1 : 0;
     plateElevs[i] = plates[i].elevation;
   }
+
+  // Precompute normalized coordinates to avoid per-pixel divisions
+  const nxArr = new Float32Array(width);
+  for (let x = 0; x < width; x++) nxArr[x] = x / width;
+  const nyArr = new Float32Array(height);
+  for (let y = 0; y < height; y++) nyArr[y] = y / height;
+
   for (let y = 0; y < height; y++) {
-    const ny = y / height;
+    const ny = nyArr[y];
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
-      const nx = x / width;
-      const pid = Math.floor(plateId[idx]);
+      const nx = nxArr[x];
+      const pid = plateId[idx] | 0;
       let elev = plateElevs[pid];
       const b = boundary[idx];
       if (b > 0 && plateTypes[pid] === 1) {
@@ -32,9 +41,11 @@ export function generateElevation(
       }
       const n = noise.fbm(nx * 4, ny * 4, octaves, lacunarity, persistence, fbmType);
       elev += n * 0.3;
-      const coastNoise = detailNoise.fbm(nx * 16, ny * 16, 3, 2, 0.5, 'standard');
       const distToSea = Math.abs(elev - seaLevel);
-      if (distToSea < 0.1) elev += coastNoise * coastDetail * 0.05;
+      if (distToSea < 0.1 && coastDetail > 0) {
+        const coastNoise = detailNoise.fbm(nx * 16, ny * 16, 3, 2, 0.5, 'standard');
+        elev += coastNoise * coastDetail * 0.05;
+      }
       const r = Math.abs(noise.sample(nx * 12, ny * 12));
       ridge[idx] = r;
       ridgeMask[idx] = r > 0.6 ? 1 : 0;
@@ -57,40 +68,52 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
   const size = width * height;
   const water = new Float32Array(size);
   const sediment = new Float32Array(size);
+  const dirs = EROSION_DIRS;
+  const maxChangeThreshold = 1e-5;
+
   for (let iter = 0; iter < iterations; iter++) {
     for (let i = 0; i < size; i++) water[i] += 0.01;
+    let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
+      const rowBase = y * width;
       for (let x = 1; x < width - 1; x++) {
-        const idx = y * width + x;
+        const idx = rowBase + x;
         const e = elev[idx];
         let minE = e, minDir = -1;
-        const dirs = [-1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1];
         for (let d = 0; d < 8; d++) {
-          const ni = idx + dirs[d];
-          if (elev[ni] < minE) { minE = elev[ni]; minDir = d; }
+          const ni = idx + dirs[d * 2] + dirs[d * 2 + 1] * width;
+          const ne = elev[ni];
+          if (ne < minE) { minE = ne; minDir = d; }
         }
         if (minDir >= 0) {
           const slp = e - minE;
           const carryCapacity = slp * water[idx] * strength;
           const sDiff = carryCapacity - sediment[idx];
+          let amount = 0;
           if (sDiff > 0) {
-            const amount = Math.min(sDiff * 0.1, e - minE);
+            amount = Math.min(sDiff * 0.1, e - minE);
             elev[idx] -= amount;
             sediment[idx] += amount;
           } else {
-            const amount = Math.min(-sDiff * 0.1, sediment[idx]);
+            amount = Math.min(-sDiff * 0.1, sediment[idx]);
             elev[idx] += amount;
             sediment[idx] -= amount;
           }
-          const ni = idx + dirs[minDir];
-          water[ni] += water[idx] * 0.5;
-          sediment[ni] += sediment[idx] * 0.5;
-          water[idx] *= 0.5;
-          sediment[idx] *= 0.5;
+          totalChange += amount;
+          const ddx = dirs[minDir * 2];
+          const ddy = dirs[minDir * 2 + 1];
+          const ni = idx + ddx + ddy * width;
+          const halfWater = water[idx] * 0.5;
+          const halfSediment = sediment[idx] * 0.5;
+          water[ni] += halfWater;
+          sediment[ni] += halfSediment;
+          water[idx] = halfWater;
+          sediment[idx] = halfSediment;
         }
       }
     }
     for (let i = 0; i < size; i++) water[i] *= 0.9;
+    if (totalChange < maxChangeThreshold) break;
   }
   return elev;
 }

@@ -1,0 +1,67 @@
+import { bus } from '../core/eventBus.js';
+import { clearSelection, setParam } from '../core/actions.js';
+
+export class Shortcuts {
+  private unsub: (() => void)[] = [];
+
+  bind(): void {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'g':
+          e.preventDefault();
+          bus.emit('generate.request');
+          break;
+        case 'r':
+          if (e.ctrlKey || e.metaKey) return;
+          e.preventDefault();
+          bus.emit('randomSeed.request');
+          break;
+        case 's':
+          if (e.ctrlKey || e.metaKey) return;
+          e.preventDefault();
+          bus.emit('checkpoint.save.request');
+          break;
+        case 'e':
+          if (e.ctrlKey || e.metaKey) return;
+          e.preventDefault();
+          bus.emit('export.request');
+          break;
+        case 'l':
+          e.preventDefault();
+          bus.emit('laser.toggle');
+          break;
+        case 'escape':
+          e.preventDefault();
+          clearSelection();
+          this.closeDrawer();
+          break;
+      }
+
+      if (e.key >= '1' && e.key <= '9') {
+        const style = parseInt(e.key, 10) - 1;
+        setParam('style', style);
+        const el = document.getElementById('style') as HTMLSelectElement | null;
+        if (el) el.value = String(style);
+        bus.emit('render.request');
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+    this.unsub.push(() => document.removeEventListener('keydown', handler));
+  }
+
+  private closeDrawer(): void {
+    const drawer = document.getElementById('drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+    drawer?.classList.remove('open');
+    backdrop?.classList.remove('open');
+  }
+
+  destroy(): void {
+    this.unsub.forEach(u => u());
+    this.unsub = [];
+  }
+}

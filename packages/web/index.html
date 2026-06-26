@@ -181,6 +181,15 @@
           <div class="md-field">
             <label><input type="checkbox" id="showSelection" checked> 选中高亮</label>
           </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="laserActive"> 激光笔 (L)</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="cursorActive"> 光标跟随</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="trailEnabled"> 鼠标轨迹</label>
+          </div>
         </div>
       </div>
 
@@ -233,6 +242,7 @@
     <div id="app-bar">
       <button id="menu-toggle" class="btn btn-secondary" style="padding:6px 10px">☰</button>
       <span class="title">Material Map Generator</span>
+      <button class="btn btn-secondary" id="btn-clear-selection">清空选择</button>
       <span style="font-size:11px;color:var(--md-sys-on-surface-variant)">v0.0.1 — Monorepo</span>
     </div>
     <div id="canvas-container">

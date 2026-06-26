@@ -5,6 +5,8 @@ export class Canvas2DRenderer {
   private ctx: CanvasRenderingContext2D;
   private mapData: MapData | null = null;
   private imageData: ImageData | null = null;
+  private tmpCanvas: HTMLCanvasElement | null = null;
+  private tmpCtx: CanvasRenderingContext2D | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -82,15 +84,17 @@ export class Canvas2DRenderer {
     const ox = (cW - dW) / 2;
     const oy = (cH - dH) / 2;
     
-    const tmp = document.createElement('canvas');
-    tmp.width = mapW;
-    tmp.height = mapH;
-    const tCtx = tmp.getContext('2d');
-    if (!tCtx) return;
-    
-    tCtx.putImageData(this.imageData, 0, 0);
+    if (!this.tmpCanvas || this.tmpCanvas.width !== mapW || this.tmpCanvas.height !== mapH) {
+      this.tmpCanvas = document.createElement('canvas');
+      this.tmpCanvas.width = mapW;
+      this.tmpCanvas.height = mapH;
+      this.tmpCtx = this.tmpCanvas.getContext('2d');
+    }
+    if (!this.tmpCtx) return;
+
+    this.tmpCtx.putImageData(this.imageData, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
-    this.ctx.drawImage(tmp, ox, oy, dW, dH);
+    this.ctx.drawImage(this.tmpCanvas, ox, oy, dW, dH);
   }
 
   resize(w: number, h: number): void {

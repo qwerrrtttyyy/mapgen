@@ -1,11 +1,10 @@
-const PERM = new Uint8Array(512);
 const GRAD3: number[][] = [
   [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
   [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
   [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
 ];
 
-function seedPermutation(seed: number): void {
+function seedPermutation(seed: number): Uint8Array {
   const p = new Uint8Array(256);
   for (let i = 0; i < 256; i++) p[i] = i;
   let s = seed >>> 0;
@@ -14,7 +13,9 @@ function seedPermutation(seed: number): void {
     const j = s % (i + 1);
     [p[i], p[j]] = [p[j], p[i]];
   }
-  for (let i = 0; i < 512; i++) PERM[i] = p[i & 255];
+  const perm = new Uint8Array(512);
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  return perm;
 }
 
 function fade(t: number): number { return t * t * t * (t * (t * 6 - 15) + 10); }
@@ -30,11 +31,13 @@ export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
 export class NoiseEngine {
   seed: number;
   sample: (x: number, y: number) => number;
+  private perm: Uint8Array;
+  private worleyCache = new Map<string, { x: number; y: number }[]>();
 
   constructor(seed: number) {
     this.seed = seed;
+    this.perm = seedPermutation(seed);
     this.sample = this.perlin2.bind(this);
-    seedPermutation(seed);
   }
 
   perlin2(x: number, y: number): number {
@@ -44,11 +47,12 @@ export class NoiseEngine {
     y -= Math.floor(y);
     const u = fade(x);
     const v = fade(y);
-    const A = PERM[X] + Y;
-    const B = PERM[X + 1] + Y;
+    const p = this.perm;
+    const A = p[X] + Y;
+    const B = p[X + 1] + Y;
     return lerp(
-      lerp(grad(PERM[A], x, y), grad(PERM[B], x - 1, y), u),
-      lerp(grad(PERM[A + 1], x, y - 1), grad(PERM[B + 1], x - 1, y - 1), u),
+      lerp(grad(p[A], x, y), grad(p[B], x - 1, y), u),
+      lerp(grad(p[A + 1], x, y - 1), grad(p[B + 1], x - 1, y - 1), u),
       v
     );
   }
@@ -73,22 +77,23 @@ export class NoiseEngine {
     const y2 = y0 - 1 + 2 * G2;
     const ii = i & 255;
     const jj = j & 255;
+    const p = this.perm;
     let t0 = 0.5 - x0 * x0 - y0 * y0;
     if (t0 >= 0) {
       t0 *= t0;
-      const gi0 = PERM[ii + PERM[jj]] % 12;
+      const gi0 = p[ii + p[jj]] % 12;
       n0 = t0 * t0 * (GRAD3[gi0][0] * x0 + GRAD3[gi0][1] * y0);
     }
     let t1 = 0.5 - x1 * x1 - y1 * y1;
     if (t1 >= 0) {
       t1 *= t1;
-      const gi1 = PERM[ii + i1 + PERM[jj + j1]] % 12;
+      const gi1 = p[ii + i1 + p[jj + j1]] % 12;
       n1 = t1 * t1 * (GRAD3[gi1][0] * x1 + GRAD3[gi1][1] * y1);
     }
     let t2 = 0.5 - x2 * x2 - y2 * y2;
     if (t2 >= 0) {
       t2 *= t2;
-      const gi2 = PERM[ii + 1 + PERM[jj + 1]] % 12;
+      const gi2 = p[ii + 1 + p[jj + 1]] % 12;
       n2 = t2 * t2 * (GRAD3[gi2][0] * x2 + GRAD3[gi2][1] * y2);
     }
     return 70 * (n0 + n1 + n2);
@@ -101,11 +106,12 @@ export class NoiseEngine {
     y -= Math.floor(y);
     const u = fade(x);
     const v = fade(y);
-    const A = PERM[X] + Y;
-    const B = PERM[X + 1] + Y;
+    const p = this.perm;
+    const A = p[X] + Y;
+    const B = p[X + 1] + Y;
     return lerp(
-      lerp(PERM[A] / 255, PERM[B] / 255, u),
-      lerp(PERM[A + 1] / 255, PERM[B + 1] / 255, u),
+      lerp(p[A] / 255, p[B] / 255, u),
+      lerp(p[A + 1] / 255, p[B + 1] / 255, u),
       v
     ) * 2 - 1;
   }
@@ -118,11 +124,20 @@ export class NoiseEngine {
       for (let dx = -1; dx <= 1; dx++) {
         const cx = X + dx;
         const cy = Y + dy;
-        let s = this._hash(cx, cy);
-        const px = cx + (s / 2147483647);
-        s = (s * 16807) % 2147483647;
-        const py = cy + (s / 2147483647);
-        const d = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+        const key = `${cx},${cy}`;
+        let pts = this.worleyCache.get(key);
+        if (!pts) {
+          let s = this._hash(cx, cy);
+          const px = cx + (s / 2147483647);
+          s = (s * 16807) % 2147483647;
+          const py = cy + (s / 2147483647);
+          pts = [{ x: px, y: py }];
+          this.worleyCache.set(key, pts);
+        }
+        const { x: px, y: py } = pts[0];
+        const dx_ = x - px;
+        const dy_ = y - py;
+        const d = Math.sqrt(dx_ * dx_ + dy_ * dy_);
         if (d < minDist) minDist = d;
       }
     }
