@@ -49,6 +49,7 @@ const RENDER_PARAM_MAP: Record<string, string> = {
   octaves: 'u_fbmOctaves',
   lacunarity: 'u_fbmLacunarity',
   persistence: 'u_fbmPersistence',
+  plateCount: 'u_plateTotal',
 };
 
 let renderer: WebGLRenderer | Canvas2DRenderer | null = null;
@@ -279,8 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   checkpointPanel.refresh();
-  if (!launcher) {
-    bus.emit('render.request');
-    generateMapAction();
-  }
+  // 无论是否经过启动器，都需要首次生成地图
+  bus.emit('render.request');
+  generateMapAction();
 });

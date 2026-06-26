@@ -72,7 +72,7 @@ export class WebGLRenderer {
     this.textures = {
       u_plateTex: this._createTex(),
       u_elevTex: this._createTex(),
-      u_moistTex: this._createTex(),
+      u_moistureTex: this._createTex(),
       u_tempTex: this._createTex(),
       u_riverTex: this._createTex(),
       u_selectionMaskTex: this._createTex(),
@@ -115,7 +115,7 @@ export class WebGLRenderer {
     this.mapWidth = data.width;
     this.mapHeight = data.height;
 
-    const texNames = ['u_plateTex', 'u_elevTex', 'u_moistTex', 'u_riverTex', 'u_tempTex'];
+    const texNames = ['u_plateTex', 'u_elevTex', 'u_moistureTex', 'u_riverTex', 'u_tempTex'];
     const texData = [data.plateTex, data.elevTex, data.moistTex, data.riverTex, data.tempTex];
 
     const floatExt = gl.getExtension('EXT_color_buffer_float');
@@ -160,14 +160,23 @@ export class WebGLRenderer {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.pixels);
   }
 
+  // shader 中声明为 int 的 uniform（其余 number 均为 float，开关为 float 非 bool）
+  private static readonly INT_UNIFORMS = new Set([
+    'u_style', 'u_fbmOctaves', 'u_selectedCount', 'u_plateTotal',
+  ]);
+
   setUniform(name: string, value: UniformValue): void {
     const gl = this.gl;
     const loc = this.uniformLoc[name];
     if (loc === undefined) return;
-    
-    if (typeof value === 'boolean') gl.uniform1i(loc, value ? 1 : 0);
-    else if (typeof value === 'number') gl.uniform1f(loc, value);
-    else if (Array.isArray(value)) {
+
+    // shader 开关声明为 float，必须用 uniform1f 而非 uniform1i
+    if (typeof value === 'boolean') {
+      gl.uniform1f(loc, value ? 1.0 : 0.0);
+    } else if (typeof value === 'number') {
+      if (WebGLRenderer.INT_UNIFORMS.has(name)) gl.uniform1i(loc, Math.round(value));
+      else gl.uniform1f(loc, value);
+    } else if (Array.isArray(value)) {
       if (value.length === 2) gl.uniform2f(loc, value[0], value[1]);
       else if (value.length === 3) gl.uniform3f(loc, value[0], value[1], value[2]);
       else if (value.length === 4) gl.uniform4f(loc, value[0], value[1], value[2], value[3]);

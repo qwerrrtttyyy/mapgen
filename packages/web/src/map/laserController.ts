@@ -129,8 +129,9 @@ export class LaserController {
         const nx = x / width;
         if (nx < minX || nx > maxX) continue;
         const i = y * width + x;
-        const pid = (mapData.plateTex[i * 4] || 0) * mapData.plates.length;
-        plates.add(Math.round(pid));
+        const pidRaw = mapData.plateTex[i * 4] * mapData.plates.length;
+        const pid = Math.max(0, Math.min(mapData.plates.length - 1, Math.round(pidRaw)));
+        plates.add(pid);
       }
     }
     if (plates.size === 0) return;

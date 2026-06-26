@@ -1,4 +1,5 @@
 import type { MapData } from '@mapgen/core';
+import { state } from '../core/appState.js';
 
 export class Canvas2DRenderer {
   private canvas: HTMLCanvasElement;
@@ -24,7 +25,7 @@ export class Canvas2DRenderer {
     const { width, height, elevTex, moistTex, riverTex, tempTex } = data;
     const imgData = this.ctx.createImageData(width, height);
     const pixels = imgData.data;
-    const seaLevel = 0;
+    const seaLevel = state.params.seaLevel;
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {

@@ -325,7 +325,8 @@ vec3 azgaarColor(float h, float sea, float moisture, float temp, float river, fl
 float distToSegment(vec2 p, vec2 a, vec2 b) {
     vec2 pa = p - a;
     vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    float bb = dot(ba, ba);
+    float h = bb > 1e-10 ? clamp(dot(pa, ba) / bb, 0.0, 1.0) : 0.0;
     return length(pa - ba * h);
 }
 bool isSelected(float plateIdNorm) {
@@ -347,7 +348,7 @@ void main() {
         float tri = step(fp.x, fp.y);
         vec2 center = (tri < 0.5) ? (ip + vec2(0.666, 0.333)) / grid : (ip + vec2(0.333, 0.666)) / grid;
         elev = texture(u_elevTex, center).r; moisture = texture(u_moistureTex, center).r;
-        vec4 pC = texture(u_plateTex, center); plateId = pC.r; boundary = pC.a;
+        vec4 pC = texture(u_plateTex, center); plateId = pC.r; boundary = pC.b;
         float tx = 1.0 / grid;
         float eL = texture(u_elevTex, center - vec2(tx, 0.0)).r;
         float eR = texture(u_elevTex, center + vec2(tx, 0.0)).r;
@@ -376,7 +377,7 @@ void main() {
         float river = texture(u_riverTex, uv).r;
         moisture = clamp(moisture + u_detailRainfallOffset * 0.01, 0.0, 1.0);
         temp = clamp(temp + (u_detailTempGradient - 1.0) * 0.2, 0.0, 1.0);
-        plateId = plateData.r; boundary = plateData.a;
+        plateId = plateData.r; boundary = plateData.b;
         float shade = hillshade(uv, u_lightAngle);
         if (u_fbmOctaves > 0) {
             float detail = 0.0; vec2 p = uv * 12.0; float amp = 0.5; float freq = 1.0;
