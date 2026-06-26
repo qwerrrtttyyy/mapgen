@@ -30,6 +30,8 @@ uniform vec2 u_laserStart;
 uniform vec2 u_laserEnd;
 uniform float u_laserActive;
 uniform float u_laserWidth;
+uniform float u_laserSelection;
+uniform vec3 u_laserColor;
 uniform float u_hasTrail;
 uniform int u_selectedCount;
 uniform int u_plateTotal;
@@ -429,9 +431,9 @@ void main() {
         float glow = smoothstep(u_laserWidth * 8.0, 0.0, dist) * 0.35 * pulse;
         float mid = smoothstep(u_laserWidth * 3.0, 0.0, dist) * 0.55 * pulse;
         float core = smoothstep(u_laserWidth * 0.5, 0.0, dist);
-        vec3 glowCol = vec3(1.0, 0.30, 0.10);
-        vec3 midCol = vec3(1.0, 0.18, 0.08);
-        vec3 coreCol = vec3(1.0, 0.95, 0.85);
+        vec3 glowCol = u_laserColor;
+        vec3 midCol = u_laserColor * 0.7;
+        vec3 coreCol = mix(u_laserColor, vec3(1.0), 0.7);
         col = mix(col, glowCol, glow);
         col = mix(col, midCol, mid);
         col = mix(col, coreCol, core);
@@ -439,8 +441,20 @@ void main() {
         float dEnd = length((uv - u_laserEnd) * asp) * u_resolution.y;
         float endGlow1 = smoothstep(u_laserWidth * 12.0, 0.0, dStart) * 0.3 * pulse;
         float endGlow2 = smoothstep(u_laserWidth * 12.0, 0.0, dEnd) * 0.3 * pulse;
-        col += vec3(1.0, 0.35, 0.12) * endGlow1;
-        col += vec3(1.0, 0.35, 0.12) * endGlow2;
+        col += u_laserColor * endGlow1;
+        col += u_laserColor * endGlow2;
+        if (u_laserSelection > 0.5) {
+            vec2 a = u_laserStart * asp;
+            vec2 b = u_laserEnd * asp;
+            vec2 p = uv * asp;
+            float area = abs((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+            if (dist <= u_laserWidth * 1.5) {
+                col = mix(col, u_laserColor, 0.18 * pulse);
+            }
+            if (area < 0.002 && abs(b.x - a.x) > 1e-4) {
+                col = mix(col, u_laserColor, 0.08);
+            }
+        }
     }
     if (u_cursorActive > 0.5) {
         vec2 asp = vec2(u_resolution.x / u_resolution.y, 1.0);

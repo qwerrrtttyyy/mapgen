@@ -165,7 +165,25 @@
             <label><input type="checkbox" id="showSelection" checked> 选中高亮</label>
           </div>
           <div class="md-field">
-            <label><input type="checkbox" id="laserActive"> 激光笔 (L)</label>
+            <label><input type="checkbox" id="laserActive"> 激光指针 (L)</label>
+          </div>
+          <div class="md-field" id="laser-mode-group" style="display:none">
+            <label>激光模式</label>
+            <div class="md-field-row">
+              <label><input type="radio" name="laserMode" value="pointer" checked> 指针</label>
+              <label><input type="radio" name="laserMode" value="selection"> 选区</label>
+            </div>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="laserSelection" checked> 启用激光选区</label>
+          </div>
+          <div class="md-field">
+            <label>激光宽度 <span class="value" id="laserWidth-val">0.003</span></label>
+            <input type="range" id="laserWidth" min="0.001" max="0.01" step="0.0005" value="0.003">
+          </div>
+          <div class="md-field">
+            <label>激光颜色</label>
+            <input type="color" id="laserColor" value="#ff5238">
           </div>
           <div class="md-field">
             <label><input type="checkbox" id="cursorActive"> 光标跟随</label>

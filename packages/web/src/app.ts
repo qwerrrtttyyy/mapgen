@@ -37,6 +37,8 @@ const RENDER_PARAM_MAP: Record<string, string> = {
   laserStart: 'u_laserStart',
   laserEnd: 'u_laserEnd',
   laserWidth: 'u_laserWidth',
+  laserSelection: 'u_laserSelection',
+  laserColor: 'u_laserColor',
   trailEnabled: 'u_hasTrail',
   cursorActive: 'u_cursorActive',
   cursorPos: 'u_cursorPos',
@@ -75,8 +77,11 @@ function render(): void {
 }
 
 function scheduleRender(): void {
-  if (renderTimeout !== null) clearTimeout(renderTimeout);
-  renderTimeout = window.setTimeout(render, 50);
+  if (renderTimeout !== null) return;
+  renderTimeout = window.requestAnimationFrame(() => {
+    renderTimeout = null;
+    render();
+  });
 }
 
 function handleResize(): void {
@@ -222,6 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const showLauncher = Launcher.shouldShow();
   let launcher: Launcher | null = null;
+  let launchPromise: Promise<unknown> | null = null;
 
   if (showLauncher) {
     launcher = new Launcher(document.body, {
@@ -229,7 +235,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       version: 'v0.0.1 — Monorepo',
     });
     await launcher.show();
+    launchPromise = launcher.waitForLaunch();
     launcher.setProgress(0.2, '加载渲染器...');
+  } else {
+    launchPromise = Promise.resolve();
   }
 
   await initRenderer(canvas, launcher);
@@ -261,10 +270,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (launcher) {
     app.classList.add('launcher-done');
+    await launchPromise;
     await launcher.hide();
     launcher.destroy();
+  } else {
+    await launchPromise;
   }
 
   checkpointPanel.refresh();
-  generateMapAction();
+  if (!launcher) {
+    bus.emit('render.request');
+    generateMapAction();
+  }
 });

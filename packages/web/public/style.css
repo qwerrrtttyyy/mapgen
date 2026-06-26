@@ -24,7 +24,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: var(--md-sys-background); color: var(--md-sys-on-surface); overflow: hidden; height: 100vh; }
 #app { display: flex; height: 100vh; }
-#drawer { width: 340px; min-width: 340px; background: var(--md-sys-surface); border-right: 1px solid var(--md-sys-outline); overflow-y: auto; display: flex; flex-direction: column; transform: translateX(0); opacity: 1; transition: transform var(--md-motion-duration-medium) var(--md-motion-easing-standard), opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard); }
+#drawer { width: 340px; min-width: 340px; background: var(--md-sys-surface); border-right: 1px solid var(--md-sys-outline); overflow-y: auto; display: flex; flex-direction: column; transform: translateX(0); opacity: 1; transition: transform var(--md-motion-duration-medium) var(--md-motion-easing-standard), opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard); will-change: transform, opacity; contain: layout paint; }
 .drawer-header { padding: 20px 16px 12px; border-bottom: 1px solid var(--md-sys-outline); }
 .drawer-header h1 { font-size: 18px; font-weight: 700; }
 .drawer-header .version { font-size: 11px; color: var(--md-sys-on-surface-variant); margin-top: 2px; }
@@ -79,8 +79,8 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
 #app-bar { height: 48px; display: flex; align-items: center; padding: 0 16px; gap: 8px; background: var(--md-sys-surface); border-bottom: 1px solid var(--md-sys-outline); }
 #menu-toggle { display: none; font-size: 20px; line-height: 1; padding: 4px 12px !important; }
 #app-bar .title { font-size: 14px; font-weight: 600; flex: 1; }
-#canvas-container { flex: 1; position: relative; overflow: hidden; }
-#glCanvas { width: 100%; height: 100%; display: block; opacity: 1; transition: opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard); }
+#canvas-container { flex: 1; position: relative; overflow: hidden; contain: strict; }
+#glCanvas { width: 100%; height: 100%; display: block; opacity: 1; transition: opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard); contain: strict; will-change: transform, opacity; }
 #glCanvas.map-fade-in { animation: map-fade-in var(--md-motion-duration-long) var(--md-motion-easing-standard); }
 
 @keyframes map-fade-in {
@@ -111,7 +111,7 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
 }
 #checkpoint-section { border-top: 1px solid var(--md-sys-outline); padding: 8px; margin-top: auto; }
 #checkpoint-section .section-title { font-size: 11px; font-weight: 600; color: var(--md-sys-primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.checkpoint-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: 11px; border-bottom: 1px solid var(--md-sys-outline); background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 4px; opacity: 1; transform: translateY(0); max-height: 60px; transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard), transform var(--md-motion-duration-short) var(--md-motion-easing-standard), max-height var(--md-motion-duration-short) var(--md-motion-easing-standard), margin var(--md-motion-duration-short) var(--md-motion-easing-standard); }
+.checkpoint-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: 11px; border-bottom: 1px solid var(--md-sys-outline); background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 4px; opacity: 1; transform: translateY(0); max-height: 60px; transition: opacity var(--md-motion-duration-short) var(--md-motion-easing-standard), transform var(--md-motion-duration-short) var(--md-motion-easing-standard), max-height var(--md-motion-duration-short) var(--md-motion-easing-standard), margin var(--md-motion-duration-short) var(--md-motion-easing-standard); will-change: transform, opacity; }
 .checkpoint-item:last-child { border-bottom: none; margin-bottom: 0; }
 .checkpoint-item.entering { opacity: 0; transform: translateY(-12px); }
 .checkpoint-item.leaving { opacity: 0; transform: translateX(100%); max-height: 0; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; overflow: hidden; pointer-events: none; }
@@ -141,6 +141,7 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
   background: var(--md-sys-background);
   opacity: 0;
   transition: opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard);
+  contain: strict;
 }
 .launcher-overlay.launcher-visible { display: flex; opacity: 1; }
 .launcher-overlay.launcher-fade-out { opacity: 0; }
@@ -148,37 +149,134 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
 .launcher-content {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  padding: 48px 64px;
+  align-items: stretch;
+  gap: 20px;
+  padding: 28px 36px;
   border-radius: var(--md-sys-shape);
   background: var(--md-sys-surface);
   box-shadow: var(--md-elevation-2);
-  transform: scale(0.92) translateY(16px);
+  transform: scale(0.96) translateY(16px);
   opacity: 0;
+  width: min(960px, 94vw);
+  max-height: 90vh;
   transition:
     transform var(--md-motion-duration-long) var(--md-motion-easing-decelerate),
     opacity var(--md-motion-duration-long) var(--md-motion-easing-standard);
+  will-change: transform, opacity;
 }
 .launcher-content.launcher-enter { animation: launcher-enter var(--md-motion-duration-long) var(--md-motion-easing-decelerate) forwards; }
 .launcher-content.launcher-exit { animation: launcher-exit var(--md-motion-duration-medium) var(--md-motion-easing-standard) forwards; }
 
 @keyframes launcher-enter {
-  from { transform: scale(0.92) translateY(16px); opacity: 0; }
+  from { transform: scale(0.96) translateY(16px); opacity: 0; }
   to { transform: scale(1) translateY(0); opacity: 1; }
 }
 @keyframes launcher-exit {
   from { transform: scale(1); opacity: 1; }
-  to { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(0.97); opacity: 0; }
 }
 
-.launcher-logo { text-align: center; }
-.launcher-icon { font-size: 48px; margin-bottom: 8px; }
-.launcher-title { font-size: 22px; font-weight: 700; color: var(--md-sys-on-surface); }
-.launcher-version { font-size: 11px; color: var(--md-sys-on-surface-variant); margin-top: 2px; }
+.launcher-header { display: flex; align-items: center; gap: 16px; }
+.launcher-logo { display: flex; align-items: center; gap: 14px; }
+.launcher-icon { font-size: 36px; line-height: 1; }
+.launcher-title { font-size: 20px; font-weight: 700; color: var(--md-sys-on-surface); margin: 0; }
+.launcher-version { font-size: 11px; color: var(--md-sys-on-surface-variant); }
 
-.launcher-progress-area { width: 220px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.launcher-progress-ring { width: 48px; height: 48px; }
+.launcher-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 20px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.launcher-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 4px;
+  contain: content;
+}
+.launcher-preset-group { display: flex; flex-direction: column; gap: 8px; }
+.launcher-preset-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--md-sys-primary);
+}
+.launcher-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.launcher-preset-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: var(--md-sys-surface-variant);
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-sm);
+  color: var(--md-sys-on-surface);
+  cursor: pointer;
+  text-align: center;
+  font: inherit;
+  transition: transform var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    border-color var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    background var(--md-motion-duration-short) var(--md-motion-easing-standard),
+    box-shadow var(--md-motion-duration-short) var(--md-motion-easing-standard);
+  will-change: transform;
+}
+.launcher-preset-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-sys-outline);
+  box-shadow: var(--md-elevation-1);
+}
+.launcher-preset-tile:active { transform: scale(0.97); }
+.launcher-preset-tile.active {
+  border-color: var(--md-sys-primary);
+  background: rgba(124, 154, 255, 0.12);
+  box-shadow: 0 0 0 2px rgba(124, 154, 255, 0.18);
+}
+.launcher-preset-icon { font-size: 24px; line-height: 1; }
+.launcher-preset-name { font-size: 12px; font-weight: 600; }
+.launcher-preset-desc { font-size: 10px; color: var(--md-sys-on-surface-variant); line-height: 1.4; }
+
+.launcher-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 1px solid var(--md-sys-outline);
+  padding-left: 20px;
+}
+.launcher-options { display: flex; flex-direction: column; gap: 8px; }
+.launcher-options-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--md-sys-primary);
+  margin-bottom: 4px;
+}
+
+.launcher-footer {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 8px;
+  border-top: 1px solid var(--md-sys-outline);
+}
+.launcher-progress-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.launcher-progress-ring { width: 36px; height: 36px; flex: 0 0 36px; }
 .launcher-progress-ring svg { transform: rotate(-90deg); }
 .launcher-progress-track { fill: none; stroke: var(--md-sys-outline); stroke-width: 3; }
 .launcher-progress-indicator {
@@ -187,14 +285,16 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
   stroke-width: 3;
   stroke-linecap: round;
   transition: stroke-dashoffset var(--md-motion-duration-short) linear;
+  will-change: stroke-dashoffset;
 }
-.launcher-progress-text { font-size: 12px; color: var(--md-sys-on-surface-variant); }
+.launcher-progress-text { font-size: 11px; color: var(--md-sys-on-surface-variant); min-width: 80px; }
 .launcher-progress-bar-track {
-  width: 100%;
+  flex: 1;
   height: 4px;
   background: var(--md-sys-outline);
   border-radius: 2px;
   overflow: hidden;
+  contain: strict;
 }
 .launcher-progress-bar {
   height: 100%;
@@ -202,14 +302,18 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
   background: var(--md-sys-primary);
   border-radius: 2px;
   transition: width var(--md-motion-duration-short) linear;
+  will-change: width;
 }
+.launcher-actions { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.launcher-start { min-width: 120px; }
 .launcher-skip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11px;
   color: var(--md-sys-on-surface-variant);
   cursor: pointer;
+  user-select: none;
 }
 .launcher-skip input { accent-color: var(--md-sys-primary); }
 

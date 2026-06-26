@@ -3,7 +3,7 @@ import { state } from '../core/appState.js';
 import { selectPlate, setHover, setParam } from '../core/actions.js';
 import { MapPicker, type PickerResult } from './picker.js';
 import { Tooltip } from '../ui/tooltip.js';
-import type { MapData } from '@mapgen/core';
+import { LaserController } from './laserController.js';
 
 const biomeNames = [
   '海洋', '雪线高山', '高山', '沙漠', '湿地', '森林', '苔原', '平原'
@@ -31,39 +31,35 @@ export class MapInteraction {
   private canvas: HTMLCanvasElement;
   private tooltip: Tooltip;
   private picker: MapPicker | null = null;
-  private laserDragging = false;
+  private laser: LaserController;
   private trailCtx: CanvasRenderingContext2D | null = null;
   private trailCanvas: HTMLCanvasElement | null = null;
   private trailDecayTimer: number | null = null;
+  private moveRafScheduled = false;
+  private pendingMove: { x: number; y: number } | null = null;
   private unsub: (() => void)[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.tooltip = new Tooltip();
+    this.laser = new LaserController(canvas);
 
-    const move = (e: MouseEvent) => this.handleMove(e);
+    const move = (e: MouseEvent) => this.scheduleMove(e);
     const click = (e: MouseEvent) => this.handleClick(e);
     const leave = () => this.handleLeave();
     const context = (e: MouseEvent) => { e.preventDefault(); this.handleContext(e); };
-    const down = (e: MouseEvent) => this.handleMouseDown(e);
-    const up = () => this.handleMouseUp();
 
     canvas.addEventListener('mousemove', move);
     canvas.addEventListener('click', click);
     canvas.addEventListener('mouseleave', leave);
     canvas.addEventListener('contextmenu', context);
-    canvas.addEventListener('mousedown', down);
-    window.addEventListener('mouseup', up);
 
     this.unsub.push(
       () => canvas.removeEventListener('mousemove', move),
       () => canvas.removeEventListener('click', click),
       () => canvas.removeEventListener('mouseleave', leave),
       () => canvas.removeEventListener('contextmenu', context),
-      () => canvas.removeEventListener('mousedown', down),
-      () => window.removeEventListener('mouseup', up),
-      bus.on('generating.completed', () => this.setMapData(state.mapData)),
-      bus.on('laser.toggle', () => this.toggleLaser())
+      bus.on('generating.completed', () => this.setMapData(state.mapData))
     );
   }
 
@@ -72,59 +68,97 @@ export class MapInteraction {
     this.picker = new MapPicker(data);
   }
 
-  private handleMove(e: MouseEvent): void {
+  private scheduleMove(e: MouseEvent): void {
+    this.pendingMove = { x: e.clientX, y: e.clientY };
+    if (this.moveRafScheduled) return;
+    this.moveRafScheduled = true;
+    requestAnimationFrame(() => this.flushMove());
+  }
+
+  private flushMove(): void {
+    this.moveRafScheduled = false;
+    if (!this.pendingMove) return;
+    const { x, y } = this.pendingMove;
+    this.pendingMove = null;
+    this.handleMove(x, y);
+  }
+
+  private handleMove(clientX: number, clientY: number): void {
     if (state.params.cursorActive) {
-      const uv = clientToUv(e.clientX, e.clientY, this.canvas);
+      const uv = clientToUv(clientX, clientY, this.canvas);
       if (uv) {
         setParam('cursorPos', [uv.nx, uv.ny]);
         bus.emit('render.request');
       }
     }
 
-    if (this.laserDragging && state.params.laserActive) {
-      const uv = clientToUv(e.clientX, e.clientY, this.canvas);
-      if (uv) {
-        setParam('laserEnd', [uv.nx, uv.ny]);
-        bus.emit('render.request');
-      }
-    }
-
     if (state.params.trailEnabled) {
-      this.addTrailPoint(e.clientX, e.clientY);
+      this.addTrailPoint(clientX, clientY);
     }
 
     if (!this.picker) return;
-    const p = this.picker.pick(e.clientX, e.clientY, this.canvas);
+    const p = this.picker.pick(clientX, clientY, this.canvas);
     if (!p) {
       setHover(-1);
       this.tooltip.hide();
       return;
     }
     setHover(p.index);
-    this.tooltip.show(this.format(p), e.clientX, e.clientY);
+    this.tooltip.show(this.format(p), clientX, clientY);
   }
 
-  private handleMouseDown(e: MouseEvent): void {
-    if (!state.params.laserActive) return;
-    e.preventDefault();
-    this.laserDragging = true;
-    const uv = clientToUv(e.clientX, e.clientY, this.canvas);
-    if (uv) {
-      setParam('laserStart', [uv.nx, uv.ny]);
-      setParam('laserEnd', [uv.nx, uv.ny]);
-      bus.emit('render.request');
+  private lastClickPlateId = -1;
+
+  private handleClick(e: MouseEvent): void {
+    if (!this.picker) return;
+    const p = this.picker.pick(e.clientX, e.clientY, this.canvas);
+    if (!p) return;
+
+    if (this.tooltip.isPinned()) {
+      this.tooltip.unpin();
+      return;
+    }
+
+    const add = e.ctrlKey || e.metaKey;
+    const range = e.shiftKey && this.lastClickPlateId >= 0;
+    if (range) {
+      this.selectPlateRange(this.lastClickPlateId, p.plateId);
+    } else {
+      selectPlate(p.plateId, add);
+      this.lastClickPlateId = p.plateId;
+    }
+    this.tooltip.togglePin(this.format(p, true), e.clientX, e.clientY);
+  }
+
+  private selectPlateRange(from: number, to: number): void {
+    const min = Math.min(from, to);
+    const max = Math.max(from, to);
+    for (let i = min; i <= max; i++) {
+      selectPlate(i, true);
     }
   }
 
-  private handleMouseUp(): void {
-    this.laserDragging = false;
+  private handleLeave(): void {
+    setHover(-1);
+    this.tooltip.hide();
   }
 
-  private toggleLaser(): void {
-    setParam('laserActive', !state.params.laserActive);
-    const el = document.getElementById('laserActive') as HTMLInputElement | null;
-    if (el) el.checked = state.params.laserActive;
-    bus.emit('render.request');
+  private handleContext(e: MouseEvent): void {
+    bus.emit('map.contextmenu', { x: e.clientX, y: e.clientY });
+  }
+
+  private format(p: PickerResult, includePlate = false): string {
+    const elevPct = Math.round(p.elevation * 100);
+    const lines = [
+      `坐标: (${p.x}, ${p.y})`,
+      `海拔: ${elevPct}%`,
+      `温度: ${(p.temperature * 100).toFixed(0)}%`,
+      `湿度: ${(p.moisture * 100).toFixed(0)}%`,
+      `降雨: ${(p.rainfall * 100).toFixed(0)}%`,
+      `生物群系: ${biomeNames[p.biome] ?? '未知'}`,
+    ];
+    if (includePlate) lines.push(`板块: #${p.plateId}`);
+    return lines.join('<br>');
   }
 
   private ensureTrailCanvas(): void {
@@ -191,64 +225,10 @@ export class MapInteraction {
     }
   }
 
-  private lastClickPlateId = -1;
-
-  private handleClick(e: MouseEvent): void {
-    if (!this.picker) return;
-    const p = this.picker.pick(e.clientX, e.clientY, this.canvas);
-    if (!p) return;
-
-    if (this.tooltip.isPinned()) {
-      this.tooltip.unpin();
-      return;
-    }
-
-    const add = e.ctrlKey || e.metaKey;
-    const range = e.shiftKey && this.lastClickPlateId >= 0;
-    if (range) {
-      this.selectPlateRange(this.lastClickPlateId, p.plateId);
-    } else {
-      selectPlate(p.plateId, add);
-      this.lastClickPlateId = p.plateId;
-    }
-    this.tooltip.togglePin(this.format(p, true), e.clientX, e.clientY);
-  }
-
-  private selectPlateRange(from: number, to: number): void {
-    const min = Math.min(from, to);
-    const max = Math.max(from, to);
-    for (let i = min; i <= max; i++) {
-      selectPlate(i, true);
-    }
-  }
-
-  private handleLeave(): void {
-    setHover(-1);
-    this.tooltip.hide();
-  }
-
-  private handleContext(e: MouseEvent): void {
-    // Placeholder for context menu integration
-    bus.emit('map.contextmenu', { x: e.clientX, y: e.clientY });
-  }
-
-  private format(p: PickerResult, includePlate = false): string {
-    const elevPct = Math.round(p.elevation * 100);
-    const lines = [
-      `坐标: (${p.x}, ${p.y})`,
-      `海拔: ${elevPct}%`,
-      `温度: ${(p.temperature * 100).toFixed(0)}%`,
-      `湿度: ${(p.moisture * 100).toFixed(0)}%`,
-      `降雨: ${(p.rainfall * 100).toFixed(0)}%`,
-      `生物群系: ${biomeNames[p.biome] ?? '未知'}`,
-    ];
-    if (includePlate) lines.push(`板块: #${p.plateId}`);
-    return lines.join('<br>');
-  }
-
   destroy(): void {
     this.unsub.forEach(u => u());
     this.tooltip.destroy();
+    this.laser.destroy();
     if (this.trailDecayTimer !== null) {
       window.clearInterval(this.trailDecayTimer);
       this.trailDecayTimer = null;

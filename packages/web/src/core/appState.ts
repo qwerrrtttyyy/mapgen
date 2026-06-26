@@ -44,6 +44,8 @@ export interface UIParams {
   laserStart: number[];
   laserEnd: number[];
   laserWidth: number;
+  laserSelection: boolean;
+  laserColor: number[];
   trailEnabled: boolean;
   cursorActive: boolean;
   cursorPos: number[];
@@ -103,6 +105,8 @@ export function createDefaultParams(): UIParams {
     laserStart: [0.0, 0.0],
     laserEnd: [0.0, 0.0],
     laserWidth: 0.003,
+    laserSelection: true,
+    laserColor: [1.0, 0.32, 0.22],
     trailEnabled: false,
     cursorActive: false,
     cursorPos: [0.5, 0.5],

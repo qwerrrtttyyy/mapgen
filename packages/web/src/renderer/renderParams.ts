@@ -20,6 +20,8 @@ export interface RenderParams {
   u_laserStart?: number[];
   u_laserEnd?: number[];
   u_laserWidth?: number;
+  u_laserSelection?: boolean;
+  u_laserColor?: number[];
   u_hasTrail?: boolean;
   u_cursorActive?: boolean;
   u_cursorPos?: number[];

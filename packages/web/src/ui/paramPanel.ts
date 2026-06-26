@@ -24,6 +24,8 @@ export class ParamPanel {
     this.bindColors();
     this.bindSeed();
     this.bindCollapsibleCards();
+    this.bindLaserMode();
+    this.bindLaserActiveVisibility();
   }
 
   destroy(): void {
@@ -160,5 +162,27 @@ export class ParamPanel {
       title.addEventListener('click', handler);
       this.unsub.push(() => title.removeEventListener('click', handler));
     });
+  }
+
+  private bindLaserMode(): void {
+    const radios = document.querySelectorAll<HTMLInputElement>('input[name="laserMode"]');
+    radios.forEach(input => {
+      const handler = () => {
+        if (input.checked) {
+          bus.emit('laser.mode.set', input.value);
+        }
+      };
+      input.addEventListener('change', handler);
+      this.unsub.push(() => input.removeEventListener('change', handler));
+    });
+  }
+
+  private bindLaserActiveVisibility(): void {
+    const update = () => {
+      const group = byId('laser-mode-group') as HTMLElement | null;
+      if (group) group.style.display = state.params.laserActive ? '' : 'none';
+    };
+    update();
+    this.unsub.push(bus.on('params.changed', update));
   }
 }
