@@ -284,3 +284,88 @@ Step C: laserActive=1, start!=end (drag)
 | 6: u_moistTex 命名 | webgl.ts:75,118 | `u_moistTex` → `u_moistureTex` |
 | 7: distToSegment 除零 NaN | fs-map.frag:325-330 | 添加 `bb > 1e-10` 零长度保护 |
 | 8: u_plateTotal 未映射 | app.ts:52 RENDER_PARAM_MAP | 添加 `plateCount: 'u_plateTotal'` |
+
+---
+
+## 新一轮调查（续 3）— "进入后黑屏"
+
+### 现象
+用户报告进入页面后黑屏。用 playwright chromium-headless-shell + swiftshader 复现。
+
+### 诊断过程
+
+#### 排除：WebGL 渲染问题
+- black-screen-deep.mjs hook drawArrays：3 次绘制，uniforms 全部正确（u_plateTotal=8, u_moistureTex=2, u_laserActive=0），pixels 显示正常地形（海洋 [6,18,54]、边界 [255,81,55]、绿色地形 [44,61,22]）
+- canvas.toDataURL 生成 22446 字节 PNG（有内容）
+- GL readPixels 返回全黑 [0,0,0] — 这是 swiftshader preserveDrawingBuffer 的假阳性，不是真实问题
+
+#### 定位：launcher 内容不可见
+- visual-01-launcher.png 截图分析：全屏 [15,15,26]（= body 背景色 `--md-sys-background: #0f0f1a`），无任何 launcher UI
+- launcher-inspect.mjs 检查 computed style：
+  - `launcher-overlay`: display=flex, opacity=1, visible ✓
+  - `launcher-content`: **opacity=0**, transform=matrix(0.96,0,0,0.96,0,15.36) ✗
+  - `contentClass`: "launcher-content launcher-interactive" — **缺少 `launcher-enter` 类**
+
+### 真实根因 9（已确认）：launcher show() 动画结束后未保持终态
+
+**位置**：`packages/web/src/launcher/launcher.ts:256-261`
+
+**代码**：
+```typescript
+async show(duration = 400): Promise<void> {
+  this.root.classList.add('launcher-visible');
+  this.content.classList.add('launcher-enter');      // 添加动画类
+  await new Promise(r => setTimeout(r, duration));
+  this.content.classList.remove('launcher-enter');   // ← BUG: 移除后 opacity 回到 0
+}
+```
+
+**CSS**（style.css:149-167）：
+```css
+.launcher-content {
+  ...
+  opacity: 0;                                        /* 默认 0 */
+  transform: scale(0.96) translateY(16px);
+  transition: ...;
+}
+.launcher-content.launcher-enter {
+  animation: launcher-enter ... forwards;            /* forwards 保持终态 */
+}
+@keyframes launcher-enter {
+  from { opacity: 0; transform: scale(0.96) ...; }
+  to { opacity: 1; transform: scale(1) ...; }
+}
+```
+
+**数据流**：
+1. show() 添加 `launcher-enter` 类 → CSS 动画播放，`forwards` 保持终态 opacity:1
+2. 400ms 后 `remove('launcher-enter')` → 类被移除
+3. 动画消失，opacity 回到 `.launcher-content` 默认值 `0`
+4. content 不可见，用户只看到 overlay 的背景色 [15,15,26]（深紫黑）
+5. 由于 launcher-content 不可见，用户看不到"启动"按钮，无法进入主界面 → 表现为持续黑屏
+
+**影响**：所有未勾选"不再显示启动器"的用户，进入页面后看到深紫黑背景（被误认为黑屏），无法看到启动器 UI，无法开始使用。这是阻断性的首次使用体验问题。
+
+**修复方案**：show() 移除 `launcher-enter` 类后，用 inline style 锁定终态：
+```typescript
+async show(duration = 400): Promise<void> {
+  this.root.classList.add('launcher-visible');
+  this.content.classList.add('launcher-enter');
+  await new Promise(r => setTimeout(r, duration));
+  this.content.classList.remove('launcher-enter');
+  this.content.style.opacity = '1';        // 锁定终态
+  this.content.style.transform = 'none';
+}
+```
+同时 hide() 需要清除 inline style，让退出动画的 opacity:0 生效。
+
+### 验证
+- launcher-inspect.mjs 修复后：contentOpacity="1", contentTransform="none" ✓
+- e2e-verify.mjs：launcher 截图显示 [26,26,46]/[37,37,64]（surface 色，launcher UI 可见）✓
+- 点击启动后地图正常生成（sea=57 green=14）✓
+- typecheck + build 通过，零 page error
+
+### 教训
+- **CSS animation forwards 不是持久的**：移除动画类后，forwards 保持的终态随之失效，元素回到 CSS 默认值。需要在 JS 中用 inline style 锁定终态，或不在动画结束后移除动画类。
+- **黑屏 ≠ [0,0,0]**：用户说的"黑屏"可能是深色背景 [15,15,26]，需要精确采样像素值而非主观判断。
+- **readPixels 假阳性**：swiftshader + preserveDrawingBuffer:false 时 readPixels 可能返回全黑，但 toDataURL 有内容。需用 toDataURL 或 page.screenshot 交叉验证。

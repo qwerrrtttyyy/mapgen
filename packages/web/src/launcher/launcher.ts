@@ -257,12 +257,19 @@ export class Launcher {
     this.root.classList.add('launcher-visible');
     this.content.classList.add('launcher-enter');
     await new Promise(r => setTimeout(r, duration));
+    // 锁定动画终态：移除动画类后用 inline style 保持 opacity:1 / transform:none，
+    // 否则 .launcher-content 默认 opacity:0 会导致内容重新不可见（黑屏）
     this.content.classList.remove('launcher-enter');
+    this.content.style.opacity = '1';
+    this.content.style.transform = 'none';
   }
 
   async hide(duration = 400): Promise<void> {
     if (this.hidden) return;
     this.hidden = true;
+    // 清除 show() 锁定的 inline style，让退出动画的 opacity:0 生效
+    this.content.style.opacity = '';
+    this.content.style.transform = '';
     this.content.classList.add('launcher-exit');
     await new Promise(r => setTimeout(r, duration * 0.6));
     this.root.classList.add('launcher-fade-out');
