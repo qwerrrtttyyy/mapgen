@@ -1,0 +1,21 @@
+{
+  "name": "@mapgen/shared",
+  "version": "0.0.1",
+  "description": "Map Generator - Shared Engine Modules",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./noise": "./src/noise.js",
+    "./tectonic": "./src/tectonic.js",
+    "./erosion": "./src/erosion.js",
+    "./rivers": "./src/rivers.js",
+    "./regions": "./src/regions.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": ["map-generator", "noise", "tectonic", "erosion"],
+  "author": "qwerrrtttyyy",
+  "license": "MIT"
+}

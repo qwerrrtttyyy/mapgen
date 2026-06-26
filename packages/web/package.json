@@ -1,0 +1,16 @@
+{
+  "name": "@mapgen/web",
+  "version": "0.0.1",
+  "description": "Map Generator - Web Frontend",
+  "type": "module",
+  "main": "public/index.html",
+  "scripts": {
+    "dev": "echo 'Open public/index.html in browser'",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "@mapgen/shared": "*"
+  },
+  "author": "qwerrrtttyyy",
+  "license": "MIT"
+}

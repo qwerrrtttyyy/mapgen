@@ -1,0 +1,16 @@
+{
+  "name": "@mapgen/server",
+  "version": "0.0.1",
+  "description": "Map Generator - Node.js Server",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@mapgen/shared": "*"
+  },
+  "author": "qwerrrtttyyy",
+  "license": "MIT"
+}
