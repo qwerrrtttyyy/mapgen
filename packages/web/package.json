@@ -1,15 +1,20 @@
 {
   "name": "@mapgen/web",
   "version": "0.0.1",
-  "description": "Map Generator - Web Frontend",
+  "description": "Map Generator - Web Frontend (TypeScript + Vite)",
   "type": "module",
-  "main": "public/index.html",
   "scripts": {
-    "dev": "echo 'Open public/index.html in browser'",
-    "build": "echo 'No build step required'"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mapgen/shared": "*"
+    "@mapgen/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
   },
   "author": "qwerrrtttyyy",
   "license": "MIT"

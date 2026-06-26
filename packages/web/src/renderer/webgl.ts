@@ -1,18 +1,27 @@
+import type { MapData } from '@mapgen/core';
+
+export interface RenderParams {
+  [key: string]: number | boolean | number[];
+}
+
 export class WebGLRenderer {
-  constructor(canvas) {
+  private canvas: HTMLCanvasElement;
+  private gl: WebGL2RenderingContext;
+  private program: WebGLProgram | null = null;
+  private vao: WebGLVertexArrayObject | null = null;
+  private mapWidth: number = 0;
+  private mapHeight: number = 0;
+  private textures: Record<string, WebGLTexture> = {};
+  private uniformLoc: Record<string, WebGLUniformLocation> = {};
+
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
     if (!gl) throw new Error('WebGL2 not supported');
     this.gl = gl;
-    this.mapWidth = 0;
-    this.mapHeight = 0;
-    this.trailTex = null;
-    this.selectionMask = null;
-    this.textures = {};
-    this.uniformLoc = {};
   }
 
-  async initShaders(fragSrc) {
+  async initShaders(fragSrc: string): Promise<void> {
     const gl = this.gl;
     const vs = this._compile(gl.VERTEX_SHADER, `#version 300 es
       in vec2 a_pos;
@@ -23,12 +32,16 @@ export class WebGLRenderer {
       }`);
     const fs = this._compile(gl.FRAGMENT_SHADER, fragSrc);
     const prog = gl.createProgram();
+    if (!prog) throw new Error('Failed to create program');
+    
     gl.attachShader(prog, vs);
     gl.attachShader(prog, fs);
     gl.linkProgram(prog);
+    
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
       throw new Error('Shader link: ' + gl.getProgramInfoLog(prog));
     }
+    
     this.program = prog;
     gl.useProgram(prog);
 
@@ -43,9 +56,14 @@ export class WebGLRenderer {
 
     const verts = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]);
     const vbo = gl.createBuffer();
+    if (!vbo) throw new Error('Failed to create buffer');
+    
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    
     this.vao = gl.createVertexArray();
+    if (!this.vao) throw new Error('Failed to create VAO');
+    
     gl.bindVertexArray(this.vao);
     const aPos = gl.getAttribLocation(prog, 'a_pos');
     gl.enableVertexAttribArray(aPos);
@@ -53,9 +71,12 @@ export class WebGLRenderer {
     gl.bindVertexArray(null);
 
     this.textures = {
-      u_plateTex: this._createTex(), u_elevTex: this._createTex(),
-      u_moistTex: this._createTex(), u_tempTex: this._createTex(),
-      u_riverTex: this._createTex(), u_selectionMaskTex: this._createTex(),
+      u_plateTex: this._createTex(),
+      u_elevTex: this._createTex(),
+      u_moistTex: this._createTex(),
+      u_tempTex: this._createTex(),
+      u_riverTex: this._createTex(),
+      u_selectionMaskTex: this._createTex(),
       u_trailTex: this._createTex(),
     };
 
@@ -63,20 +84,25 @@ export class WebGLRenderer {
     gl.disable(gl.BLEND);
   }
 
-  _compile(type, src) {
+  private _compile(type: number, src: string): WebGLShader {
     const gl = this.gl;
     const s = gl.createShader(type);
+    if (!s) throw new Error('Failed to create shader');
+    
     gl.shaderSource(s, src);
     gl.compileShader(s);
+    
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
       throw new Error('Shader compile: ' + gl.getShaderInfoLog(s));
     }
     return s;
   }
 
-  _createTex() {
+  private _createTex(): WebGLTexture {
     const gl = this.gl;
     const tex = gl.createTexture();
+    if (!tex) throw new Error('Failed to create texture');
+    
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -85,12 +111,14 @@ export class WebGLRenderer {
     return tex;
   }
 
-  uploadMapData(data) {
+  uploadMapData(data: MapData): void {
     const gl = this.gl;
     this.mapWidth = data.width;
     this.mapHeight = data.height;
+    
     const texNames = ['u_plateTex', 'u_elevTex', 'u_moistTex', 'u_riverTex', 'u_tempTex'];
     const texData = [data.plateTex, data.elevTex, data.moistTex, data.riverTex, data.tempTex];
+    
     for (let i = 0; i < texNames.length; i++) {
       gl.bindTexture(gl.TEXTURE_2D, this.textures[texNames[i]]);
       const ext1 = gl.getExtension('EXT_color_buffer_float');
@@ -104,12 +132,13 @@ export class WebGLRenderer {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, norm);
       }
     }
+    
     const selMask = new Uint8Array(256);
     gl.bindTexture(gl.TEXTURE_2D, this.textures.u_selectionMaskTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 256, 1, 0, gl.RED, gl.UNSIGNED_BYTE, selMask);
   }
 
-  updateSelectMask(selected) {
+  updateSelectMask(selected: number[]): void {
     const gl = this.gl;
     const mask = new Uint8Array(256);
     selected.forEach(id => { if (id >= 0 && id < 256) mask[id] = 255; });
@@ -117,17 +146,18 @@ export class WebGLRenderer {
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, 1, gl.RED, gl.UNSIGNED_BYTE, mask);
   }
 
-  updateTrailTex(data) {
+  updateTrailTex(data: { width: number; height: number; pixels: Uint8Array } | null): void {
     const gl = this.gl;
     if (!data) return;
     gl.bindTexture(gl.TEXTURE_2D, this.textures.u_trailTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.pixels);
   }
 
-  setUniform(name, value) {
+  setUniform(name: string, value: number | boolean | number[]): void {
     const gl = this.gl;
     const loc = this.uniformLoc[name];
     if (loc === undefined) return;
+    
     if (typeof value === 'boolean') gl.uniform1i(loc, value ? 1 : 0);
     else if (typeof value === 'number') gl.uniform1f(loc, value);
     else if (Array.isArray(value)) {
@@ -137,13 +167,17 @@ export class WebGLRenderer {
     }
   }
 
-  render(params) {
+  render(params: RenderParams): void {
     const gl = this.gl;
     const w = this.canvas.width;
     const h = this.canvas.height;
+    
     gl.viewport(0, 0, w, h);
     gl.clearColor(0.05, 0.05, 0.1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    
+    if (!this.program || !this.vao) return;
+    
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vao);
 
@@ -167,14 +201,14 @@ export class WebGLRenderer {
     gl.bindVertexArray(null);
   }
 
-  resize(w, h) {
+  resize(w: number, h: number): void {
     this.canvas.width = w;
     this.canvas.height = h;
   }
 
-  destroy() {
+  destroy(): void {
     const gl = this.gl;
-    gl.deleteProgram(this.program);
+    if (this.program) gl.deleteProgram(this.program);
     for (const tex of Object.values(this.textures)) gl.deleteTexture(tex);
   }
 }

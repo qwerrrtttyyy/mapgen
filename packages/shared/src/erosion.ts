@@ -1,8 +1,11 @@
-import { createNoise } from './noise.js';
+import { createNoise, type NoiseType, type FbmType } from './noise.js';
+import type { Plate } from './tectonic.js';
 
-export function generateElevation(width, height, seed, plateId, plates, boundary,
-  noiseType, fbmType, octaves, lacunarity, persistence, seaLevel,
-  mountainFold, coastDetail) {
+export function generateElevation(
+  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[], boundary: Float32Array,
+  noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
+  mountainFold: number, coastDetail: number
+): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
   const size = width * height;
   const elevation = new Float32Array(size);
   const slope = new Float32Array(size);
@@ -49,7 +52,7 @@ export function generateElevation(width, height, seed, plateId, plates, boundary
   return { elevation, slope, ridge, ridgeMask };
 }
 
-export function hydraulicErosion(width, height, elevation, iterations, strength) {
+export function hydraulicErosion(width: number, height: number, elevation: Float32Array, iterations: number, strength: number): Float32Array {
   const elev = new Float32Array(elevation);
   const size = width * height;
   const water = new Float32Array(size);
@@ -92,7 +95,7 @@ export function hydraulicErosion(width, height, elevation, iterations, strength)
   return elev;
 }
 
-export function generateLakes(width, height, elevation, seaLevel, lakeDensity, seed) {
+export function generateLakes(width: number, height: number, elevation: Float32Array, seaLevel: number, lakeDensity: number, seed: number): Float32Array {
   const lakes = new Float32Array(width * height);
   const noise = createNoise(seed + 7, 'simplex');
   for (let y = 2; y < height - 2; y++) {

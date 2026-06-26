@@ -1,12 +1,56 @@
-export { hashSeed, createNoise, NoiseEngine } from './noise.js';
-export { generatePlates, assignPlates, computeBoundaries } from './tectonic.js';
+export { hashSeed, createNoise, NoiseEngine, type NoiseType, type FbmType } from './noise.js';
+export { generatePlates, assignPlates, computeBoundaries, type Plate } from './tectonic.js';
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
-export { generateRivers } from './rivers.js';
-export { analyzeRegions, computeClimate } from './regions.js';
+export { generateRivers, type River, type RiverSegment } from './rivers.js';
+export { analyzeRegions, computeClimate, type Region, type ClimateData } from './regions.js';
 
-const ASPECT_MAP = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
+import { hashSeed } from './noise.js';
+import { generatePlates, assignPlates, computeBoundaries, type Plate } from './tectonic.js';
+import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
+import { generateRivers, type River } from './rivers.js';
+import { analyzeRegions, computeClimate, type Region } from './regions.js';
+import type { NoiseType, FbmType } from './noise.js';
 
-export function generateMap(params, onProgress) {
+const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
+
+export interface MapParams {
+  seedStr: string;
+  mapAspect: string;
+  mapSize: number;
+  plateCount: number;
+  landmass: number;
+  noiseType: NoiseType;
+  fbmType: FbmType;
+  octaves: number;
+  lacunarity: number;
+  persistence: number;
+  seaLevel: number;
+  mountainFold: number;
+  coastDetail: number;
+  erosionIterations: number;
+  erosionStrength: number;
+  lakeDensity: number;
+  tempOffset: number;
+  snowLine: number;
+}
+
+export interface MapData {
+  width: number;
+  height: number;
+  plateTex: Float32Array;
+  elevTex: Float32Array;
+  moistTex: Float32Array;
+  riverTex: Float32Array;
+  tempTex: Float32Array;
+  plates: Plate[];
+  regions: Region[];
+  rivers: River[];
+  seed: number;
+}
+
+export type ProgressCallback = (progress: number, phaseName: string) => void;
+
+export function generateMap(params: MapParams, onProgress?: ProgressCallback): { mapData: MapData; checkpoints: Record<string, unknown> } {
   const seed = hashSeed(params.seedStr);
   const aspect = ASPECT_MAP[params.mapAspect] || 1;
   const width = params.mapSize;
@@ -25,7 +69,7 @@ export function generateMap(params, onProgress) {
   const totalWeight = phases.reduce((s, p) => s + p.weight, 0);
   let progress = 0;
 
-  function advance(phaseName) {
+  function advance(phaseName: string) {
     const p = phases.find(x => x.name === phaseName);
     if (p) progress += p.weight / totalWeight;
     if (onProgress) onProgress(progress, phaseName);
@@ -122,7 +166,7 @@ export function generateMap(params, onProgress) {
     tempTex[i4 + 3] = 0;
   }
 
-  const mapData = {
+  const mapData: MapData = {
     width, height,
     plateTex, elevTex, moistTex, riverTex, tempTex,
     plates, regions, rivers, seed,
@@ -137,53 +181,5 @@ export function generateMap(params, onProgress) {
       climate: checkpointClimate,
       rivers: checkpointRivers,
     },
-  };
-}
-
-export function restoreFromCheckpoint(checkpoint, params) {
-  const { elevation, moisture, temperature, tempZone, rainfall, plates, plateId, boundary, plateDist } = checkpoint;
-  const width = params.mapSize;
-  const aspect = ASPECT_MAP[params.mapAspect] || 1;
-  const height = Math.round(params.mapSize / aspect);
-  const size = width * height;
-
-  const plateTex = new Float32Array(size * 4);
-  const elevTex = new Float32Array(size * 4);
-  const moistTex = new Float32Array(size * 4);
-  const riverTex = new Float32Array(size * 4);
-  const tempTex = new Float32Array(size * 4);
-
-  const plateTypeArr = new Uint8Array(plates.length);
-  for (let i = 0; i < plates.length; i++) {
-    plateTypeArr[i] = plates[i].type === 'continent' ? 1 : 0;
-  }
-
-  for (let i = 0; i < size; i++) {
-    const pid = Math.floor(plateId[i]);
-    const i4 = i * 4;
-    plateTex[i4 + 0] = pid / params.plateCount;
-    plateTex[i4 + 1] = plateTypeArr[pid];
-    plateTex[i4 + 2] = boundary[i];
-    plateTex[i4 + 3] = plateDist[i];
-    elevTex[i4] = elevation[i];
-    const elev = elevation[i];
-    const temp = temperature ? temperature[i] : 0;
-    const moist = moisture ? moisture[i] : 0.5;
-    let biome = 0;
-    if (elev <= params.seaLevel) biome = 0;
-    else if (elev > 0.7) biome = 2;
-    else if (moist < 0.2 && temp > 0.5) biome = 3;
-    else if (moist > 0.5 && temp > 0.3) biome = 5;
-    else if (temp < 0.2) biome = 6;
-    else biome = 7;
-    moistTex[i4] = moist;
-    moistTex[i4 + 2] = temp;
-    tempTex[i4] = temp;
-    tempTex[i4 + 2] = biome / 8;
-  }
-
-  return {
-    width, height, plateTex, elevTex, moistTex, riverTex, tempTex,
-    plates, regions: [], rivers: [], seed: 0,
   };
 }

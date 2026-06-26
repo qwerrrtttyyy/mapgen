@@ -6,7 +6,7 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 
 - **Latest:** `v0.0.1` (Monorepo: Turborepo + npm workspaces)
 - **Language:** zh-CN primary
-- **Runtime:** Node.js (server) + Browser (client)
+- **Runtime:** Browser (pure frontend, no server required)
 - **Build / test / lint:** Turborepo tasks
 - **GitHub:** https://github.com/qwerrrtttyyy/mapgen
 
@@ -19,14 +19,18 @@ npm install
 # Development mode (all packages)
 npm run dev
 
-# Start server only
-cd packages/server && npm start
-
 # Build all packages
 npm run build
+
+# Type check all packages
+npm run typecheck
+
+# Build specific package
+npm run build --workspace=@mapgen/core
+npm run build --workspace=@mapgen/web
 ```
 
-Server runs at `http://127.0.0.1:8765` by default.
+Development server runs at `http://127.0.0.1:3000` by default.
 
 ## Architecture
 
@@ -35,33 +39,35 @@ Server runs at `http://127.0.0.1:8765` by default.
 ```
 mapgen/
 ├── packages/
-│   ├── shared/          # Shared engine modules
+│   ├── shared/          # Shared engine modules (TypeScript)
 │   │   ├── src/
-│   │   │   ├── noise.js       # Noise generation (Perlin, Simplex, Value, Worley)
-│   │   │   ├── tectonic.js    # Plate tectonics
-│   │   │   ├── erosion.js     # Erosion simulation
-│   │   │   ├── rivers.js      # River generation
-│   │   │   ├── regions.js     # Region analysis
-│   │   │   └── index.js       # Main entry
-│   │   └── package.json
-│   ├── server/          # Node.js server
-│   │   ├── server.js
-│   │   ├── mapgen.json
-│   │   └── package.json
-│   └── web/             # Pure HTML+CSS+JS frontend
+│   │   │   ├── noise.ts       # Noise generation (Perlin, Simplex, Value, Worley)
+│   │   │   ├── tectonic.ts    # Plate tectonics
+│   │   │   ├── erosion.ts     # Erosion simulation
+│   │   │   ├── rivers.ts      # River generation
+│   │   │   ├── regions.ts     # Region analysis
+│   │   │   └── index.ts       # Main entry
+│   │   ├── dist/              # Compiled output
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── web/             # Frontend application (TypeScript + Vite)
 │       ├── public/
 │       │   ├── index.html
 │       │   ├── style.css
 │       │   ├── shaders/
 │       │   │   ├── fs-map.frag
 │       │   │   └── vs-quad.vert
-│       │   └── js/
-│       │       ├── app.js
-│       │       ├── checkpoint.js
-│       │       └── renderer/
-│       │           ├── webgl.js
-│       │           └── canvas2d.js
-│       └── package.json
+│       │   └── favicon.svg
+│       ├── src/
+│       │   ├── app.ts           # Main application logic
+│       │   ├── checkpoint.ts    # Checkpoint management
+│       │   └── renderer/
+│       │       ├── webgl.ts     # WebGL renderer
+│       │       └── canvas2d.ts  # Canvas2D renderer
+│       ├── dist/                # Build output
+│       ├── package.json
+│       ├── tsconfig.json
+│       └── vite.config.ts
 ├── package.json         # Root config
 ├── turbo.json           # Turborepo config
 └── README.md
@@ -71,31 +77,23 @@ mapgen/
 
 | Package | Purpose | Dependencies |
 |---------|---------|--------------|
-| `@mapgen/shared` | Core algorithms (noise, tectonic, erosion, rivers, regions) | None |
-| `@mapgen/server` | HTTP server, SSE progress, checkpoint API, server-side generation | `@mapgen/shared` |
-| `@mapgen/web` | Pure HTML+CSS+JS frontend, WebGL/Canvas2D rendering | `@mapgen/shared` |
+| `@mapgen/core` | Core algorithms (noise, tectonic, erosion, rivers, regions) | None |
+| `@mapgen/web` | TypeScript + Vite frontend, WebGL/Canvas2D rendering | `@mapgen/core` |
 
 ## Code conventions
 
-- **JavaScript:** ES6 modules, `import`/`export`, no TypeScript
+- **TypeScript:** ES2020 target, strict mode enabled
 - **CSS:** Material Design 3 token system via custom properties (`--md-sys-*`, `--md-ref-*`)
 - **Shaders:** GLSL ES 3.00 (`#version 300 es`)
-- **No build step for frontend:** Pure HTML+CSS+JS served directly
+- **Build:** Vite for frontend, tsc for core library
 
 ## Commands
 
 ```bash
-npm run dev      # Start all packages in dev mode
-npm run build    # Build all packages
-npm run start    # Start all packages
-npm run lint     # Lint all packages
-npm run test     # Test all packages
+npm run dev        # Start all packages in dev mode
+npm run build      # Build all packages
+npm run typecheck  # Type check all packages
 ```
-
-## Environment variables
-
-- `MAPGEN_PORT` - Server port (default: 8765)
-- `MAPGEN_HOST` - Server host (default: 127.0.0.1)
 
 ## Features
 
@@ -105,14 +103,14 @@ npm run test     # Test all packages
 - **Erosion system:** Hydraulic erosion, lake generation, river networks
 - **Climate system:** Temperature, moisture, biomes
 - **Render styles:** Terrain, Plates, Parchment, Satellite, Low-poly, Biome, Contour, Relief, Azgaar
-- **Checkpoint system:** Save/restore generation state
-- **C/S architecture:** Server-side generation + SSE real-time progress
+- **Checkpoint system:** Save/restore generation state (localStorage)
+- **Pure frontend:** No server required, runs entirely in browser
 
 ## Tech stack
 
-- **Frontend:** Pure HTML + CSS + JavaScript (ES6 Modules)
+- **Frontend:** TypeScript + Vite
 - **Rendering:** WebGL2 / Canvas2D
-- **Server:** Node.js (HTTP, SSE)
+- **Styling:** Material Design 3 (CSS Custom Properties)
 - **Build tool:** Turborepo
 - **Package manager:** npm workspaces
 

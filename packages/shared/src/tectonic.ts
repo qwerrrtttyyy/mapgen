@@ -1,7 +1,25 @@
 import { createNoise } from './noise.js';
 
-export function generatePlates(seed, count, width, height, landmass) {
-  const plates = [];
+export interface Plate {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  type: 'continent' | 'ocean';
+  color: number[];
+  area: number;
+  boundary: number;
+  growth: number;
+  elevation: number;
+  moisture: number;
+  temperature: number;
+  name: string;
+  selected: boolean;
+}
+
+export function generatePlates(seed: number, count: number, width: number, height: number, landmass: number): Plate[] {
+  const plates: Plate[] = [];
   const noise = createNoise(seed, 'simplex');
 
   for (let i = 0; i < count; i++) {
@@ -33,7 +51,7 @@ export function generatePlates(seed, count, width, height, landmass) {
   return plates;
 }
 
-export function assignPlates(width, height, plates) {
+export function assignPlates(width: number, height: number, plates: Plate[]): { plateId: Float32Array; plateDist: Float32Array } {
   const size = width * height;
   const plateId = new Float32Array(size);
   const plateDist = new Float32Array(size);
@@ -63,7 +81,7 @@ export function assignPlates(width, height, plates) {
   return { plateId, plateDist };
 }
 
-export function computeBoundaries(width, height, plateId) {
+export function computeBoundaries(width: number, height: number, plateId: Float32Array): Float32Array {
   const boundary = new Float32Array(width * height);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {

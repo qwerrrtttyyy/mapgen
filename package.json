@@ -2,16 +2,14 @@
   "name": "mapgen-monorepo",
   "version": "0.0.1",
   "private": true,
-  "description": "Material Map Generator - Monorepo",
+  "description": "Material Map Generator - Pure Frontend Monorepo",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "start": "turbo run start",
-    "lint": "turbo run lint",
-    "test": "turbo run test"
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
     "turbo": "^2.0.0"

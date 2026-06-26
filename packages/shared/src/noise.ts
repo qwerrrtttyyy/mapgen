@@ -1,11 +1,11 @@
 const PERM = new Uint8Array(512);
-const GRAD3 = [
+const GRAD3: number[][] = [
   [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
   [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
   [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
 ];
 
-function seedPermutation(seed) {
+function seedPermutation(seed: number): void {
   const p = new Uint8Array(256);
   for (let i = 0; i < 256; i++) p[i] = i;
   let s = seed >>> 0;
@@ -17,20 +17,27 @@ function seedPermutation(seed) {
   for (let i = 0; i < 512; i++) PERM[i] = p[i & 255];
 }
 
-function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-function lerp(a, b, t) { return a + t * (b - a); }
-function grad(hash, x, y) {
+function fade(t: number): number { return t * t * t * (t * (t * 6 - 15) + 10); }
+function lerp(a: number, b: number, t: number): number { return a + t * (b - a); }
+function grad(hash: number, x: number, y: number): number {
   const g = GRAD3[hash & 11];
   return g[0] * x + g[1] * y;
 }
 
+export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
+export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
+
 export class NoiseEngine {
-  constructor(seed) {
+  seed: number;
+  sample: (x: number, y: number) => number;
+
+  constructor(seed: number) {
     this.seed = seed;
+    this.sample = this.perlin2.bind(this);
     seedPermutation(seed);
   }
 
-  perlin2(x, y) {
+  perlin2(x: number, y: number): number {
     const X = Math.floor(x) & 255;
     const Y = Math.floor(y) & 255;
     x -= Math.floor(x);
@@ -46,7 +53,7 @@ export class NoiseEngine {
     );
   }
 
-  simplex2(x, y) {
+  simplex2(x: number, y: number): number {
     const F2 = 0.5 * (Math.sqrt(3) - 1);
     const G2 = (3 - Math.sqrt(3)) / 6;
     let n0 = 0, n1 = 0, n2 = 0;
@@ -87,7 +94,7 @@ export class NoiseEngine {
     return 70 * (n0 + n1 + n2);
   }
 
-  value2(x, y) {
+  value2(x: number, y: number): number {
     const X = Math.floor(x) & 255;
     const Y = Math.floor(y) & 255;
     x -= Math.floor(x);
@@ -103,7 +110,7 @@ export class NoiseEngine {
     ) * 2 - 1;
   }
 
-  worley2(x, y) {
+  worley2(x: number, y: number): number {
     const X = Math.floor(x);
     const Y = Math.floor(y);
     let minDist = 9999;
@@ -122,13 +129,13 @@ export class NoiseEngine {
     return 1 - Math.min(minDist * 2, 1);
   }
 
-  _hash(x, y) {
+  _hash(x: number, y: number): number {
     let h = this.seed + x * 374761393 + y * 668265263;
     h = (h ^ (h >> 13)) * 1274126177;
     return Math.abs(h);
   }
 
-  fbm(x, y, octaves, lacunarity, persistence, type) {
+  fbm(x: number, y: number, octaves: number, lacunarity: number, persistence: number, type: FbmType = 'standard'): number {
     let total = 0;
     let amplitude = 1;
     let frequency = 1;
@@ -149,13 +156,9 @@ export class NoiseEngine {
     }
     return total / maxValue;
   }
-
-  sample(x, y) {
-    return this.perlin2(x, y);
-  }
 }
 
-export function createNoise(seed, type) {
+export function createNoise(seed: number, type: NoiseType = 'perlin'): NoiseEngine {
   const engine = new NoiseEngine(seed);
   if (type === 'simplex') engine.sample = engine.simplex2.bind(engine);
   else if (type === 'value') engine.sample = engine.value2.bind(engine);
@@ -164,7 +167,7 @@ export function createNoise(seed, type) {
   return engine;
 }
 
-export function hashSeed(str) {
+export function hashSeed(str: string): number {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
     h = (h << 5) - h + str.charCodeAt(i);
