@@ -1,1 +1,0 @@
-(function(){var s=document.getElementById('splash-screen');if(s){setTimeout(function(){if(!s.classList.contains('dismissed')){s.classList.add('dismissed');document.body.style.overflow='';}},3000);}})();

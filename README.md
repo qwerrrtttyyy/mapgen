@@ -1,133 +1,114 @@
 # Material Map Generator
 
-基于程序化噪声与板块构造模拟的地图生成工具。**v0.4.1 全面采用 C/S 架构**，支持一键启动与服务端生成。
+基于程序化噪声和构造模拟的地图生成工具，使用 WebGL 渲染，Material Design 3 UI。
 
-[GitHub](https://github.com/qwerrrtttyyy/mapgen) | [Releases](https://github.com/qwerrrtttyyy/mapgen/releases)
+## 架构
 
----
+**Monorepo 结构**（Turborepo + npm workspaces）
 
-## 快速开始（v0.4.1）
+```
+mapgen/
+├── packages/
+│   ├── shared/          # 共享引擎模块（TypeScript）
+│   │   ├── src/
+│   │   │   ├── noise.ts       # 噪声生成（Perlin, Simplex, Value, Worley）
+│   │   │   ├── tectonic.ts    # 板块构造
+│   │   │   ├── erosion.ts     # 侵蚀模拟
+│   │   │   ├── rivers.ts      # 河流生成
+│   │   │   ├── regions.ts     # 区域分析
+│   │   │   └── index.ts       # 主入口
+│   │   ├── dist/              # 编译输出
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── web/             # 前端应用（TypeScript + Vite）
+│       ├── public/
+│       │   ├── index.html
+│       │   ├── style.css
+│       │   ├── shaders/
+│       │   │   ├── fs-map.frag
+│       │   │   └── vs-quad.vert
+│       │   └── favicon.svg
+│       ├── src/
+│       │   ├── app.ts           # 主应用逻辑
+│       │   ├── checkpoint.ts    # 检查点管理
+│       │   └── renderer/
+│       │       ├── webgl.ts     # WebGL 渲染器
+│       │       └── canvas2d.ts  # Canvas2D 渲染器
+│       ├── dist/                # 构建输出
+│       ├── package.json
+│       ├── tsconfig.json
+│       └── vite.config.ts
+├── package.json         # 根配置
+├── turbo.json           # Turborepo 配置
+└── README.md
+```
+
+## 快速开始
 
 ```bash
-cd v0/0.4.x/mapgen_v0.4.1
-node server.js
-# 浏览器打开 http://127.0.0.1:8765
+# 安装依赖
+npm install
+
+# 开发模式（启动所有包）
+npm run dev
+
+# 构建所有包
+npm run build
+
+# 仅构建核心库
+npm run build --workspace=@mapgen/core
+
+# 仅构建前端
+npm run build --workspace=@mapgen/web
 ```
 
-或一键脚本：
+开发服务器运行在 `http://127.0.0.1:3000`
 
-```bash
-bash v0/0.4.x/mapgen_v0.4.1/bin/run.sh
-```
+## 包说明
 
-或 npm：
+### @mapgen/core
 
-```bash
-cd v0/0.4.x/mapgen_v0.4.1
-npm run setup   # 依赖检查与修复
-npm start       # 启动服务器
-```
+核心引擎库，包含所有地图生成算法：
 
-### 环境变量
+- **噪声生成**: Perlin, Simplex, Value, Worley
+- **FBM 变体**: 标准, 山脊, 膨胀, 扭曲
+- **构造模拟**: 板块生成, 边界计算
+- **侵蚀系统**: 水力侵蚀, 湖泊生成
+- **河流生成**: 河流网络, 宽度/深度计算
+- **区域分析**: 生物群落, 气候计算
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `MAPGEN_PORT` | `8765` | 服务器端口 |
-| `MAPGEN_HOST` | `127.0.0.1` | 绑定地址 |
-| `MAPGEN_CONFIG` | `./mapgen.json` | 配置文件路径 |
+### @mapgen/web
 
----
+前端应用，使用 TypeScript + Vite 构建：
 
-## v0.4.1 特性（最新）
+- **WebGL2 渲染**: 高性能 GPU 加速渲染
+- **Canvas2D 回退**: 兼容性支持
+- **Material Design 3**: 现代化 UI 设计
+- **检查点系统**: 保存/恢复生成状态
 
-### 一键脚本
-- **`bin/run.sh`** — 自动检测 Node.js ≥ 16，通过 nvm/fnm 自动安装，端口回退，自动打开浏览器
-- **`bin/setup.sh`** — 依赖修正：检查 Node.js/npm/项目结构/磁盘空间/端口/脚本权限
+## 功能特性
 
-### C/S 架构
-- **服务端生成**: `POST /api/generate` — 服务端执行地图生成算法，复用前端 engine 模块
-- **SSE 实时进度**: `GET /api/events` — 服务端推送生成进度事件
-- **配置持久化**: `mapgen.json` — 支持运行时读写配置
-- **健康监控**: `GET /api/health` — 运行时间、内存、检查点数量
-- **端口回退**: 默认端口被占用时自动 +1 重试
-- **架构切换**: UI 可随时切换"服务端生成" / "浏览器本地生成"
+- ✅ 多种噪声类型和 FBM 变体
+- ✅ 板块构造模拟
+- ✅ 水力侵蚀和河流生成
+- ✅ 气候系统和生物群落
+- ✅ 多种渲染风格（地形、板块、羊皮纸、卫星等）
+- ✅ 检查点系统
+- ✅ 响应式设计
+- ✅ TypeScript 类型安全
 
-### 检查点系统
-- 保存/恢复/删除中间生成状态
-- 支持 tectonic / elevation / erosion / climate / rivers / full 各阶段
-- 数据持久化至服务端 `.checkpoints/` 目录
+## 环境变量
 
-### 渲染
-- WebGL2 GPU 渲染（Canvas2D 自动降级）
-- 10 种渲染风格：地形 / 板块 / 羊皮纸 / 卫星 / 低多边形 / 地形详情 / 生物群落 / 等高线 / 浮雕 / Azgaar
+- `MAPGEN_PORT` - 开发服务器端口（默认 3000）
 
-### 零依赖
-- 纯 Node.js 内置模块：`http`, `fs`, `path`, `zlib`, `crypto`
-- 无需 npm install
+## 技术栈
 
----
+- **前端**: TypeScript + Vite
+- **渲染**: WebGL2 / Canvas2D
+- **样式**: Material Design 3 (CSS Custom Properties)
+- **构建工具**: Turborepo
+- **包管理**: npm workspaces
 
-## 目录结构
-
-```
-v0/0.4.x/mapgen_v0.4.1/
-├── server.js            # HTTP 服务器（C/S 架构）
-├── mapgen.json          # 服务器配置
-├── package.json         # npm scripts
-├── bin/
-│   ├── run.sh           # 一键启动脚本
-│   ├── setup.sh         # 依赖修正脚本
-│   ├── start.sh         # 快捷启动
-│   └── start.ps1        # Windows 启动
-├── public/
-│   ├── index.html       # UI 入口
-│   ├── style.css        # MD3 样式
-│   ├── js/
-│   │   ├── app.js       # 主应用逻辑（C/S 模式切换）
-│   │   ├── checkpoint.js
-│   │   └── engine/      # 地图生成引擎
-│   │       ├── noise.js, tectonic.js, erosion.js
-│   │       ├── rivers.js, regions.js, index.js
-│   │   └── renderer/
-│   │       ├── webgl.js  # WebGL2 渲染器
-│   │       └── canvas2d.js
-│   └── shaders/
-│       ├── fs-map.frag  # 10 种渲染风格
-│       └── vs-quad.vert
-└── .checkpoints/        # 检查点数据目录
-```
-
----
-
-## 历史版本
-
-| 版本 | 架构 | 依赖 | 启动 |
-|------|------|------|------|
-| v0.4.1 | C/S (Node.js + browser) | 零依赖 | `node server.js` |
-| v0.4.0 | React + Vite + TypeScript | npm | `npm run dev` |
-| v0.3.14 | Node.js + multi-file | 零依赖 | `node server.js` |
-| v0.3.12 | 单文件 Node.js | 零依赖 | `node *.js` |
-| v0.0.x–v0.3.10 | 单文件 HTML | 无 | 浏览器打开 |
-
----
-
-## 渲染风格
-
-| 索引 | 风格 | 描述 |
-|------|------|------|
-| 0 | 地形 | 蓝白渐变高程图 |
-| 1 | 板块 | 大陆/海洋分色 |
-| 2 | 羊皮纸 | 复古手绘风格 |
-| 3 | 卫星 | 卫星照片风格 |
-| 4 | 低多边形 | 简约几何 |
-| 5 | 地形详情 | 细节丰富的地形 |
-| 6 | 生物群落 | 按生态类型着色 |
-| 7 | 等高线 | contour lines |
-| 8 | 浮雕 | 浮雕阴影效果 |
-| 9 | Azgaar | 参考 Azgaar fantasy map |
-
----
-
-## License
+## 许可证
 
 MIT
