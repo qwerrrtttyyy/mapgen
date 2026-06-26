@@ -1,3 +1,5 @@
+import { logger } from './logger.js';
+
 export type EventHandler<T = unknown> = (payload: T) => void;
 
 export class EventBus {
@@ -25,7 +27,7 @@ export class EventBus {
       try {
         handler(payload);
       } catch (err) {
-        console.error(`EventBus error in "${event}":`, err);
+        logger.error(`EventBus error in "${event}":`, err);
       }
     }
   }

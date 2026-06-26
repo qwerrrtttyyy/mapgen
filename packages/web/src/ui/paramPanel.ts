@@ -2,7 +2,9 @@ import { bus } from '../core/eventBus.js';
 import { state, type UIParams, patchParams } from '../core/appState.js';
 import { commitParams, setParam } from '../core/actions.js';
 
-function byId(id: string) { return document.getElementById(id); }
+function byId(id: string): HTMLElement | null {
+  return document.getElementById(id);
+}
 
 function hexToRgb(hex: string): number[] {
   return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -13,12 +15,16 @@ function rgbToHex(r: number, g: number, b: number): string {
   return '#' + h(r) + h(g) + h(b);
 }
 
+// 抽出强类型 setter，调用方无需再做 unknown 断言
+function setTypedParam<K extends keyof UIParams>(key: K, value: UIParams[K]): void {
+  setParam(key, value);
+}
+
 export class ParamPanel {
   private unsub: (() => void)[] = [];
 
   bind(): void {
     this.bindRanges();
-    this.bindNumbers();
     this.bindSelects();
     this.bindCheckboxes();
     this.bindColors();
@@ -62,26 +68,31 @@ export class ParamPanel {
   }
 
   private updateRangeDisplay(el: HTMLInputElement): void {
-    const display = el.parentElement?.querySelector('.value') as HTMLElement | null;
+    const display = el.parentElement?.querySelector('.value');
     if (!display) return;
     display.textContent = el.value;
+    // 复用 CSS 动画：移除 → reflow → 重新添加，浏览器负责清理
+    display.classList.remove('changed');
+    void (display as HTMLElement).offsetWidth;
     display.classList.add('changed');
-    window.setTimeout(() => display.classList.remove('changed'), 150);
+  }
+
+  // 关键：限定到 #drawer 内，避免误绑启动器/检查点面板等外部 input
+  private drawerScope(): ParentNode {
+    return document.getElementById('drawer') ?? document;
   }
 
   private bindRanges(): void {
-    document.querySelectorAll('input[type="range"]').forEach(el => {
-      const input = el as HTMLInputElement;
+    this.drawerScope().querySelectorAll<HTMLInputElement>('input[type="range"]').forEach(input => {
       const handler = () => {
         this.updateRangeDisplay(input);
-        const val = parseFloat(input.value);
         if (input.id === 'pointLightPosX' || input.id === 'pointLightPosY') {
-          const x = parseFloat((byId('pointLightPosX') as HTMLInputElement).value);
-          const y = parseFloat((byId('pointLightPosY') as HTMLInputElement).value);
-          setParam('pointLightPos', [x, y]);
+          const x = parseFloat((byId('pointLightPosX') as HTMLInputElement | null)?.value ?? '0.5');
+          const y = parseFloat((byId('pointLightPosY') as HTMLInputElement | null)?.value ?? '0.5');
+          setTypedParam('pointLightPos', [x, y]);
         } else {
           const key = input.id as keyof UIParams;
-          setParam(key, val as unknown as UIParams[keyof UIParams]);
+          setTypedParam(key, parseFloat(input.value));
         }
         bus.emit('render.request');
       };
@@ -90,27 +101,13 @@ export class ParamPanel {
     });
   }
 
-  private bindNumbers(): void {
-    document.querySelectorAll('input[type="number"]').forEach(el => {
-      const input = el as HTMLInputElement;
-      const handler = () => {
-        const key = input.id as keyof UIParams;
-        setParam(key, parseFloat(input.value) as unknown as UIParams[keyof UIParams]);
-        bus.emit('render.request');
-      };
-      input.addEventListener('input', handler);
-      this.unsub.push(() => input.removeEventListener('input', handler));
-    });
-  }
-
   private bindSelects(): void {
-    document.querySelectorAll('select').forEach(el => {
-      const select = el as HTMLSelectElement;
+    this.drawerScope().querySelectorAll<HTMLSelectElement>('select').forEach(select => {
       const handler = () => {
         const key = select.id as keyof UIParams;
         const num = Number(select.value);
         const val = Number.isNaN(num) ? select.value : num;
-        setParam(key, val as unknown as UIParams[keyof UIParams]);
+        setTypedParam(key, val);
         commitParams();
         bus.emit('generate.request');
       };
@@ -120,11 +117,10 @@ export class ParamPanel {
   }
 
   private bindCheckboxes(): void {
-    document.querySelectorAll('input[type="checkbox"]').forEach(el => {
-      const input = el as HTMLInputElement;
+    this.drawerScope().querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(input => {
       const handler = () => {
         const key = input.id as keyof UIParams;
-        setParam(key, input.checked as unknown as UIParams[keyof UIParams]);
+        setTypedParam(key, input.checked);
         bus.emit('render.request');
       };
       input.addEventListener('change', handler);
@@ -133,11 +129,10 @@ export class ParamPanel {
   }
 
   private bindColors(): void {
-    document.querySelectorAll('input[type="color"]').forEach(el => {
-      const input = el as HTMLInputElement;
+    this.drawerScope().querySelectorAll<HTMLInputElement>('input[type="color"]').forEach(input => {
       const handler = () => {
         const key = input.id as keyof UIParams;
-        setParam(key, hexToRgb(input.value) as unknown as UIParams[keyof UIParams]);
+        setTypedParam(key, hexToRgb(input.value));
         bus.emit('render.request');
       };
       input.addEventListener('input', handler);
@@ -148,29 +143,23 @@ export class ParamPanel {
   private bindSeed(): void {
     const el = byId('seedStr') as HTMLInputElement | null;
     if (!el) return;
-    const handler = () => setParam('seedStr', el.value);
+    const handler = () => setTypedParam('seedStr', el.value);
     el.addEventListener('input', handler);
     this.unsub.push(() => el.removeEventListener('input', handler));
   }
 
   private bindCollapsibleCards(): void {
-    document.querySelectorAll('.md-card-title').forEach(el => {
-      const title = el as HTMLElement;
-      const handler = () => {
-        title.classList.toggle('collapsed');
-      };
+    this.drawerScope().querySelectorAll<HTMLElement>('.md-card-title').forEach(title => {
+      const handler = () => title.classList.toggle('collapsed');
       title.addEventListener('click', handler);
       this.unsub.push(() => title.removeEventListener('click', handler));
     });
   }
 
   private bindLaserMode(): void {
-    const radios = document.querySelectorAll<HTMLInputElement>('input[name="laserMode"]');
-    radios.forEach(input => {
+    this.drawerScope().querySelectorAll<HTMLInputElement>('input[name="laserMode"]').forEach(input => {
       const handler = () => {
-        if (input.checked) {
-          bus.emit('laser.mode.set', input.value);
-        }
+        if (input.checked) bus.emit('laser.mode.set', input.value);
       };
       input.addEventListener('change', handler);
       this.unsub.push(() => input.removeEventListener('change', handler));

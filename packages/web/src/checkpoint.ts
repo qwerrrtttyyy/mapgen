@@ -1,4 +1,6 @@
 import type { MapData, Plate, River } from '@mapgen/core';
+import type { UIParams } from './core/appState.js';
+import { logger } from './core/logger.js';
 
 const STORAGE_KEY = 'mapgen-checkpoints';
 const LEGACY_STORAGE_KEY = 'mapgen-checkpoints-legacy';
@@ -152,7 +154,7 @@ async function readCheckpoints(): Promise<CheckpointData[]> {
       };
     });
   } catch (e) {
-    console.warn('IndexedDB read failed, falling back to localStorage:', e);
+    logger.warn('IndexedDB read failed, falling back to localStorage:', e);
     const stored = localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as CheckpointData[];
@@ -176,7 +178,7 @@ async function writeCheckpoints(checkpoints: CheckpointData[]): Promise<void> {
       };
     });
   } catch (e) {
-    console.warn('IndexedDB write failed, falling back to localStorage:', e);
+    logger.warn('IndexedDB write failed, falling back to localStorage:', e);
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(checkpoints));
   }
 }
@@ -191,7 +193,7 @@ export class CheckpointManager {
       this._loaded = true;
       return this.checkpoints;
     } catch (e) {
-      console.warn('Checkpoint load failed:', e);
+      logger.warn('Checkpoint load failed:', e);
       this.checkpoints = [];
       return [];
     }
@@ -201,7 +203,7 @@ export class CheckpointManager {
     name: string,
     phase: string,
     mapData: MapData,
-    params: Record<string, unknown>
+    params: UIParams
   ): Promise<CheckpointData | null> {
     const ckpt: CheckpointData = {
       version: CHECKPOINT_VERSION,
@@ -213,7 +215,7 @@ export class CheckpointManager {
       mapHeight: mapData.height,
       thumbnail: generateThumbnail(mapData),
       data: {
-        params,
+        params: { ...params } as unknown as Record<string, unknown>,
         packed: {
           plateTex: packFloat(mapData.plateTex, mapData.width, mapData.height)!,
           elevTex: packFloat(mapData.elevTex, mapData.width, mapData.height)!,
@@ -239,7 +241,7 @@ export class CheckpointManager {
       return ckpt;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.warn('Checkpoint save failed:', msg, e);
+      logger.warn('Checkpoint save failed:', msg, e);
       return null;
     }
   }
@@ -248,7 +250,7 @@ export class CheckpointManager {
     try {
       return this.checkpoints[id] || null;
     } catch (e) {
-      console.warn('Checkpoint restore failed:', e);
+      logger.warn('Checkpoint restore failed:', e);
       return null;
     }
   }
@@ -258,7 +260,7 @@ export class CheckpointManager {
       this.checkpoints.splice(id, 1);
       await writeCheckpoints(this.checkpoints);
     } catch (e) {
-      console.warn('Checkpoint delete failed:', e);
+      logger.warn('Checkpoint delete failed:', e);
     }
   }
 
@@ -288,7 +290,7 @@ export class CheckpointManager {
         seed: 0,
       };
     } catch (e) {
-      console.warn('restoreMapData failed:', e);
+      logger.warn('restoreMapData failed:', e);
       return null;
     }
   }

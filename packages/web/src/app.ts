@@ -4,6 +4,7 @@ import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import type { RenderParams } from './renderer/renderParams.js';
 import { CheckpointManager } from './checkpoint.js';
 import { Launcher } from './launcher/launcher.js';
+import { logger } from './core/logger.js';
 import { state, patchParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
 import { generate as generateMapAction, setParam, clearSelection } from './core/actions.js';
@@ -57,9 +58,9 @@ let mapInteraction: MapInteraction | null = null;
 
 function buildRenderParams(): RenderParams {
   const rp: RenderParams = {};
-  const params = state.params as unknown as Record<string, number | boolean | number[]>;
   for (const [jsKey, uname] of Object.entries(RENDER_PARAM_MAP)) {
-    const val = params[jsKey];
+    const key = jsKey as keyof UIParams;
+    const val = state.params[key];
     if (typeof val === 'number' || typeof val === 'boolean' || Array.isArray(val)) {
       (rp as Record<string, number | boolean | number[]>)[uname] = val;
     }
@@ -131,10 +132,10 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
     renderer?.uploadMapData(mapData);
     mapInteraction?.setMapData(mapData);
     render();
+    // 触发重新入场动画：用 reflow 重新启动 CSS keyframe
     canvas.classList.remove('map-fade-in');
     void canvas.offsetWidth;
     canvas.classList.add('map-fade-in');
-    window.setTimeout(() => canvas.classList.remove('map-fade-in'), 600);
     checkpointMgr && bus.emit('checkpoint.updated');
   });
   bus.on('selection.changed', ({ plates }: { plates: number[]; regions: number[] }) => {
@@ -147,8 +148,8 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
     scheduleRender();
   });
   bus.on('regenerate.phase', (phase: string) => {
-    // TODO: true phase-aware regeneration; for now fall back to full regenerate
-    console.log('Requested phase regeneration:', phase);
+    // 真正的 phase 局部重算尚未实现；当前退化为完整重算
+    logger.debug('Phase regeneration requested:', phase);
     generateMapAction();
   });
   bus.on('selection.clear', () => clearSelection());
@@ -172,7 +173,7 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
     if (!checkpointMgr || !state.mapData) return;
     const name = prompt('输入检查点名称:', '检查点 ' + new Date().toLocaleTimeString('zh-CN'));
     if (!name) return;
-    await checkpointMgr.save(name, 'full', state.mapData, state.params as unknown as Record<string, unknown>);
+    await checkpointMgr.save(name, 'full', state.mapData, state.params);
     bus.emit('checkpoint.updated');
   });
   bus.on('checkpoint.restore.request', async (id: number) => {
@@ -212,7 +213,7 @@ async function initRenderer(canvas: HTMLCanvasElement, launcher?: Launcher | nul
     await r.initShaders(await res.text());
     renderer = r;
   } catch (e) {
-    console.warn('WebGL2 unavailable, using Canvas2D:', (e as Error).message);
+    logger.warn('WebGL2 unavailable, using Canvas2D:', (e as Error).message);
     renderer = new Canvas2DRenderer(canvas);
   }
 }
@@ -221,7 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const app = document.getElementById('app');
   const canvas = document.getElementById('glCanvas') as HTMLCanvasElement | null;
   if (!canvas || !app) {
-    console.error('#app or #glCanvas not found');
+    logger.error('#app or #glCanvas not found');
     return;
   }
 
