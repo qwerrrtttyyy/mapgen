@@ -381,6 +381,49 @@ function bindUI(): void {
   byId('btn-generate')?.addEventListener('click', generate);
   byId('btn-export')?.addEventListener('click', exportPNG);
   byId('btn-save-checkpoint')?.addEventListener('click', saveCheckpoint);
+  
+  // 移动端菜单切换
+  const menuToggle = byId('menu-toggle');
+  const drawer = byId('drawer');
+  const backdrop = byId('drawer-backdrop');
+  
+  function toggleDrawer(open?: boolean) {
+    if (!drawer || !backdrop) return;
+    const shouldOpen = open !== undefined ? open : !drawer.classList.contains('open');
+    drawer.classList.toggle('open', shouldOpen);
+    backdrop.classList.toggle('open', shouldOpen);
+  }
+  
+  menuToggle?.addEventListener('click', () => toggleDrawer());
+  backdrop?.addEventListener('click', () => toggleDrawer(false));
+  
+  // 触摸滑动支持
+  let touchStartX = 0;
+  let touchStartY = 0;
+  
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  
+  document.addEventListener('touchend', (e) => {
+    if (!drawer) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    // 水平滑动大于垂直滑动，且距离足够
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+      if (diffX > 0 && touchStartX < 50) {
+        // 从左边缘向右滑动 - 打开
+        toggleDrawer(true);
+      } else if (diffX < 0 && drawer.classList.contains('open')) {
+        // 向左滑动 - 关闭
+        toggleDrawer(false);
+      }
+    }
+  }, { passive: true });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
