@@ -19,3 +19,16 @@
 
 ### 下一步
 - 进入阶段 4：算法优化（4.1 噪声缓存 NoiseCache）。
+
+### Worker 健壮性修复
+- `MapGeneratorClient` 新增 `error` / `messageerror` 事件监听，Worker 加载失败或消息反序列化失败时 reject 所有挂起的 generate Promise，避免永久挂起。
+- 新增单元测试 5 个，覆盖 error/messageerror/complete/progress/destroy。
+
+### 阶段 4.1 完成：噪声缓存 NoiseCache
+- 新增 `packages/shared/src/noiseCache.ts`，基于 LRUCache 以 `(seed, noiseType)` 为 key 复用 NoiseEngine。
+- `generateMap` 接受可选 `NoiseCache`，内部 `generatePlates`、`generateElevation`、`generateLakes` 均通过 cache 获取噪声引擎。
+- `mapWorker.ts` 维护模块级 `NoiseCache` 实例，跨多次生成复用，相同种子重复生成省去排列表重建。
+- 新增单元测试 6 个，覆盖复用、淘汰、一致性、clear。
+
+### 下一步
+- 进入阶段 4.2：侵蚀向量化。

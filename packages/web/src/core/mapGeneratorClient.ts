@@ -25,6 +25,20 @@ export class MapGeneratorClient {
         p.reject(new Error(msg.message));
       }
     });
+    // Worker 加载失败或未捕获异常时，拒绝所有挂起的请求
+    this.worker.addEventListener('error', (e: ErrorEvent) => {
+      const err = new Error(e.message || 'Worker error');
+      this.rejectAll(err);
+    });
+    // Worker 收到无法反序列化的消息时触发
+    this.worker.addEventListener('messageerror', () => {
+      this.rejectAll(new Error('Worker message deserialization failed'));
+    });
+  }
+
+  private rejectAll(err: Error): void {
+    for (const [, p] of this.pending) p.reject(err);
+    this.pending.clear();
   }
 
   generate(params: MapParams, onProgress?: (p: number, phase: string) => void): Promise<MapData> {

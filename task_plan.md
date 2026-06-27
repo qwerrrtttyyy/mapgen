@@ -27,7 +27,7 @@
 - [x] 3.3 纹理去重上传
 
 ### 阶段 4：算法优化
-- [ ] 4.1 噪声缓存 NoiseCache
+- [x] 4.1 噪声缓存 NoiseCache
 - [ ] 4.2 侵蚀向量化
 - [ ] 4.3 河流优先级队列
 
@@ -64,4 +64,5 @@
 ## 错误记录
 | 错误 | 尝试 | 解决方案 |
 |---|---|---|
+| Worker error 事件未监听 | 1 | 在 MapGeneratorClient 中添加 error/messageerror 监听，rejectAll 所有挂起请求 |
 | 无 | - | - |

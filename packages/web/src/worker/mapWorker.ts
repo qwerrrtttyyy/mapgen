@@ -1,4 +1,4 @@
-import { generateMap } from '@mapgen/core';
+import { generateMap, NoiseCache } from '@mapgen/core';
 import type { WorkerRequest, WorkerResponse } from './messages.js';
 
 interface WorkerCtx {
@@ -9,6 +9,8 @@ interface WorkerCtx {
 const ctx = self as unknown as WorkerCtx;
 
 let currentId: number | null = null;
+// 跨多次生成复用噪声引擎，相同种子重复生成时省去排列表重建
+const noiseCache = new NoiseCache();
 
 ctx.addEventListener('message', (e: { data: WorkerRequest }) => {
   const req = e.data;
@@ -18,7 +20,7 @@ ctx.addEventListener('message', (e: { data: WorkerRequest }) => {
       const { mapData } = generateMap(req.params, (progress, phaseName) => {
         if (currentId !== req.id) return;
         ctx.postMessage({ type: 'progress', id: req.id, progress, phaseName } as WorkerResponse);
-      });
+      }, noiseCache);
       if (currentId !== req.id) return;
       const transferable = [
         mapData.plateTex.buffer, mapData.elevTex.buffer, mapData.moistTex.buffer,

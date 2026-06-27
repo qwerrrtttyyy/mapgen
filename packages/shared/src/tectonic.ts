@@ -1,4 +1,5 @@
 import { createNoise } from './noise.js';
+import type { NoiseCache } from './noiseCache.js';
 
 export interface Plate {
   id: number;
@@ -18,9 +19,9 @@ export interface Plate {
   selected: boolean;
 }
 
-export function generatePlates(seed: number, count: number, width: number, height: number, landmass: number): Plate[] {
+export function generatePlates(seed: number, count: number, width: number, height: number, landmass: number, noiseCache?: NoiseCache): Plate[] {
   const plates: Plate[] = [];
-  const noise = createNoise(seed, 'simplex');
+  const noise = noiseCache ? noiseCache.get(seed, 'simplex') : createNoise(seed, 'simplex');
 
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2 + noise.perlin2(i * 0.5, 0) * 0.5;

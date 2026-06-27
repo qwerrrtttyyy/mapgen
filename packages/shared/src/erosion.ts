@@ -1,4 +1,5 @@
 import { createNoise, type NoiseType, type FbmType } from './noise.js';
+import type { NoiseCache } from './noiseCache.js';
 import type { Plate } from './tectonic.js';
 
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
@@ -6,15 +7,15 @@ const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1,
 export function generateElevation(
   width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[], boundary: Float32Array,
   noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
-  mountainFold: number, coastDetail: number
+  mountainFold: number, coastDetail: number, noiseCache?: NoiseCache
 ): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
   const size = width * height;
   const elevation = new Float32Array(size);
   const slope = new Float32Array(size);
   const ridge = new Float32Array(size);
   const ridgeMask = new Float32Array(size);
-  const noise = createNoise(seed, noiseType);
-  const detailNoise = createNoise(seed + 1, 'simplex');
+  const noise = noiseCache ? noiseCache.get(seed, noiseType) : createNoise(seed, noiseType);
+  const detailNoise = noiseCache ? noiseCache.get(seed + 1, 'simplex') : createNoise(seed + 1, 'simplex');
   const plateTypes = new Uint8Array(plates.length);
   const plateElevs = new Float32Array(plates.length);
   for (let i = 0; i < plates.length; i++) {
@@ -118,9 +119,9 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
   return elev;
 }
 
-export function generateLakes(width: number, height: number, elevation: Float32Array, seaLevel: number, lakeDensity: number, seed: number): Float32Array {
+export function generateLakes(width: number, height: number, elevation: Float32Array, seaLevel: number, lakeDensity: number, seed: number, noiseCache?: NoiseCache): Float32Array {
   const lakes = new Float32Array(width * height);
-  const noise = createNoise(seed + 7, 'simplex');
+  const noise = noiseCache ? noiseCache.get(seed + 7, 'simplex') : createNoise(seed + 7, 'simplex');
   for (let y = 2; y < height - 2; y++) {
     for (let x = 2; x < width - 2; x++) {
       const idx = y * width + x;

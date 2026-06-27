@@ -1,10 +1,12 @@
 export { hashSeed, createNoise, NoiseEngine, type NoiseType, type FbmType } from './noise.js';
+export { NoiseCache } from './noiseCache.js';
 export { generatePlates, assignPlates, computeBoundaries, type Plate } from './tectonic.js';
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
 export { analyzeRegions, computeClimate, type Region, type ClimateData } from './regions.js';
 
 import { hashSeed } from './noise.js';
+import { NoiseCache } from './noiseCache.js';
 import { generatePlates, assignPlates, computeBoundaries, type Plate } from './tectonic.js';
 import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 import { generateRivers, type River } from './rivers.js';
@@ -50,11 +52,12 @@ export interface MapData {
 
 export type ProgressCallback = (progress: number, phaseName: string) => void;
 
-export function generateMap(params: MapParams, onProgress?: ProgressCallback): { mapData: MapData; checkpoints: Record<string, unknown> } {
+export function generateMap(params: MapParams, onProgress?: ProgressCallback, noiseCache?: NoiseCache): { mapData: MapData; checkpoints: Record<string, unknown> } {
   const seed = hashSeed(params.seedStr);
   const aspect = ASPECT_MAP[params.mapAspect] || 1;
   const width = params.mapSize;
   const height = Math.round(params.mapSize / aspect);
+  const cache = noiseCache ?? new NoiseCache();
 
   const phases = [
     { name: 'tectonic', weight: 10 },
@@ -77,7 +80,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   }
 
   advance('tectonic');
-  const plates = generatePlates(seed, params.plateCount, width, height, params.landmass);
+  const plates = generatePlates(seed, params.plateCount, width, height, params.landmass, cache);
   const { plateId, plateDist } = assignPlates(width, height, plates);
   const boundary = computeBoundaries(width, height, plateId);
   const checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
@@ -87,7 +90,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     width, height, seed, plateId, plates, boundary,
     params.noiseType, params.fbmType, params.octaves,
     params.lacunarity, params.persistence, params.seaLevel,
-    params.mountainFold, params.coastDetail
+    params.mountainFold, params.coastDetail, cache
   );
   const checkpointElevation = { elevation: new Float32Array(elevation), slope: new Float32Array(slope), ridge: new Float32Array(ridge), ridgeMask: new Float32Array(ridgeMask) };
 
@@ -104,7 +107,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const checkpointClimate = { temperature: new Float32Array(temperature), tempZone: new Float32Array(tempZone), moisture: new Float32Array(moisture), rainfall: new Float32Array(rainfall) };
 
   advance('lakes');
-  const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+  const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed, cache);
 
   advance('rivers');
   const riverCount = Math.floor(width * height * 0.0005);
