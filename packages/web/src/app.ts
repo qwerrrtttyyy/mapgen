@@ -204,7 +204,7 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
 }
 
 // 内联着色器源码，消除运行时 fetch 请求，加快首屏渲染
-import fragShaderSrc from '../public/shaders/fs-map.frag?raw';
+import fragShaderSrc from './shaders/fs-map.frag?raw';
 
 async function initRenderer(canvas: HTMLCanvasElement, launcher?: Launcher | null): Promise<void> {
   try {
