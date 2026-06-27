@@ -1,6 +1,6 @@
-import { generateMap } from '@mapgen/core';
 import { bus } from './eventBus.js';
 import { patchParams, state, toMapParams, type UIParams } from './appState.js';
+import { MapGeneratorClient } from './mapGeneratorClient.js';
 
 const phaseLabels: Record<string, string> = {
   tectonic: '板块构造',
@@ -45,26 +45,24 @@ export function setHover(index: number): void {
   bus.emit('map.hover', index);
 }
 
-export function generate(): void {
+const generator = new MapGeneratorClient(new URL('../worker/mapWorker.ts', import.meta.url));
+
+export async function generate(): Promise<void> {
   if (state.isGenerating) return;
   state.isGenerating = true;
   state.error = null;
   bus.emit('generating.started');
 
-  // Allow UI to render before heavy work
-  setTimeout(() => {
-    try {
-      const result = generateMap(toMapParams(state.params), (progress, phaseName) => {
-        setProgress(progress, phaseName);
-      });
-      state.mapData = result.mapData;
-      state.checkpoints = result.checkpoints;
-      bus.emit('generating.completed', result);
-    } catch (err) {
-      state.error = (err as Error).message;
-      bus.emit('generating.failed', state.error);
-    } finally {
-      state.isGenerating = false;
-    }
-  }, 16);
+  try {
+    const mapData = await generator.generate(toMapParams(state.params), (progress, phaseName) => {
+      setProgress(progress, phaseName);
+    });
+    state.mapData = mapData;
+    bus.emit('generating.completed', { mapData });
+  } catch (err) {
+    state.error = (err as Error).message;
+    bus.emit('generating.failed', state.error);
+  } finally {
+    state.isGenerating = false;
+  }
 }

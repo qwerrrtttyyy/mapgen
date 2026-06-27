@@ -2,6 +2,7 @@ import type { MapData } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import type { RenderParams } from './renderer/renderParams.js';
+import { RenderLoop } from './render/renderLoop.js';
 import { CheckpointManager } from './checkpoint.js';
 import { Launcher } from './launcher/launcher.js';
 import { logger } from './core/logger.js';
@@ -54,7 +55,7 @@ const RENDER_PARAM_MAP: Record<string, string> = {
 
 let renderer: WebGLRenderer | Canvas2DRenderer | null = null;
 let checkpointMgr: CheckpointManager | null = null;
-let renderTimeout: number | null = null;
+let renderLoop: RenderLoop | null = null;
 let mapInteraction: MapInteraction | null = null;
 
 function buildRenderParams(): RenderParams {
@@ -79,11 +80,7 @@ function render(): void {
 }
 
 function scheduleRender(): void {
-  if (renderTimeout !== null) return;
-  renderTimeout = window.requestAnimationFrame(() => {
-    renderTimeout = null;
-    render();
-  });
+  renderLoop?.requestRender();
 }
 
 function handleResize(): void {

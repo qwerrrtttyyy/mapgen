@@ -12,6 +12,7 @@ export class WebGLRenderer {
   private mapHeight: number = 0;
   private textures: Record<string, WebGLTexture> = {};
   private uniformLoc: Record<string, WebGLUniformLocation> = {};
+  private uniformCache: Record<string, UniformValue> = {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -183,17 +184,36 @@ export class WebGLRenderer {
     }
   }
 
+  private static _uniformValueEqual(a: UniformValue, b: UniformValue): boolean {
+    if (a === b) return true;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      return a.every((v, i) => v === b[i]);
+    }
+    return false;
+  }
+
+  setUniforms(params: RenderParams): void {
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined) continue;
+      const cached = this.uniformCache[key];
+      if (cached !== undefined && WebGLRenderer._uniformValueEqual(cached, value as UniformValue)) continue;
+      this.setUniform(key, value as UniformValue);
+      this.uniformCache[key] = value as UniformValue;
+    }
+  }
+
   render(params: RenderParams): void {
     const gl = this.gl;
     const w = this.canvas.width;
     const h = this.canvas.height;
-    
+
     gl.viewport(0, 0, w, h);
     gl.clearColor(0.05, 0.05, 0.1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    
+
     if (!this.program || !this.vao) return;
-    
+
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vao);
 
@@ -206,12 +226,11 @@ export class WebGLRenderer {
       texUnit++;
     }
 
-    this.setUniform('u_resolution', [w, h]);
-    this.setUniform('u_time', performance.now() * 0.001);
-
-    for (const [key, value] of Object.entries(params)) {
-      this.setUniform(key, value);
-    }
+    this.setUniforms({
+      u_resolution: [w, h],
+      u_time: performance.now() * 0.001,
+    });
+    this.setUniforms(params);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     gl.bindVertexArray(null);

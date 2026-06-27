@@ -2,6 +2,8 @@ export interface RenderParams {
   u_style?: number;
   u_seaLevel?: number;
   u_lightAngle?: number;
+  u_resolution?: number[];
+  u_time?: number;
   u_showBoundaries?: boolean;
   u_boundaryWidth?: number;
   u_boundaryColor?: number[];
