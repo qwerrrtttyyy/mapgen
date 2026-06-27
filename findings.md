@@ -25,6 +25,12 @@
 - 当前无单元测试框架配置，需要新增测试基础设施。
 - `index.html` 中参数表单为硬编码 HTML，维护成本高。
 
+## 优化进展
+- 阶段 3 渲染优化已完成：
+  - `RenderLoop` 统一 `requestAnimationFrame`，避免无效重绘。
+  - `WebGLRenderer.setUniforms()` 批量写入 uniforms 并缓存，跳过未变更值。
+  - `WebGLRenderer.uploadMapData()` 通过 `MapData` 引用去重，切换样式不再重复上传纹理。
+
 ## 设计决策
 - 采用 Web Worker 将生成逻辑移出主线程。
 - 引入统一 RenderLoop 管理重绘，减少无效绘制。

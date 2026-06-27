@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { MapData } from '@mapgen/core';
 import { WebGLRenderer } from '../webgl.js';
 import type { RenderParams } from '../renderParams.js';
 
@@ -11,6 +12,7 @@ const ACTIVE_UNIFORM_NAMES = [
 
 function createMockGL() {
   const uniformCalls: { method: string; args: unknown[] }[] = [];
+  const texImageCalls: unknown[] = [];
   const createdTextures: WebGLTexture[] = [];
   let texCounter = 0;
 
@@ -78,7 +80,9 @@ function createMockGL() {
     }),
     bindTexture: vi.fn(),
     texParameteri: vi.fn(),
-    texImage2D: vi.fn(),
+    texImage2D: vi.fn((...args: unknown[]) => {
+      texImageCalls.push(args);
+    }),
     texSubImage2D: vi.fn(),
     activeTexture: vi.fn(),
     viewport: vi.fn(),
@@ -109,7 +113,7 @@ function createMockGL() {
     }),
   };
 
-  return { gl, uniformCalls, createdTextures };
+  return { gl, uniformCalls, texImageCalls, createdTextures };
 }
 
 function createMockCanvas(gl: ReturnType<typeof createMockGL>['gl']) {
@@ -224,5 +228,75 @@ describe('WebGLRenderer batch uniform updates', () => {
       expect(call.method).toBe('uniform1i');
       expect(call.args[1]).toBe(i);
     });
+  });
+});
+
+function createMapData(width: number, height: number, seed = 1): MapData {
+  const size = width * height * 4;
+  return {
+    width,
+    height,
+    plateTex: new Float32Array(size),
+    elevTex: new Float32Array(size),
+    moistTex: new Float32Array(size),
+    riverTex: new Float32Array(size),
+    tempTex: new Float32Array(size),
+    plates: [],
+    regions: [],
+    rivers: [],
+    seed,
+  } as MapData;
+}
+
+describe('WebGLRenderer texture upload deduplication', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('uploads map textures on first call', async () => {
+    const { gl, texImageCalls } = createMockGL();
+    const renderer = await initRenderer(gl);
+    const data = createMapData(64, 64);
+
+    renderer.uploadMapData(data);
+    expect(texImageCalls.length).toBeGreaterThan(0);
+  });
+
+  it('skips re-uploading when the same MapData is passed again', async () => {
+    const { gl, texImageCalls } = createMockGL();
+    const renderer = await initRenderer(gl);
+    const data = createMapData(64, 64);
+
+    renderer.uploadMapData(data);
+    const afterFirst = texImageCalls.length;
+    expect(afterFirst).toBeGreaterThan(0);
+
+    renderer.uploadMapData(data);
+    expect(texImageCalls.length).toBe(afterFirst);
+  });
+
+  it('re-uploads when MapData dimensions change', async () => {
+    const { gl, texImageCalls } = createMockGL();
+    const renderer = await initRenderer(gl);
+    const data = createMapData(64, 64);
+
+    renderer.uploadMapData(data);
+    const afterFirst = texImageCalls.length;
+
+    renderer.uploadMapData(createMapData(128, 128));
+    expect(texImageCalls.length).toBeGreaterThan(afterFirst);
+  });
+
+  it('re-uploads when a different MapData with same dimensions is passed', async () => {
+    const { gl, texImageCalls } = createMockGL();
+    const renderer = await initRenderer(gl);
+    const first = createMapData(64, 64);
+    const second = createMapData(64, 64);
+
+    renderer.uploadMapData(first);
+    const afterFirst = texImageCalls.length;
+
+    renderer.uploadMapData(second);
+    expect(texImageCalls.length).toBeGreaterThan(afterFirst);
   });
 });

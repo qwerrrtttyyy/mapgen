@@ -13,6 +13,7 @@ export class WebGLRenderer {
   private textures: Record<string, WebGLTexture> = {};
   private uniformLoc: Record<string, WebGLUniformLocation> = {};
   private uniformCache: Record<string, UniformValue> = {};
+  private lastUploadedData: MapData | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -113,6 +114,9 @@ export class WebGLRenderer {
 
   uploadMapData(data: MapData): void {
     const gl = this.gl;
+
+    if (this.lastUploadedData === data) return;
+
     this.mapWidth = data.width;
     this.mapHeight = data.height;
 
@@ -136,6 +140,8 @@ export class WebGLRenderer {
     const selMask = new Uint8Array(256);
     gl.bindTexture(gl.TEXTURE_2D, this.textures.u_selectionMaskTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 256, 1, 0, gl.RED, gl.UNSIGNED_BYTE, selMask);
+
+    this.lastUploadedData = data;
   }
 
   private static _normalizeToUint8(src: Float32Array): Uint8Array {
