@@ -42,3 +42,32 @@
 
 ### 下一步
 - 进入阶段 4.3：河流优先级队列（使用 BinaryHeap）。
+
+### 阶段 4.3 完成：河流优先级队列
+- 用 BinaryHeap（max-heap）替代 `sources.sort()`，加入 idx 作为 tie-breaker 保持稳定排序。
+- 预计算 8 邻居偏移量 `buildNeighborOffsets(width)`，消除内层循环重复分配数组。
+- 新增单元测试 6 个。
+
+### 阶段 5 完成：主题与 UI
+- 新增 `themeManager.ts`，支持 dark/light/aurora 三主题切换，localStorage 持久化。
+- 新增 `theme.css`，用 `:root[data-theme]` 选择器覆盖 CSS 自定义属性，保留原 MD3 主题。
+- `index.html` 添加 CSP meta、viewport-fit=cover、主题切换按钮。
+- 新增测试 8 个。
+
+### 阶段 6 完成：移动端与加载
+- `style.css` 增强 @media：44px 触控目标、safe-area-inset、滑块加大、触控设备 hover 优化。
+- `app.ts` shader 从运行时 fetch 改为 `?raw` 内联导入，消除首屏 HTTP 请求。
+
+### 阶段 7 完成：启动器扩展
+- `presets.ts` 新增 9 个预设。
+- `launcher.ts` 新增"最近种子"功能 + innerHTML 安全改造。
+- 新增测试 6 个。
+
+### 阶段 8 完成：安全加固
+- CSP meta 标签、tooltip.ts DOM API 改造、mapInteraction.ts format() 返回 string[]。
+- 新增测试 10 个。
+
+### 阶段 9 完成：全量验证
+- 单元测试：77 个全部通过（core 33 + web 44）。
+- typecheck + build：通过。
+- 性能：256×256 生成 136ms（带 NoiseCache，+17%），侵蚀 38.3ms（-18%）。

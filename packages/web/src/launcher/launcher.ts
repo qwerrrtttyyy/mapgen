@@ -5,6 +5,8 @@ import { findPreset, defaultSelection, PRESET_GROUPS, type PresetCategory, type 
 
 const SKIP_KEY = 'mapgen:skipLauncher';
 const SELECTION_KEY = 'mapgen:launcherSelection';
+const RECENT_SEEDS_KEY = 'mapgen:recentSeeds';
+const MAX_RECENT_SEEDS = 5;
 
 export interface LauncherOptions {
   title?: string;
@@ -34,13 +36,15 @@ export class Launcher {
     this.root = document.createElement('div');
     this.root.id = 'launcher-overlay';
     this.root.className = 'launcher-overlay';
+    // 此处为受信任的静态内容：title/version 是调用方传入的代码常量，
+    // 不含用户输入。动态文案均通过 textContent 单独设置，避免 innerHTML 注入。
     this.root.innerHTML = `
       <div class="launcher-content launcher-interactive">
         <div class="launcher-header">
           <div class="launcher-logo">
             <div class="launcher-icon">🗺️</div>
-            <h1 class="launcher-title">${options.title ?? 'Material Map Generator'}</h1>
-            <div class="launcher-version">${options.version ?? ''}</div>
+            <h1 class="launcher-title"></h1>
+            <div class="launcher-version"></div>
           </div>
         </div>
 
@@ -75,6 +79,12 @@ export class Launcher {
       </div>
     `;
     container.insertBefore(this.root, container.firstChild);
+
+    // 受信任文案通过 textContent 设置（XSS 安全），不参与 innerHTML 拼接。
+    (this.root.querySelector('.launcher-title') as HTMLElement).textContent =
+      options.title ?? 'Material Map Generator';
+    (this.root.querySelector('.launcher-version') as HTMLElement).textContent =
+      options.version ?? '';
 
     this.content = this.root.querySelector('.launcher-content') as HTMLElement;
     this.progressBar = this.root.querySelector('.launcher-progress-bar') as HTMLElement;
@@ -146,11 +156,17 @@ export class Launcher {
         tile.dataset.category = preset.category;
         tile.title = preset.description;
         if (this.selection[preset.category] === preset.id) tile.classList.add('active');
-        tile.innerHTML = `
-          <div class="launcher-preset-icon">${preset.icon}</div>
-          <div class="launcher-preset-name">${preset.name}</div>
-          <div class="launcher-preset-desc">${preset.description}</div>
-        `;
+        tile.replaceChildren();
+        const icon = document.createElement('div');
+        icon.className = 'launcher-preset-icon';
+        icon.textContent = preset.icon;
+        const name = document.createElement('div');
+        name.className = 'launcher-preset-name';
+        name.textContent = preset.name;
+        const desc = document.createElement('div');
+        desc.className = 'launcher-preset-desc';
+        desc.textContent = preset.description;
+        tile.append(icon, name, desc);
         tile.addEventListener('click', () => {
           this.selection[preset.category] = preset.id;
           this.saveSelection();
@@ -166,57 +182,107 @@ export class Launcher {
 
   private renderOptions(): void {
     const root = this.root.querySelector('#launcher-options') as HTMLElement;
-    root.innerHTML = `
-      <div class="launcher-options-title">基础设置</div>
-      <div class="md-field">
-        <label>地图大小</label>
-        <select id="launcher-mapSize">
-          <option value="128">128</option>
-          <option value="192">192</option>
-          <option value="256" selected>256</option>
-          <option value="384">384</option>
-          <option value="512">512</option>
-        </select>
-      </div>
-      <div class="md-field">
-        <label>宽高比</label>
-        <select id="launcher-mapAspect">
-          <option value="1:1" selected>1:1</option>
-          <option value="4:3">4:3</option>
-          <option value="16:9">16:9</option>
-          <option value="2:1">2:1</option>
-          <option value="3:2">3:2</option>
-        </select>
-      </div>
-      <div class="md-field">
-        <label>种子</label>
-        <div class="btn-row">
-          <input type="text" id="launcher-seed" placeholder="留空则随机" />
-          <button class="btn btn-secondary" id="launcher-random-seed" type="button">随机</button>
-        </div>
-      </div>
-    `;
+    root.replaceChildren();
 
-    const seed = root.querySelector('#launcher-seed') as HTMLInputElement;
+    const title = document.createElement('div');
+    title.className = 'launcher-options-title';
+    title.textContent = '基础设置';
+    root.appendChild(title);
+
+    // 地图大小
+    const mapSizeField = document.createElement('div');
+    mapSizeField.className = 'md-field';
+    const mapSizeLabel = document.createElement('label');
+    mapSizeLabel.textContent = '地图大小';
+    const mapSize = document.createElement('select');
+    mapSize.id = 'launcher-mapSize';
+    for (const v of ['128', '192', '256', '384', '512']) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      if (v === '256') opt.selected = true;
+      mapSize.appendChild(opt);
+    }
+    mapSizeField.append(mapSizeLabel, mapSize);
+
+    // 宽高比
+    const mapAspectField = document.createElement('div');
+    mapAspectField.className = 'md-field';
+    const mapAspectLabel = document.createElement('label');
+    mapAspectLabel.textContent = '宽高比';
+    const mapAspect = document.createElement('select');
+    mapAspect.id = 'launcher-mapAspect';
+    for (const v of ['1:1', '4:3', '16:9', '2:1', '3:2']) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      if (v === '1:1') opt.selected = true;
+      mapAspect.appendChild(opt);
+    }
+    mapAspectField.append(mapAspectLabel, mapAspect);
+
+    // 种子
+    const seedField = document.createElement('div');
+    seedField.className = 'md-field';
+    const seedLabel = document.createElement('label');
+    seedLabel.textContent = '种子';
+    const btnRow = document.createElement('div');
+    btnRow.className = 'btn-row';
+    const seed = document.createElement('input');
+    seed.type = 'text';
+    seed.id = 'launcher-seed';
+    seed.placeholder = '留空则随机';
+    const randomBtn = document.createElement('button');
+    randomBtn.type = 'button';
+    randomBtn.className = 'btn btn-secondary';
+    randomBtn.id = 'launcher-random-seed';
+    randomBtn.textContent = '随机';
+    btnRow.append(seed, randomBtn);
+    seedField.append(seedLabel, btnRow);
+
+    root.append(mapSizeField, mapAspectField, seedField);
+
+    // 最近种子
+    const recent = loadRecentSeeds();
+    if (recent.length > 0) {
+      const recentWrap = document.createElement('div');
+      recentWrap.className = 'launcher-recent-seeds';
+      const recentLabel = document.createElement('div');
+      recentLabel.className = 'launcher-recent-label';
+      recentLabel.textContent = '最近种子';
+      const recentList = document.createElement('div');
+      recentList.className = 'launcher-recent-list';
+      for (const s of recent) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-secondary launcher-recent-seed';
+        btn.textContent = s;
+        btn.addEventListener('click', () => {
+          seed.value = s;
+          patchParams({ seedStr: s });
+        });
+        recentList.appendChild(btn);
+      }
+      recentWrap.append(recentLabel, recentList);
+      root.appendChild(recentWrap);
+    }
+
     seed.value = state.params.seedStr;
     seed.addEventListener('input', () => {
       const v = seed.value.trim();
       if (v) patchParams({ seedStr: v });
     });
 
-    const mapSize = root.querySelector('#launcher-mapSize') as HTMLSelectElement;
     mapSize.value = String(state.params.mapSize);
     mapSize.addEventListener('change', () => {
       patchParams({ mapSize: parseInt(mapSize.value, 10) });
     });
 
-    const mapAspect = root.querySelector('#launcher-mapAspect') as HTMLSelectElement;
     mapAspect.value = state.params.mapAspect;
     mapAspect.addEventListener('change', () => {
       patchParams({ mapAspect: mapAspect.value });
     });
 
-    const randomBtn = root.querySelector('#launcher-random-seed') as HTMLButtonElement;
     randomBtn.addEventListener('click', () => {
       const newSeed = String(Math.floor(Math.random() * 99999));
       seed.value = newSeed;
@@ -293,6 +359,7 @@ export class Launcher {
   private launch(): void {
     this.applySelection();
     this.saveSelection();
+    saveRecentSeed(state.params.seedStr);
     this.startBtn.disabled = true;
     this.startBtn.textContent = '启动中…';
     const result: LaunchResult = {
@@ -306,5 +373,34 @@ export class Launcher {
 
   destroy(): void {
     this.root.remove();
+  }
+}
+
+// 最近种子辅助函数（独立导出以便单元测试）。
+
+export function loadRecentSeeds(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_SEEDS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((s): s is string => typeof s === 'string')
+      .slice(0, MAX_RECENT_SEEDS);
+  } catch {
+    return [];
+  }
+}
+
+export function saveRecentSeed(seed: string): void {
+  if (!seed) return;
+  try {
+    const current = loadRecentSeeds();
+    const filtered = current.filter(s => s !== seed);
+    filtered.unshift(seed);
+    const trimmed = filtered.slice(0, MAX_RECENT_SEEDS);
+    localStorage.setItem(RECENT_SEEDS_KEY, JSON.stringify(trimmed));
+  } catch {
+    /* ignore quota errors */
   }
 }

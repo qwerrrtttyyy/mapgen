@@ -147,7 +147,7 @@ export class MapInteraction {
     bus.emit('map.contextmenu', { x: e.clientX, y: e.clientY });
   }
 
-  private format(p: PickerResult, includePlate = false): string {
+  private format(p: PickerResult, includePlate = false): string[] {
     const elevPct = Math.round(p.elevation * 100);
     const lines = [
       `坐标: (${p.x}, ${p.y})`,
@@ -158,7 +158,7 @@ export class MapInteraction {
       `生物群系: ${biomeNames[p.biome] ?? '未知'}`,
     ];
     if (includePlate) lines.push(`板块: #${p.plateId}`);
-    return lines.join('<br>');
+    return lines;
   }
 
   private ensureTrailCanvas(): void {

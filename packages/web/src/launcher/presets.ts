@@ -67,6 +67,38 @@ const themes: Preset[] = [
     description: '干燥、高温、低湿度',
     params: { seaLevel: 0.5, landmass: 0.55, plateCount: 7, octaves: 4, mountainFold: 0.4, erosionStrength: 0.3, erosionIterations: 20, snowLine: 0.7, tempOffset: 0.25, lakeDensity: 0.005 },
   },
+  {
+    id: 'theme.volcanic',
+    category: 'theme',
+    name: '火山群岛',
+    icon: '🌋',
+    description: '强烈造山、岛弧地貌',
+    params: { seaLevel: 0.48, landmass: 0.35, plateCount: 14, octaves: 6, mountainFold: 0.75, erosionStrength: 0.9, erosionIterations: 45, snowLine: 0.5 },
+  },
+  {
+    id: 'theme.alpine',
+    category: 'theme',
+    name: '高山',
+    icon: '🏔',
+    description: '高耸山脊、较低雪线',
+    params: { seaLevel: 0.42, landmass: 0.55, plateCount: 6, octaves: 6, mountainFold: 0.65, erosionStrength: 1.2, erosionIterations: 60, snowLine: 0.35 },
+  },
+  {
+    id: 'theme.oceania',
+    category: 'theme',
+    name: '海洋世界',
+    icon: '🌊',
+    description: '极少陆地、破碎海岸',
+    params: { seaLevel: 0.7, landmass: 0.15, plateCount: 10, octaves: 6, mountainFold: 0.3, erosionStrength: 1.1, erosionIterations: 55, snowLine: 0.5, coastDetail: 0.9 },
+  },
+  {
+    id: 'theme.monsoon',
+    category: 'theme',
+    name: '季风',
+    icon: '🌧️',
+    description: '强侵蚀、多湖泊',
+    params: { seaLevel: 0.45, landmass: 0.5, plateCount: 9, octaves: 6, mountainFold: 0.4, erosionStrength: 1.8, erosionIterations: 90, snowLine: 0.45, lakeDensity: 0.05 },
+  },
 ];
 
 const modes: Preset[] = [
@@ -118,6 +150,22 @@ const modes: Preset[] = [
     description: '细胞噪声，多边形感',
     params: { noiseType: 'worley', fbmType: 'standard', lacunarity: 2.0, persistence: 0.5, octaves: 4 },
   },
+  {
+    id: 'mode.value',
+    category: 'mode',
+    name: '值噪声',
+    icon: '🔲',
+    description: 'Value 噪声，块状柔和',
+    params: { noiseType: 'value', fbmType: 'standard', lacunarity: 2.0, persistence: 0.5, octaves: 5 },
+  },
+  {
+    id: 'mode.billowySimplex',
+    category: 'mode',
+    name: 'Simplex 丘陵',
+    icon: '🌄',
+    description: 'Simplex + Billowy 起伏',
+    params: { noiseType: 'simplex', fbmType: 'billowy', lacunarity: 2.0, persistence: 0.55, octaves: 6, mountainFold: 0.25 },
+  },
 ];
 
 const types: Preset[] = [
@@ -168,6 +216,30 @@ const types: Preset[] = [
     icon: '🗻',
     description: '浮雕阴影',
     params: { style: 8, showBoundaries: false, showRivers: false, lightAngle: 1.4 },
+  },
+  {
+    id: 'type.plates',
+    category: 'type',
+    name: '板块',
+    icon: '🧩',
+    description: '板块分布图',
+    params: { style: 1, showBoundaries: true, showRivers: false },
+  },
+  {
+    id: 'type.satellite',
+    category: 'type',
+    name: '卫星',
+    icon: '🛰️',
+    description: '卫星影像风格',
+    params: { style: 3, showBoundaries: false, showRivers: true },
+  },
+  {
+    id: 'type.lowpoly',
+    category: 'type',
+    name: '低多边形',
+    icon: '📐',
+    description: '低面数多边形渲染',
+    params: { style: 6, showBoundaries: false, showRivers: true },
   },
 ];
 

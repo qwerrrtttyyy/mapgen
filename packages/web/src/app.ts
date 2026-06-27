@@ -16,6 +16,7 @@ import { CheckpointPanel } from './ui/checkpointPanel.js';
 import { Shortcuts } from './ui/shortcuts.js';
 import { ContextMenu } from './ui/contextMenu.js';
 import { MapInteraction } from './map/mapInteraction.js';
+import { ThemeManager } from './ui/themeManager.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
   style: 'u_style',
@@ -202,13 +203,14 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
   });
 }
 
+// 内联着色器源码，消除运行时 fetch 请求，加快首屏渲染
+import fragShaderSrc from '../public/shaders/fs-map.frag?raw';
+
 async function initRenderer(canvas: HTMLCanvasElement, launcher?: Launcher | null): Promise<void> {
   try {
     const r = new WebGLRenderer(canvas);
-    const res = await fetch('shaders/fs-map.frag');
-    if (!res.ok) throw new Error('Shader fetch failed');
     launcher?.setProgress(0.5, '编译着色器...');
-    await r.initShaders(await res.text());
+    await r.initShaders(fragShaderSrc);
     renderer = r;
   } catch (e) {
     logger.warn('WebGL2 unavailable, using Canvas2D:', (e as Error).message);
@@ -259,6 +261,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   bindMobileDrawer();
   bindGlobalEvents(canvas);
+
+  // 主题切换
+  const themeMgr = new ThemeManager();
+  document.getElementById('btn-toggle-theme')?.addEventListener('click', () => themeMgr.toggleTheme());
 
   handleResize();
   window.addEventListener('resize', handleResize);

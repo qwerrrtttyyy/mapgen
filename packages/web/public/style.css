@@ -404,13 +404,38 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
   #menu-toggle { display: block !important; }
   #drawer-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; opacity: 0; visibility: hidden; transition: opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard), visibility var(--md-motion-duration-medium); }
   #drawer-backdrop.open { opacity: 1; visibility: visible; }
-  #app-bar { height: 52px; padding: 0 12px; }
+  #app-bar { height: 52px; padding: 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
   #app-bar .title { font-size: 13px; }
   #app-bar span:last-child { display: none; }
   .btn-row { flex-direction: column; }
   .btn-row .btn { width: 100%; }
-  .btn { padding: 10px 16px; font-size: 13px; }
-  #progress-container { bottom: 8px; left: 8px; right: 8px; }
-  .launcher-content { padding: 28px 24px; width: 92%; max-width: 320px; max-height: 88vh; overflow-y: auto; }
+  .btn { padding: 12px 20px; font-size: 14px; min-height: 44px; }
+  #progress-container { bottom: max(8px, env(safe-area-inset-bottom)); left: 8px; right: 8px; }
+  .launcher-content { padding: 24px 20px; width: 92%; max-width: 360px; max-height: 88vh; overflow-y: auto; }
   .launcher-preset-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  /* 移动端更大的滑块触控目标（44px 最小触控区） */
+  .md-field input[type="range"] { height: 6px; }
+  .md-field input[type="range"]::-webkit-slider-thumb { width: 24px; height: 24px; }
+  .md-field input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; }
+  .md-field select, .md-field input[type="text"], .md-field input[type="number"] { padding: 10px 12px; font-size: 14px; min-height: 44px; }
+  /* 启动器预设 tile 更大的触控区 */
+  .launcher-preset-tile { padding: 14px 10px; }
+  /* 防止输入框聚焦时页面缩放 */
+  .md-field input[type="text"], .md-field input[type="number"], .md-field select { font-size: 16px; }
+  /* 移动端底部安全区 */
+  #checkpoint-section { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+}
+
+/* 平板适配 */
+@media (min-width: 601px) and (max-width: 1024px) {
+  #drawer { width: 300px; min-width: 300px; }
+  .btn { min-height: 40px; }
+}
+
+/* 触控设备通用优化 */
+@media (hover: none) and (pointer: coarse) {
+  .md-card-title:hover { background: transparent; }
+  .btn:hover { opacity: 1; }
+  .launcher-preset-tile:hover { transform: none; }
+  /* 触控时移除 hover 效果，避免粘滞高亮 */
 }

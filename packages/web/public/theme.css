@@ -1,0 +1,64 @@
+/*
+ * theme.css — MapGen 可切换主题
+ *
+ * 关键：不覆盖 style.css 中 `:root` 的变量定义。
+ * 这里仅通过 `:root[data-theme="..."]` 选择器（特异性更高）
+ * 覆盖 Material Design 3 token，从而在不同主题间切换。
+ * 当未设置 data-theme 属性时，回退到 style.css 的 :root 默认值（深色）。
+ */
+
+/* ── dark：默认 Material Design 3 深色（与 :root 一致，显式声明以保持自包含） ── */
+:root[data-theme="dark"] {
+  --md-ref-primary: #2962ff;
+  --md-sys-surface: #1a1a2e;
+  --md-sys-surface-variant: #252540;
+  --md-sys-background: #0f0f1a;
+  --md-sys-on-surface: #e8e8f0;
+  --md-sys-on-surface-variant: #a0a0b8;
+  --md-sys-outline: #3a3a55;
+  --md-sys-primary: #7c9aff;
+  --md-sys-secondary: #6c6c8a;
+  --md-elevation-1: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --md-elevation-2: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --md-sys-shape: 12px;
+  --md-sys-shape-sm: 8px;
+}
+
+/* ── light：浅灰白背景，深色文字，蓝色主色，白色 surface ── */
+:root[data-theme="light"] {
+  --md-ref-primary: #2962ff;
+  --md-sys-surface: #ffffff;
+  --md-sys-surface-variant: #ececf0;
+  --md-sys-background: #f5f5f8;
+  --md-sys-on-surface: #1a1a2e;
+  --md-sys-on-surface-variant: #555568;
+  --md-sys-outline: #d0d0d8;
+  --md-sys-primary: #2962ff;
+  --md-sys-secondary: #5c6c8a;
+  --md-elevation-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --md-elevation-2: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --md-sys-shape: 12px;
+  --md-sys-shape-sm: 8px;
+}
+
+/* ── aurora：极光风格，深紫黑背景，青绿主色，粉紫次要色，玻璃质感 elevation ── */
+:root[data-theme="aurora"] {
+  --md-ref-primary: #00e5cc;
+  --md-sys-surface: #161329;
+  --md-sys-surface-variant: #221d3d;
+  --md-sys-background: #0d0b1a;
+  --md-sys-on-surface: #ece8ff;
+  --md-sys-on-surface-variant: #a89dd0;
+  --md-sys-outline: #3a2f5c;
+  --md-sys-primary: #00e5cc;
+  --md-sys-secondary: #ff4081;
+  --md-elevation-1: 0 2px 8px rgba(0, 229, 204, 0.10), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --md-elevation-2: 0 4px 16px rgba(0, 229, 204, 0.14), 0 2px 6px rgba(0, 0, 0, 0.5);
+  --md-sys-shape: 12px;
+  --md-sys-shape-sm: 8px;
+}
+
+/* aurora：深紫蓝渐变背景，仅作用于 body，不影响使用 --md-sys-background 的控件 */
+:root[data-theme="aurora"] body {
+  background: linear-gradient(135deg, #0d0b1a 0%, #14102b 50%, #0a0816 100%);
+}

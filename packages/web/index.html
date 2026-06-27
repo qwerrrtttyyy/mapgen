@@ -2,10 +2,12 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <title>Material Map Generator v0.0.1</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'self'">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="theme.css">
 </head>
 <body>
 <div id="app">
@@ -245,6 +247,7 @@
       <button id="menu-toggle" class="btn btn-secondary" style="padding:6px 10px">☰</button>
       <span class="title">Material Map Generator</span>
       <button class="btn btn-secondary" id="btn-clear-selection">清空选择</button>
+      <button class="btn btn-secondary" id="btn-toggle-theme" title="切换主题" style="padding:6px 10px">🎨</button>
       <span style="font-size:11px;color:var(--md-sys-on-surface-variant)">v0.0.1 — Monorepo</span>
     </div>
     <div id="canvas-container">

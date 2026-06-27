@@ -30,6 +30,19 @@
   - `RenderLoop` 统一 `requestAnimationFrame`，避免无效重绘。
   - `WebGLRenderer.setUniforms()` 批量写入 uniforms 并缓存，跳过未变更值。
   - `WebGLRenderer.uploadMapData()` 通过 `MapData` 引用去重，切换样式不再重复上传纹理。
+- 阶段 4 算法优化已完成：
+  - `NoiseCache` 跨调用复用噪声引擎，256×256 生成 136ms（+17%）。
+  - 侵蚀向量化：预计算邻居偏移 + 合并蒸发/降水，38.3ms（-18%）。
+  - 河流优先级队列：BinaryHeap 替代 sort + 预计算邻居偏移。
+- 阶段 5 主题系统已完成：
+  - dark/light/aurora 三主题，`data-theme` 属性切换，保留原 MD3 主题。
+- 阶段 6 移动端与加载已完成：
+  - 44px 触控目标、safe-area-inset、触控设备 hover 优化。
+  - Shader `?raw` 内联消除首屏 fetch 请求。
+- 阶段 7 启动器扩展已完成：
+  - 新增 9 个预设 + 最近种子功能 + innerHTML DOM 构建。
+- 阶段 8 安全加固已完成：
+  - CSP meta 标签 + tooltip/launcher innerHTML 清零，DOM XSS 风险消除。
 
 ## 设计决策
 - 采用 Web Worker 将生成逻辑移出主线程。

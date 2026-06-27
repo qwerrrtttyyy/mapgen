@@ -9,9 +9,15 @@ export class Tooltip {
     container.appendChild(this.el);
   }
 
-  show(html: string, x: number, y: number): void {
+  show(lines: string[], x: number, y: number): void {
     if (this.pinned) return;
-    this.el.innerHTML = html;
+    this.el.replaceChildren();
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) this.el.appendChild(document.createElement('br'));
+      const span = document.createElement('span');
+      span.textContent = lines[i];
+      this.el.appendChild(span);
+    }
     this.el.style.display = 'block';
     this.position(x, y);
   }
@@ -26,9 +32,19 @@ export class Tooltip {
     this.el.style.display = 'none';
   }
 
-  pin(html: string, x: number, y: number): void {
+  pin(lines: string[], x: number, y: number): void {
     this.pinned = true;
-    this.el.innerHTML = html + '<div class="map-tooltip-hint">再次点击取消固定</div>';
+    this.el.replaceChildren();
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) this.el.appendChild(document.createElement('br'));
+      const span = document.createElement('span');
+      span.textContent = lines[i];
+      this.el.appendChild(span);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'map-tooltip-hint';
+    hint.textContent = '再次点击取消固定';
+    this.el.appendChild(hint);
     this.el.style.display = 'block';
     this.position(x, y);
   }
@@ -38,9 +54,9 @@ export class Tooltip {
     this.el.style.display = 'none';
   }
 
-  togglePin(html: string, x: number, y: number): void {
+  togglePin(lines: string[], x: number, y: number): void {
     if (this.pinned) this.unpin();
-    else this.pin(html, x, y);
+    else this.pin(lines, x, y);
   }
 
   isPinned(): boolean {
