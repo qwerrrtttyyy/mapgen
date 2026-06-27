@@ -4,6 +4,17 @@ import type { Plate } from './tectonic.js';
 
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
+/**
+ * 预计算 8 邻居线性偏移量，避免内层循环中重复计算 dirs[d*2] + dirs[d*2+1]*width。
+ */
+function buildNeighborOffsets(width: number): Int32Array {
+  const offsets = new Int32Array(8);
+  for (let d = 0; d < 8; d++) {
+    offsets[d] = EROSION_DIRS[d * 2] + EROSION_DIRS[d * 2 + 1] * width;
+  }
+  return offsets;
+}
+
 export function generateElevation(
   width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[], boundary: Float32Array,
   noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
@@ -65,15 +76,27 @@ export function generateElevation(
 }
 
 export function hydraulicErosion(width: number, height: number, elevation: Float32Array, iterations: number, strength: number): Float32Array {
+  if (iterations <= 0) return new Float32Array(elevation);
+
   const elev = new Float32Array(elevation);
   const size = width * height;
   const water = new Float32Array(size);
   const sediment = new Float32Array(size);
-  const dirs = EROSION_DIRS;
+  // 预计算邻居偏移，避免内层循环重复算
+  const offsets = buildNeighborOffsets(width);
   const maxChangeThreshold = 1e-5;
+  // 蒸发因子（每轮末 water *= 0.9）与降水（每轮首 water += 0.01）合并：
+  // 下一轮开始时 water[i] = water[i] * 0.9 + 0.01
+  const EVAP = 0.9;
+  const RAIN = 0.01;
 
   for (let iter = 0; iter < iterations; iter++) {
-    for (let i = 0; i < size; i++) water[i] += 0.01;
+    // 合并蒸发+降水为单次遍历（首轮蒸发无效但 water 全为 0，无影响）
+    if (iter === 0) {
+      for (let i = 0; i < size; i++) water[i] = RAIN;
+    } else {
+      for (let i = 0; i < size; i++) water[i] = water[i] * EVAP + RAIN;
+    }
     let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
       const rowBase = y * width;
@@ -81,9 +104,9 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
         const idx = rowBase + x;
         const e = elev[idx];
         let minE = e, minDir = -1;
+        // 使用预计算偏移量查找最低邻居
         for (let d = 0; d < 8; d++) {
-          const ni = idx + dirs[d * 2] + dirs[d * 2 + 1] * width;
-          const ne = elev[ni];
+          const ne = elev[idx + offsets[d]];
           if (ne < minE) { minE = ne; minDir = d; }
         }
         if (minDir >= 0) {
@@ -101,9 +124,8 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
             sediment[idx] -= amount;
           }
           totalChange += amount;
-          const ddx = dirs[minDir * 2];
-          const ddy = dirs[minDir * 2 + 1];
-          const ni = idx + ddx + ddy * width;
+          // 水与沉积物向最低邻居分流
+          const ni = idx + offsets[minDir];
           const halfWater = water[idx] * 0.5;
           const halfSediment = sediment[idx] * 0.5;
           water[ni] += halfWater;
@@ -113,7 +135,6 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
         }
       }
     }
-    for (let i = 0; i < size; i++) water[i] *= 0.9;
     if (totalChange < maxChangeThreshold) break;
   }
   return elev;
