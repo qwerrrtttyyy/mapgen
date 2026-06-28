@@ -734,6 +734,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // 开发模式暴露内部状态,便于浏览器实测/调试（dogfood）
+  if (import.meta.env.DEV) {
+    (window as unknown as { __mapgen: unknown }).__mapgen = { state, editor: () => editor, nameOverlay: () => nameOverlay };
+  }
+
   const showLauncher = Launcher.shouldShow();
   let launcher: Launcher | null = null;
   let launchPromise: Promise<unknown> | null = null;

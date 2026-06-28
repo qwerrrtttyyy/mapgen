@@ -121,9 +121,33 @@ try {
   if (await viewBtn.count()) { await viewBtn.click(); await page.waitForTimeout(200); }
   const canvas2 = await page.locator('#glCanvas');
   const box2 = await canvas2.boundingBox();
-  // Double click near center where a name likely is
-  await page.mouse.click(box2.x + box2.width * 0.5, box2.y + box2.height * 0.4, { clickCount: 2 });
-  await page.waitForTimeout(500);
+  // 读取真实质心并换算为屏幕坐标（与 EditorController.mapToScreen 同算法）
+  const clickTarget = await page.evaluate((bbox) => {
+    const mg = window.__mapgen;
+    if (!mg || !mg.state.mapData) return null;
+    const md = mg.state.mapData;
+    const names = md.names;
+    // 优先板块名（通常更稀疏,易点中）
+    const candidates = names.plates.length ? names.plates : names.regions;
+    const c = candidates[0].centroid;
+    const scale = Math.min(bbox.width / md.width, bbox.height / md.height);
+    const dW = md.width * scale, dH = md.height * scale;
+    const ox = (bbox.width - dW) / 2, oy = (bbox.height - dH) / 2;
+    return {
+      x: bbox.x + ox + c[0] * scale,
+      y: bbox.y + oy + c[1] * scale,
+      count: candidates.length,
+      kind: names.plates.length ? 'plate' : 'region',
+      name: candidates[0].name,
+    };
+  }, box2);
+  if (clickTarget) {
+    log(`  点击 ${clickTarget.kind}="${clickTarget.name}" 质心 @(${clickTarget.x.toFixed(0)},${clickTarget.y.toFixed(0)})`);
+    await page.mouse.click(clickTarget.x, clickTarget.y, { clickCount: 2 });
+    await page.waitForTimeout(500);
+  } else {
+    log('  ⚠️ 未找到可命中的名称质心');
+  }
   const renameInfo = await page.evaluate(() => ({ called: window.__renameCalled, text: window.__renameText }));
   log(`  prompt called=${renameInfo.called} text="${renameInfo.text}"`);
   if (renameInfo.called) results.pass.push('Double-click rename prompt triggered (AC-8.3)');
