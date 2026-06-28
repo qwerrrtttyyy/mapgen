@@ -5,6 +5,7 @@ export class ProgressView {
   private bar: HTMLElement | null;
   private text: HTMLElement | null;
   private unsub: (() => void)[] = [];
+  private errorTimer: number | null = null;
 
   constructor() {
     this.container = document.getElementById('progress-container');
@@ -14,18 +15,37 @@ export class ProgressView {
 
   bind(): void {
     this.unsub.push(
-      bus.on('generating.started', () => this.show('初始化...')),
-      bus.on('generating.completed', () => this.hide()),
-      bus.on('generating.failed', (msg: string) => this.show('生成失败: ' + msg)),
+      bus.on('generating.started', () => {
+        this.clearErrorTimer();
+        this.show('初始化...');
+      }),
+      bus.on('generating.completed', () => {
+        this.clearErrorTimer();
+        this.hide();
+      }),
+      bus.on('generating.failed', (msg: string) => {
+        this.show('生成失败: ' + msg);
+        this.clearErrorTimer();
+        this.errorTimer = window.setTimeout(() => this.hide(), 5000);
+      }),
       bus.on('progress', ({ fraction, label }: { fraction: number; label: string }) => {
         this.set(fraction, label);
-      })
+      }),
+      bus.on('generate.request', () => this.clearErrorTimer())
     );
   }
 
   destroy(): void {
+    this.clearErrorTimer();
     this.unsub.forEach(u => u());
     this.unsub = [];
+  }
+
+  private clearErrorTimer(): void {
+    if (this.errorTimer !== null) {
+      window.clearTimeout(this.errorTimer);
+      this.errorTimer = null;
+    }
   }
 
   private show(text = ''): void {

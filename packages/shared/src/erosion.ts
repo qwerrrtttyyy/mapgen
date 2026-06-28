@@ -1,69 +1,167 @@
 import { createNoise, type NoiseType, type FbmType } from './noise.js';
 import type { Plate } from './tectonic.js';
+import { computeSlope } from './slope.js';
 
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
 export function generateElevation(
-  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[], boundary: Float32Array,
+  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[],
+  plateDist: Float32Array, tectonicForce: Float32Array,
   noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
   mountainFold: number, coastDetail: number
 ): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
   const size = width * height;
   const elevation = new Float32Array(size);
-  const slope = new Float32Array(size);
   const ridge = new Float32Array(size);
   const ridgeMask = new Float32Array(size);
   const noise = createNoise(seed, noiseType);
   const detailNoise = createNoise(seed + 1, 'simplex');
+  const ridgeNoise = createNoise(seed + 999, 'perlin');
+
   const plateTypes = new Uint8Array(plates.length);
-  const plateElevs = new Float32Array(plates.length);
   for (let i = 0; i < plates.length; i++) {
     plateTypes[i] = plates[i].type === 'continent' ? 1 : 0;
-    plateElevs[i] = plates[i].elevation;
   }
 
-  // Precompute normalized coordinates to avoid per-pixel divisions
-  const nxArr = new Float32Array(width);
-  for (let x = 0; x < width; x++) nxArr[x] = x / width;
-  const nyArr = new Float32Array(height);
-  for (let y = 0; y < height; y++) nyArr[y] = y / height;
+  // 预计算每个板块的归一化距离（0=中心, 1=边缘）
+  // plateDist 是到板块中心的欧氏距离，需估计各板块的最大距离用于归一化
+  const plateMaxDist = new Float32Array(plates.length);
+  for (let i = 0; i < size; i++) {
+    const pid = plateId[i] | 0;
+    if (plateDist[i] > plateMaxDist[pid]) plateMaxDist[pid] = plateDist[i];
+  }
+
+  const invW = 1 / width;
+  const invH = 1 / height;
 
   for (let y = 0; y < height; y++) {
-    const ny = nyArr[y];
+    const ny = y * invH;
+    const row = y * width;
     for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      const nx = nxArr[x];
+      const idx = row + x;
+      const nx = x * invW;
       const pid = plateId[idx] | 0;
-      let elev = plateElevs[pid];
-      const b = boundary[idx];
-      if (b > 0 && plateTypes[pid] === 1) {
-        elev += b * mountainFold * (0.5 + 0.5 * noise.sample(nx * 8, ny * 8));
+      const isContinental = plateTypes[pid] === 1;
+
+      // ── 1. 板块基础高度（Azgaar：板块类型决定陆/海基底）──
+      const maxD = plateMaxDist[pid] || 1;
+      const normDist = plateDist[idx] / maxD; // 0 中心 → 1 边缘
+      let elev: number;
+      if (isContinental) {
+        // 大陆：内部高，边缘大陆架下降
+        const shelf = smoothstep(0.5, 1.0, normDist); // 边缘 ~0.4 衰减
+        elev = 0.35 - shelf * 0.15;
+      } else {
+        // 大洋：中心深，边缘略浅（洋中脊由构造力处理）
+        const abyss = 1 - smoothstep(0.0, 0.7, normDist);
+        elev = -0.35 - abyss * 0.25;
       }
-      const n = noise.fbm(nx * 4, ny * 4, octaves, lacunarity, persistence, fbmType);
-      elev += n * 0.3;
-      const distToSea = Math.abs(elev - seaLevel);
-      if (distToSea < 0.1 && coastDetail > 0) {
-        const coastNoise = detailNoise.fbm(nx * 16, ny * 16, 3, 2, 0.5, 'standard');
-        elev += coastNoise * coastDetail * 0.05;
+
+      // ── 2. 多尺度地形噪声（自然 FBM：谱权重+域形变+各向异性）──
+      // 陆地：ridged（山脊）混合 standard（细节），海洋：standard 平滑
+      if (isContinental) {
+        const ridged = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'ridged',
+          { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 });
+        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
+          { warpStrength: 0.4 });
+        elev += ridged * 0.12 + detail * 0.14;
+      } else {
+        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
+          { warpStrength: 0.3 });
+        elev += detail * 0.10;
       }
-      const r = Math.abs(noise.sample(nx * 12, ny * 12));
+
+      // ── 3. 山脊场（用于独立山脊图层）──
+      const r = ridgeNoise.fbm(nx * 8, ny * 8, 4, 2, 0.5, 'ridged');
       ridge[idx] = r;
-      ridgeMask[idx] = r > 0.6 ? 1 : 0;
-      elevation[idx] = elev;
+      ridgeMask[idx] = r > 0.55 && elev > seaLevel ? 1 : 0;
+
+      // ── 4. 海岸细节抖动 ──
+      if (coastDetail > 0 && Math.abs(elev - seaLevel) < 0.12) {
+        const cn = detailNoise.fbm(nx * 18, ny * 18, 3, 2, 0.5, 'standard');
+        elev += cn * coastDetail * 0.06;
+      }
+
+      elevation[idx] = elev < -1 ? -1 : elev > 1 ? 1 : elev;
     }
   }
+
+  // （构造力在边界平滑后叠加，避免被平滑稀释）
+
+  // ── 板块边界过渡带平滑（AC-4.1）──
+  // 标记边界带：plateId 变化像素的半径 2 邻域，对整个带做 2 pass 邻域平均，过渡 ≥3px 单调
+  const boundaryBand = new Uint8Array(size);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
-      const dx = elevation[idx + 1] - elevation[idx - 1];
-      const dy = elevation[idx + width] - elevation[idx - width];
-      slope[idx] = Math.sqrt(dx * dx + dy * dy) * width * 0.5;
+      const pid = plateId[idx];
+      if (plateId[idx - 1] !== pid || plateId[idx + 1] !== pid ||
+          plateId[idx - width] !== pid || plateId[idx + width] !== pid) {
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const ny = y + dy, nx = x + dx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              boundaryBand[ny * width + nx] = 1;
+            }
+          }
+        }
+      }
     }
   }
+  const smoothed = new Float32Array(elevation);
+  for (let pass = 0; pass < 2; pass++) {
+    const src = pass === 0 ? elevation : smoothed;
+    const dst = pass === 0 ? smoothed : elevation;
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+        if (!boundaryBand[idx]) { if (pass === 1) dst[idx] = src[idx]; continue; }
+        let sum = src[idx];
+        let cnt = 1;
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ni = (y + dy) * width + (x + dx);
+            sum += src[ni];
+            cnt++;
+          }
+        }
+        dst[idx] = sum / cnt;
+      }
+    }
+  }
+
+  // ── 边界构造力叠加（AC-4.2，平滑后施加避免被稀释）──
+  // 汇聚→山脉（ridhed 噪声增强走向），离散→裂谷
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const tf = tectonicForce[idx];
+      if (tf === 0) continue;
+      const nx = x / width, ny = y / height;
+      if (tf > 0) {
+        let m = tf * mountainFold * 0.8;
+        m += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.25;
+        elevation[idx] = Math.min(1, elevation[idx] + m);
+      } else {
+        elevation[idx] = Math.max(-1, elevation[idx] + tf * mountainFold * 0.4);
+      }
+    }
+  }
+  // 坡度由共享 computeSlope 计算（与编辑器/refreshNames 标度一致）
+  const slope = computeSlope(width, height, elevation);
   return { elevation, slope, ridge, ridgeMask };
 }
 
-export function hydraulicErosion(width: number, height: number, elevation: Float32Array, iterations: number, strength: number): Float32Array {
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+export function hydraulicErosion(
+  width: number, height: number, elevation: Float32Array,
+  iterations: number, strength: number, evaporationRate: number = 0.01
+): Float32Array {
   const elev = new Float32Array(elevation);
   const size = width * height;
   const water = new Float32Array(size);
@@ -72,7 +170,9 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
   const maxChangeThreshold = 1e-5;
 
   for (let iter = 0; iter < iterations; iter++) {
-    for (let i = 0; i < size; i++) water[i] += 0.01;
+    for (let i = 0; i < size; i++) {
+      if (elev[i] > 0) water[i] += 0.01;
+    }
     let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
       const rowBase = y * width;
@@ -87,7 +187,7 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
         }
         if (minDir >= 0) {
           const slp = e - minE;
-          const carryCapacity = slp * water[idx] * strength;
+          const carryCapacity = slp * water[idx] * strength * (1 + slp * 5);
           const sDiff = carryCapacity - sediment[idx];
           let amount = 0;
           if (sDiff > 0) {
@@ -112,7 +212,7 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
         }
       }
     }
-    for (let i = 0; i < size; i++) water[i] *= 0.9;
+    for (let i = 0; i < size; i++) water[i] *= (1 - evaporationRate);
     if (totalChange < maxChangeThreshold) break;
   }
   return elev;

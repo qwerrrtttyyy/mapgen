@@ -2,6 +2,7 @@ import type { MapData, MapParams } from '@mapgen/core';
 
 export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
+export type GenMode = 'procedural' | 'blank';
 
 export interface UIParams {
   seedStr: string;
@@ -22,6 +23,11 @@ export interface UIParams {
   snowLine: number;
   coastDetail: number;
   lakeDensity: number;
+  riverCount: number;
+  rainStrength: number;
+  windDirX: number;
+  windDirY: number;
+  mode: GenMode;
   style: number;
   showBoundaries: boolean;
   boundaryWidth: number;
@@ -50,6 +56,12 @@ export interface UIParams {
   cursorActive: boolean;
   cursorPos: number[];
   cursorSize: number;
+  // ── 世界式生成开关（默认全开，可单独关闭）──
+  enableOceanCurrents: boolean;
+  enableIceSheet: boolean;
+  enableMonsoon: boolean;
+  enableContinentality: boolean;
+  enableHadleyEnhancement: boolean;
 }
 
 export interface AppState {
@@ -83,6 +95,11 @@ export function createDefaultParams(): UIParams {
     snowLine: 0.5,
     coastDetail: 0.5,
     lakeDensity: 0.02,
+    riverCount: 20,
+    rainStrength: 1.0,
+    windDirX: 1.0,
+    windDirY: 0,
+    mode: 'procedural',
     style: 0,
     showBoundaries: true,
     boundaryWidth: 0.8,
@@ -111,6 +128,12 @@ export function createDefaultParams(): UIParams {
     cursorActive: false,
     cursorPos: [0.5, 0.5],
     cursorSize: 12.0,
+    // 世界式生成开关（默认全开）
+    enableOceanCurrents: true,
+    enableIceSheet: true,
+    enableMonsoon: true,
+    enableContinentality: true,
+    enableHadleyEnhancement: true,
   };
 }
 
@@ -134,6 +157,16 @@ export function toMapParams(state: UIParams): MapParams {
     lakeDensity: state.lakeDensity,
     tempOffset: state.tempOffset,
     snowLine: state.snowLine,
+    riverCount: state.riverCount,
+    rainStrength: state.rainStrength,
+    windDirX: state.windDirX,
+    windDirY: state.windDirY,
+    mode: state.mode,
+    enableOceanCurrents: state.enableOceanCurrents,
+    enableIceSheet: state.enableIceSheet,
+    enableMonsoon: state.enableMonsoon,
+    enableContinentality: state.enableContinentality,
+    enableHadleyEnhancement: state.enableHadleyEnhancement,
   };
 }
 

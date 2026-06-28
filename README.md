@@ -14,6 +14,7 @@
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
+| [v0.0.2](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.2) | 2026-06-28 | 复杂世界式全局生成 — 洋流/冰盖/流域/火山/季节 |
 | [v0.0.1](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.1) | 2026-06-26 | Monorepo 重写版 — WebGL2 + Material Design 3 |
 | [v0.4.3](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.4.3) | 2026-06-19 | 旧版最终版 — 模块化重写 |
 | [v0.4.0](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.4.0) | 2026-06-14 | 旧版 — React + WebGL2 重构 |

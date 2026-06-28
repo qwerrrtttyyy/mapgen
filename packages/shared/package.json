@@ -1,6 +1,6 @@
 {
   "name": "@mapgen/core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Map Generator - Core Engine (TypeScript)",
   "type": "module",
   "main": "dist/index.js",
@@ -14,12 +14,15 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": ["map-generator", "noise", "tectonic", "erosion", "typescript"],
   "author": "qwerrrtttyyy",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
   }
 }

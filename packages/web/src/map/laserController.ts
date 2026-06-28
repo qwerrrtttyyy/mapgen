@@ -35,18 +35,24 @@ export class LaserController {
   private rafId: number | null = null;
   private pending: { x: number; y: number } | null = null;
   private rafScheduled = false;
+  private down: (e: MouseEvent) => void;
+  private move: (e: MouseEvent) => void;
+  private up: () => void;
+  private unsub: (() => void)[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    const down = (e: MouseEvent) => this.handleDown(e);
-    const move = (e: MouseEvent) => this.handleMove(e);
-    const up = () => this.handleUp();
+    this.down = (e: MouseEvent) => this.handleDown(e);
+    this.move = (e: MouseEvent) => this.handleMove(e);
+    this.up = () => this.handleUp();
 
-    canvas.addEventListener('mousedown', down);
-    canvas.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-    bus.on('laser.toggle', () => this.toggle());
-    bus.on('laser.mode.set', (m: LaserMode) => this.setMode(m));
+    canvas.addEventListener('mousedown', this.down);
+    canvas.addEventListener('mousemove', this.move);
+    window.addEventListener('mouseup', this.up);
+    this.unsub.push(
+      bus.on('laser.toggle', () => this.toggle()),
+      bus.on('laser.mode.set', (m: LaserMode) => this.setMode(m))
+    );
   }
 
   setMode(m: LaserMode): void {
@@ -144,5 +150,10 @@ export class LaserController {
   destroy(): void {
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
     this.rafId = null;
+    this.canvas.removeEventListener('mousedown', this.down);
+    this.canvas.removeEventListener('mousemove', this.move);
+    window.removeEventListener('mouseup', this.up);
+    this.unsub.forEach(u => u());
+    this.unsub = [];
   }
 }

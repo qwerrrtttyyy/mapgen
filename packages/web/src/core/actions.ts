@@ -27,9 +27,13 @@ export function setProgress(fraction: number, phaseName: string): void {
 }
 
 export function selectPlate(id: number, add = false): void {
-  if (!add) state.selectedPlates.clear();
-  if (state.selectedPlates.has(id)) state.selectedPlates.delete(id);
-  else state.selectedPlates.add(id);
+  if (add) {
+    if (state.selectedPlates.has(id)) state.selectedPlates.delete(id);
+    else state.selectedPlates.add(id);
+  } else {
+    state.selectedPlates.clear();
+    state.selectedPlates.add(id);
+  }
   bus.emit('selection.changed', { plates: Array.from(state.selectedPlates), regions: Array.from(state.selectedRegions) });
 }
 
@@ -52,19 +56,21 @@ export function generate(): void {
   bus.emit('generating.started');
 
   // Allow UI to render before heavy work
-  setTimeout(() => {
-    try {
-      const result = generateMap(toMapParams(state.params), (progress, phaseName) => {
-        setProgress(progress, phaseName);
-      });
-      state.mapData = result.mapData;
-      state.checkpoints = result.checkpoints;
-      bus.emit('generating.completed', result);
-    } catch (err) {
-      state.error = (err as Error).message;
-      bus.emit('generating.failed', state.error);
-    } finally {
-      state.isGenerating = false;
-    }
-  }, 16);
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      try {
+        const result = generateMap(toMapParams(state.params), (progress, phaseName) => {
+          setProgress(progress, phaseName);
+        });
+        state.mapData = result.mapData;
+        state.checkpoints = result.checkpoints;
+        bus.emit('generating.completed', result);
+      } catch (err) {
+        state.error = (err as Error).message;
+        bus.emit('generating.failed', state.error);
+      } finally {
+        state.isGenerating = false;
+      }
+    }, 0);
+  });
 }

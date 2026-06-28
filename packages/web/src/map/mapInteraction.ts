@@ -38,6 +38,7 @@ export class MapInteraction {
   private moveRafScheduled = false;
   private pendingMove: { x: number; y: number } | null = null;
   private unsub: (() => void)[] = [];
+  private trailFrameCounter = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -164,8 +165,8 @@ export class MapInteraction {
   private ensureTrailCanvas(): void {
     if (this.trailCanvas) return;
     const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 256;
+    c.width = 128;
+    c.height = 128;
     this.trailCtx = c.getContext('2d', { willReadFrequently: true });
     this.trailCanvas = c;
     if (this.trailCtx) {
@@ -190,12 +191,15 @@ export class MapInteraction {
     this.trailCtx.arc(x, y, 6, 0, Math.PI * 2);
     this.trailCtx.fill();
 
-    const pixels = this.trailCtx.getImageData(0, 0, this.trailCanvas.width, this.trailCanvas.height);
-    bus.emit('trail.update', {
-      width: this.trailCanvas.width,
-      height: this.trailCanvas.height,
-      pixels: new Uint8Array(pixels.data.buffer),
-    });
+    this.trailFrameCounter++;
+    if (this.trailFrameCounter % 2 === 0) {
+      const pixels = this.trailCtx.getImageData(0, 0, this.trailCanvas.width, this.trailCanvas.height);
+      bus.emit('trail.update', {
+        width: this.trailCanvas.width,
+        height: this.trailCanvas.height,
+        pixels: new Uint8Array(pixels.data.buffer),
+      });
+    }
 
     if (this.trailDecayTimer === null) {
       this.trailDecayTimer = window.setInterval(() => this.decayTrail(), 80);

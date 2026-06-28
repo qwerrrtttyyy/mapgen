@@ -1,6 +1,6 @@
 {
   "name": "@mapgen/web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Map Generator - Web Frontend (TypeScript + Vite)",
   "type": "module",
   "scripts": {
@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mapgen/core": "*"
+    "@mapgen/core": "*",
+    "p5": "1.11"
   },
   "devDependencies": {
+    "@types/p5": "^1.7.7",
     "typescript": "^5.4.0",
     "vite": "^5.2.0"
   },

@@ -61,16 +61,22 @@ export interface CheckpointData {
       moistTex: PackedArray;
       riverTex: PackedArray;
       tempTex: PackedArray;
+      currentTex?: PackedArray;
+      iceTex?: PackedArray;
+      coastDist?: PackedArray;
     };
   };
 }
 
 function float32ToBase64(arr: Float32Array): string {
   const bytes = new Uint8Array(arr.buffer);
-  let binary = '';
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  // Batch approach: process in chunks to avoid call stack overflow
+  const chunkSize = 0x8000; // 32768
+  let binary = '';
+  for (let i = 0; i < len; i += chunkSize) {
+    const end = Math.min(i + chunkSize, len);
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, end) as unknown as number[]);
   }
   return btoa(binary);
 }
@@ -222,6 +228,9 @@ export class CheckpointManager {
           moistTex: packFloat(mapData.moistTex, mapData.width, mapData.height)!,
           riverTex: packFloat(mapData.riverTex, mapData.width, mapData.height)!,
           tempTex: packFloat(mapData.tempTex, mapData.width, mapData.height)!,
+          currentTex: packFloat(mapData.currentTex ?? null, mapData.width, mapData.height) ?? undefined,
+          iceTex: packFloat(mapData.iceTex ?? null, mapData.width, mapData.height) ?? undefined,
+          coastDist: packFloat(mapData.coastDist ?? null, mapData.width, mapData.height) ?? undefined,
         },
         tectonic: {
           plates: mapData.plates as unknown[],
@@ -284,9 +293,13 @@ export class CheckpointManager {
         moistTex: unpackFloat(packed.moistTex) ?? new Float32Array(width * height * 4),
         riverTex: unpackFloat(packed.riverTex) ?? new Float32Array(width * height * 4),
         tempTex: unpackFloat(packed.tempTex) ?? new Float32Array(width * height * 4),
+        currentTex: unpackFloat(packed.currentTex) ?? undefined,
+        iceTex: unpackFloat(packed.iceTex) ?? undefined,
+        coastDist: unpackFloat(packed.coastDist) ?? undefined,
         plates: (data.tectonic?.plates as Plate[]) ?? [],
         regions: [],
         rivers: (data.rivers?.rivers as River[]) ?? [],
+        names: { plates: [], regions: [] },
         seed: 0,
       };
     } catch (e) {

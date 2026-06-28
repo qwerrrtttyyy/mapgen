@@ -2,6 +2,51 @@
 
 All notable changes to the Material Map Generator.
 
+## v0.0.2 (2026-06-28)
+
+### 新增：复杂世界式全局生成系统
+
+在 v0.0.1 基础架构上引入 8 个相互耦合的行星级子系统，将地图从"噪声 + 构造"提升为"地球物理仿真"。
+
+#### 世界式生成 v1（行星级气候 + 冰盖）
+
+- **海岸距离场** (`coastline.ts`)：多源 BFS 带符号距离场，驱动大陆度/河口/洋流沿岸影响
+- **洋流系统** (`oceanCurrents.ts`)：风驱动表面流 + Ekman 漂移 + 西边界强化（Stommel 简化）+ 暖/寒流温度增量
+- **动态冰盖** (`ice.ts`)：极地高海拔冰盖扩张（浅冰近似流动）+ 海冰 + 冰川侵蚀（U 型谷拓宽）
+- **气候增强** (`regions.ts`)：大陆度修正 + 洋流沿岸温度 + Hadley cell 强化（ITCZ 增湿 / 副热带高压沙漠带）+ 季风
+- **惰性生成** (`lazyGen.ts`)：视野局部高分辨率重算（双线性上采样 + 高频 FBM + 局部山峰检测）
+
+#### 世界式生成 v2（本轮新增 4 子系统）
+
+- **Köppen-Geiger 生物群系** (`biomes.ts`)：32 类生物群系（A/B/C/D/E 五带 + 高山带 M + 特殊生态 X），替换原 15 类简单分类
+- **流域分析** (`watershed.ts`)：D8 流向 + 排水盆地划分（多源反向 BFS）+ Strahler 河序（1-7 级）+ 大陆分水岭标记 + 小盆地合并
+- **火山系统** (`volcanism.ts`)：热点火山链（板块漂移方向递减年龄）+ 板缘火山弧（汇聚/离散/转换三类边界）+ 概率场 + 破火山口环形标记
+- **季节性气候变差** (`seasons.ts`)：4 季温度/降水 delta（纬度×大陆度×海拔耦合）+ ITCZ 南北移动 + 地中海夏干冬雨 + 解码器
+
+#### 集成
+
+- **下游管线** (`downstream.ts`)：统一编排 coast → currents → climate → ice → biomes → lakes → rivers → watershed → regions → volcanism → seasons，9 个开关可独立控制
+- **纹理打包** (`texturePack.ts`)：新增 `packBiomeTex` / `packWatershedTex` / `packVolcanismTex` / `packSeasonTex`
+- **地形区检测** (`editor.ts`)：`TerrainDetectOptions` 扩展 volcanoProb/biomeId/streamOrder/basinId，火山检测从孤立山峰启发式升级为概率场驱动
+- **MapData 字段**：新增 `biomeTex` / `watershedTex` / `volcanismTex` / `seasonTex` / `volcanoSites` / `hotspots`
+- **可视化** (`fs-map.frag` + `webgl.ts`)：洋流条纹（style 17）+ 冰盖覆盖（style 18）着色器
+- **LOD 名称叠加层** (`NameOverlay.ts`)：4 层缩放级别渐进显示 + 高缩放惰性生成山峰标注
+- **检查点** (`checkpoint.ts`)：保存/恢复 currentTex / iceTex / coastDist
+- **UI 开关**：5 个世界式开关（洋流/冰盖/季风/大陆度/Hadley）
+
+### 测试
+
+- 测试用例从 44 增至 **72**（11 个测试文件）
+- 新增 `biomes.test.ts` (9) / `watershed.test.ts` (6) / `volcanism.test.ts` (6) / `seasons.test.ts` (7)
+
+### 验证
+
+- typecheck: 3/3 通过
+- build: 2/2 通过（web 49 modules）
+- tests: 72/72 通过
+
+---
+
 ## v0.0.1 (2026-06-26)
 
 ### 架构重写

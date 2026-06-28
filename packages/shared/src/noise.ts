@@ -28,11 +28,14 @@ function grad(hash: number, x: number, y: number): number {
 export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
 
+const WORLEY_CACHE_MAX = 10000;
+
 export class NoiseEngine {
   seed: number;
   sample: (x: number, y: number) => number;
   private perm: Uint8Array;
   private worleyCache = new Map<string, { x: number; y: number }[]>();
+  private cacheInsertOrder: string[] = [];
 
   constructor(seed: number) {
     this.seed = seed;
@@ -116,10 +119,10 @@ export class NoiseEngine {
     ) * 2 - 1;
   }
 
-  worley2(x: number, y: number): number {
+  private _worleyDistances(x: number, y: number): { f1: number; f2: number } {
     const X = Math.floor(x);
     const Y = Math.floor(y);
-    let minDist = 9999;
+    let f1 = 9999, f2 = 9999;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const cx = X + dx;
@@ -133,21 +136,43 @@ export class NoiseEngine {
           const py = cy + (s / 2147483647);
           pts = [{ x: px, y: py }];
           this.worleyCache.set(key, pts);
+          this.cacheInsertOrder.push(key);
+          if (this.cacheInsertOrder.length > WORLEY_CACHE_MAX) {
+            const oldest = this.cacheInsertOrder.shift()!;
+            this.worleyCache.delete(oldest);
+          }
         }
         const { x: px, y: py } = pts[0];
         const dx_ = x - px;
         const dy_ = y - py;
         const d = Math.sqrt(dx_ * dx_ + dy_ * dy_);
-        if (d < minDist) minDist = d;
+        if (d < f1) { f2 = f1; f1 = d; }
+        else if (d < f2) { f2 = d; }
       }
     }
-    return 1 - Math.min(minDist * 2, 1);
+    return { f1, f2 };
+  }
+
+  worley2(x: number, y: number): number {
+    const { f1 } = this._worleyDistances(x, y);
+    return 1 - Math.min(f1 * 2, 1);
+  }
+
+  worleyF2F1(x: number, y: number): number {
+    const { f1, f2 } = this._worleyDistances(x, y);
+    return f2 - f1;
+  }
+
+  clearCache(): void {
+    this.worleyCache.clear();
+    this.cacheInsertOrder = [];
   }
 
   _hash(x: number, y: number): number {
     let h = this.seed + x * 374761393 + y * 668265263;
     h = (h ^ (h >> 13)) * 1274126177;
-    return Math.abs(h);
+    h = h ^ (h >> 16);
+    return Math.abs(h) % 2147483647;
   }
 
   fbm(x: number, y: number, octaves: number, lacunarity: number, persistence: number, type: FbmType = 'standard'): number {
@@ -170,6 +195,66 @@ export class NoiseEngine {
       frequency *= lacunarity;
     }
     return total / maxValue;
+  }
+
+  /**
+   * 自然 FBM 体系（AC-1.1, AC-1.2）：
+   * - 谱权重：w_i = persistence^i × (1 - 0.4·i/(oct-1))，抑制高频过强导致的网格伪影
+   * - 域形变：低频独立噪声扰动采样坐标，让海岸线/等高线有机化
+   * - 各向异性（ridged）：沿 ridgeAngle 拉伸，山脊连续
+   */
+  fbmNatural(
+    x: number, y: number, octaves: number, lacunarity: number, persistence: number,
+    type: FbmType = 'standard',
+    opts?: { warpStrength?: number; ridgeAngle?: number; anisotropy?: number }
+  ): number {
+    const warpStrength = opts?.warpStrength ?? 0.35;
+    const ridgeAngle = opts?.ridgeAngle ?? 0;
+    const anisotropy = opts?.anisotropy ?? 0;
+
+    // 域形变：用偏移坐标的独立低频噪声扰动采样点
+    let wx = x, wy = y;
+    if (warpStrength > 0) {
+      const w1 = this.sample(x * 0.5 + 100.3, y * 0.5 + 100.3);
+      const w2 = this.sample(x * 0.5 + 200.7, y * 0.5 + 200.7);
+      wx = x + w1 * warpStrength * 0.3;
+      wy = y + w2 * warpStrength * 0.3;
+    }
+
+    // 各向异性：旋转到 ridge 局部坐标系，沿垂直方向拉伸使山脊沿 ridgeAngle 延伸
+    let sx = wx, sy = wy;
+    if (anisotropy > 0 && type === 'ridged') {
+      const cos = Math.cos(ridgeAngle), sin = Math.sin(ridgeAngle);
+      const xr = wx * cos + wy * sin;       // 沿山脊方向
+      const yr = -wx * sin + wy * cos;      // 垂直山脊方向
+      sx = xr;
+      sy = yr * (1 + anisotropy);
+    }
+
+    let total = 0;
+    let frequency = 1;
+    let maxValue = 0;
+    const oct = Math.max(1, octaves);
+    for (let i = 0; i < oct; i++) {
+      // 谱权重：高频衰减补偿
+      const spectral = oct > 1 ? (1 - 0.4 * i / (oct - 1)) : 1;
+      const amplitude = Math.pow(persistence, i) * spectral;
+      const n = this.sample(sx * frequency, sy * frequency);
+      let v: number;
+      if (type === 'ridged') {
+        v = 1 - Math.abs(n);
+      } else if (type === 'billowy') {
+        v = Math.abs(n);
+      } else if (type === 'warped') {
+        v = this.sample(sx * frequency + n * 0.5, sy * frequency + n * 0.5);
+      } else {
+        v = n;
+      }
+      total += v * amplitude;
+      maxValue += amplitude;
+      frequency *= lacunarity;
+    }
+    return maxValue > 0 ? total / maxValue : 0;
   }
 }
 

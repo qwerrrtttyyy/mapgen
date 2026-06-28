@@ -15,6 +15,26 @@ function rgbToHex(r: number, g: number, b: number): string {
   return '#' + h(r) + h(g) + h(b);
 }
 
+const RENDER_ONLY_PARAMS = new Set<string>([
+  'style', 'showBoundaries', 'showRivers', 'showContours', 'showTerrain',
+  'showSelection', 'showClimate', 'showGrid', 'showElevScale', 'lightAngle',
+  'pointLightEnabled', 'pointLightPos', 'pointLightIntensity', 'pointLightColor',
+  'glowEnabled', 'boundaryWidth', 'boundaryColor', 'contourInterval',
+  'trailEnabled', 'cursorActive', 'cursorSize', 'laserActive', 'laserWidth',
+  'laserSelection', 'laserColor',
+]);
+
+// Range params that affect generation — trigger regen on change (mouse release)
+const GENERATION_TRIGGER_PARAMS = new Set<string>([
+  'riverCount', 'rainStrength', 'windDirX', 'windDirY',
+]);
+
+// Checkbox params that affect generation — trigger regen on toggle
+const GENERATION_TRIGGER_CHECKBOXES = new Set<string>([
+  'enableOceanCurrents', 'enableIceSheet', 'enableMonsoon',
+  'enableContinentality', 'enableHadleyEnhancement',
+]);
+
 // 抽出强类型 setter，调用方无需再做 unknown 断言
 function setTypedParam<K extends keyof UIParams>(key: K, value: UIParams[K]): void {
   setParam(key, value);
@@ -98,6 +118,16 @@ export class ParamPanel {
       };
       input.addEventListener('input', handler);
       this.unsub.push(() => input.removeEventListener('input', handler));
+
+      // Generation-affecting params: regenerate on release (change event)
+      if (GENERATION_TRIGGER_PARAMS.has(input.id)) {
+        const changeHandler = () => {
+          commitParams();
+          bus.emit('generate.request');
+        };
+        input.addEventListener('change', changeHandler);
+        this.unsub.push(() => input.removeEventListener('change', changeHandler));
+      }
     });
   }
 
@@ -109,7 +139,11 @@ export class ParamPanel {
         const val = Number.isNaN(num) ? select.value : num;
         setTypedParam(key, val);
         commitParams();
-        bus.emit('generate.request');
+        if (RENDER_ONLY_PARAMS.has(select.id)) {
+          bus.emit('render.request');
+        } else {
+          bus.emit('generate.request');
+        }
       };
       select.addEventListener('change', handler);
       this.unsub.push(() => select.removeEventListener('change', handler));
@@ -121,7 +155,12 @@ export class ParamPanel {
       const handler = () => {
         const key = input.id as keyof UIParams;
         setTypedParam(key, input.checked);
-        bus.emit('render.request');
+        if (GENERATION_TRIGGER_CHECKBOXES.has(input.id)) {
+          commitParams();
+          bus.emit('generate.request');
+        } else {
+          bus.emit('render.request');
+        }
       };
       input.addEventListener('change', handler);
       this.unsub.push(() => input.removeEventListener('change', handler));

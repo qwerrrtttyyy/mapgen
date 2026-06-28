@@ -44,6 +44,13 @@
             <label>陆地比例 <span class="value" id="landmass-val">0.4</span></label>
             <input type="range" id="landmass" min="0.1" max="0.9" step="0.05" value="0.4">
           </div>
+          <div class="md-field">
+            <label>生成模式</label>
+            <div class="md-field-row">
+              <label><input type="radio" name="genMode" value="procedural" checked> 程序生成</label>
+              <label><input type="radio" name="genMode" value="blank"> 空白手绘</label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -117,6 +124,51 @@
             <label>雪线 <span class="value" id="snowLine-val">0.5</span></label>
             <input type="range" id="snowLine" min="0.1" max="1.0" step="0.05" value="0.5">
           </div>
+          <div class="md-field">
+            <label>降雨强度 <span class="value" id="rainStrength-val">1.0</span></label>
+            <input type="range" id="rainStrength" min="0" max="2" step="0.1" value="1.0">
+          </div>
+          <div class="md-field">
+            <label>风向 X <span class="value" id="windDirX-val">1.0</span></label>
+            <input type="range" id="windDirX" min="-1" max="1" step="0.1" value="1.0">
+          </div>
+          <div class="md-field">
+            <label>风向 Y <span class="value" id="windDirY-val">0</span></label>
+            <input type="range" id="windDirY" min="-1" max="1" step="0.1" value="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- 世界式生成 -->
+      <div class="md-card">
+        <div class="md-card-title">世界式生成 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label><input type="checkbox" id="enableOceanCurrents" checked> 洋流系统</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableIceSheet" checked> 动态冰盖+冰川侵蚀</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableMonsoon" checked> 季风</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableContinentality" checked> 大陆度修正</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableHadleyEnhancement" checked> Hadley 环流强化</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 河流 -->
+      <div class="md-card">
+        <div class="md-card-title">河流 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>河流数量 <span class="value" id="riverCount-val">20</span></label>
+            <input type="range" id="riverCount" min="0" max="80" value="20">
+          </div>
         </div>
       </div>
 
@@ -126,7 +178,31 @@
         <div class="md-card-content">
           <div class="md-field">
             <label>渲染风格</label>
-            <select id="style"><option value="0">地形</option><option value="1">板块</option><option value="2">羊皮纸</option><option value="3">卫星</option><option value="4">低多边形</option><option value="5">地形详情</option><option value="6">生物群落</option><option value="7">等高线</option><option value="8">浮雕</option><option value="9">Azgaar</option></select>
+            <select id="style">
+              <optgroup label="综合渲染">
+                <option value="0">地形</option>
+                <option value="1">板块</option>
+                <option value="2">羊皮纸</option>
+                <option value="3">卫星</option>
+                <option value="4">低多边形</option>
+                <option value="5">地形详情</option>
+                <option value="6">生物群落</option>
+                <option value="7">等高线</option>
+                <option value="8">浮雕</option>
+                <option value="9">Azgaar</option>
+              </optgroup>
+              <optgroup label="单图层观察">
+                <option value="10">高程图</option>
+                <option value="11">坡度图</option>
+                <option value="12">湿度图</option>
+                <option value="13">温度图</option>
+                <option value="14">板块图</option>
+                <option value="15">生物群系图</option>
+                <option value="16">山脊图</option>
+                <option value="17">洋流图</option>
+                <option value="18">冰盖图</option>
+              </optgroup>
+            </select>
           </div>
           <div class="md-field">
             <label>光照角度 <span class="value" id="lightAngle-val">0.8</span></label>
@@ -249,6 +325,60 @@
     </div>
     <div id="canvas-container">
       <canvas id="glCanvas"></canvas>
+      <div id="editor-bar">
+        <div class="editor-group">
+          <span class="editor-label">工具</span>
+          <button class="editor-btn" data-tool="idle" title="选择/查看">查看</button>
+          <button class="editor-btn" data-tool="brush" title="画笔 (B)">画笔</button>
+          <button class="editor-btn" data-tool="vector-line" title="矢量山脉 (M)">山脉线</button>
+          <button class="editor-btn" data-tool="vector-poly" title="矢量地形 (P)">地形面</button>
+          <button class="editor-btn" data-tool="drag-plate" title="拖拽板块 (D)">拖板块</button>
+          <button class="editor-btn" data-tool="annotate" title="标注/改名 (A)">标注</button>
+        </div>
+        <div class="editor-group" id="brush-params">
+          <span class="editor-label">画笔</span>
+          <select id="brushKind">
+            <option value="raise">抬升</option>
+            <option value="lower">沉降</option>
+            <option value="land">成陆</option>
+            <option value="sea">成海</option>
+            <option value="plate-paint">涂板块</option>
+          </select>
+          <label class="editor-mini">半径 <input type="range" id="brushRadius" min="2" max="60" value="14"><span class="value" id="brushRadius-val">14</span></label>
+          <label class="editor-mini">强度 <input type="range" id="brushStrength" min="0.05" max="1" step="0.05" value="0.3"><span class="value" id="brushStrength-val">0.3</span></label>
+          <label class="editor-mini" id="brush-plate-field" style="display:none">目标板块 <input type="number" id="brushTargetPlate" min="0" max="19" value="1" style="width:48px"></label>
+        </div>
+        <div class="editor-group" id="vector-params" style="display:none">
+          <span class="editor-label">矢量</span>
+          <label class="editor-mini">宽度 <input type="range" id="vectorWidth" min="1" max="20" value="4"><span class="value" id="vectorWidth-val">4</span></label>
+          <label class="editor-mini" id="vmtn-height-field">山高 <input type="range" id="vectorMountainHeight" min="0.2" max="1" step="0.05" value="0.65"><span class="value" id="vectorMountainHeight-val">0.65</span></label>
+          <select id="vectorTarget">
+            <option value="land">陆地</option>
+            <option value="sea">海洋</option>
+            <option value="lake">湖泊</option>
+          </select>
+          <span class="editor-hint">点击加点 · Enter/双击完成 · Esc取消</span>
+        </div>
+        <div class="editor-group">
+          <button class="editor-btn" id="btn-undo" title="撤销 (Ctrl+Z)" disabled>↶撤销</button>
+          <button class="editor-btn" id="btn-redo" title="重做 (Ctrl+Y)" disabled>↷重做</button>
+          <button class="editor-btn" id="btn-toggle-names" title="显示/隐藏名称">名称</button>
+        </div>
+      </div>
+      <div id="layer-bar">
+        <button class="layer-btn active" data-style="0" title="地形">地形</button>
+        <button class="layer-btn" data-style="9" title="Azgaar">Azgaar</button>
+        <span class="layer-sep"></span>
+        <button class="layer-btn" data-style="10" title="高程">高程</button>
+        <button class="layer-btn" data-style="11" title="坡度">坡度</button>
+        <button class="layer-btn" data-style="12" title="湿度">湿度</button>
+        <button class="layer-btn" data-style="13" title="温度">温度</button>
+        <button class="layer-btn" data-style="14" title="板块">板块</button>
+        <button class="layer-btn" data-style="15" title="生物群系">群系</button>
+        <button class="layer-btn" data-style="16" title="山脊">山脊</button>
+        <button class="layer-btn" data-style="17" title="洋流">洋流</button>
+        <button class="layer-btn" data-style="18" title="冰盖">冰盖</button>
+      </div>
       <div id="progress-container">
         <div id="progress-text">初始化...</div>
         <div id="progress-bar-track"><div id="progress-bar"></div></div>

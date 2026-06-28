@@ -4,7 +4,7 @@
 
 Procedural noise & tectonic simulation tool rendering on WebGL with a Material Design 3 UI. Generates terrain/material maps in the browser.
 
-- **Latest:** `v0.0.1` (Monorepo: Turborepo + npm workspaces)
+- **Latest:** `v0.0.2` (Monorepo: Turborepo + npm workspaces)
 - **Changelog:** CHANGELOG.md
 - **Language:** zh-CN primary
 - **Runtime:** Browser (pure frontend, no server required)

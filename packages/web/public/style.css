@@ -83,6 +83,56 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
 #glCanvas { width: 100%; height: 100%; display: block; opacity: 1; transition: opacity var(--md-motion-duration-medium) var(--md-motion-easing-standard); contain: strict; will-change: transform, opacity; }
 #glCanvas.map-fade-in { animation: map-fade-in var(--md-motion-duration-long) var(--md-motion-easing-standard); }
 
+/* ── Layer quick-switch bar ── */
+#layer-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(var(--md-sys-surface-rgb, 33, 33, 36), 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--md-sys-outline);
+  border-radius: var(--md-sys-shape-full, 999px);
+  box-shadow: var(--md-elevation-2);
+  z-index: 10;
+  max-width: calc(100% - 32px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#layer-bar::-webkit-scrollbar { display: none; }
+.layer-btn {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--md-sys-on-surface-variant);
+  background: transparent;
+  border: none;
+  border-radius: var(--md-sys-shape-full, 999px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--md-motion-duration-short) var(--md-motion-easing-standard),
+              color var(--md-motion-duration-short) var(--md-motion-easing-standard);
+}
+.layer-btn:hover { background: var(--md-sys-surface-variant); color: var(--md-sys-on-surface); }
+.layer-btn.active {
+  background: var(--md-sys-primary);
+  color: var(--md-sys-on-primary);
+  font-weight: 600;
+}
+.layer-btn:focus-visible { outline: 2px solid var(--md-sys-primary); outline-offset: 2px; }
+.layer-sep { width: 1px; height: 18px; background: var(--md-sys-outline); flex: 0 0 1px; margin: 0 2px; }
+@media (max-width: 720px) {
+  #layer-bar { top: 8px; padding: 4px 6px; gap: 2px; }
+  .layer-btn { padding: 5px 8px; font-size: 11px; }
+}
+
 @keyframes map-fade-in {
   from { opacity: 0; transform: scale(0.985); }
   to { opacity: 1; transform: scale(1); }
@@ -413,4 +463,94 @@ body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background
   #progress-container { bottom: 8px; left: 8px; right: 8px; }
   .launcher-content { padding: 28px 24px; width: 92%; max-width: 320px; max-height: 88vh; overflow-y: auto; }
   .launcher-preset-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+
+/* ── 编辑器工具栏 ── */
+#editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 8px 12px;
+  background: var(--md-sys-surface-container, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--md-sys-outline-variant, rgba(255,255,255,0.12));
+  font-size: 12px;
+}
+#editor-bar .editor-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 12px;
+  border-right: 1px solid var(--md-sys-outline-variant, rgba(255,255,255,0.1));
+}
+#editor-bar .editor-group:last-child { border-right: none; padding-right: 0; }
+#editor-bar .editor-label {
+  font-size: 11px;
+  color: var(--md-sys-on-surface-variant, #aaa);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+}
+.editor-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border: 1px solid var(--md-sys-outline, rgba(255,255,255,0.2));
+  background: transparent;
+  color: var(--md-sys-on-surface, #eee);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.editor-btn:hover { background: rgba(255,255,255,0.08); }
+.editor-btn.active {
+  background: var(--md-sys-primary, #b5c7ff);
+  color: var(--md-sys-on-primary, #001a52);
+  border-color: var(--md-sys-primary, #b5c7ff);
+}
+.editor-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.editor-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--md-sys-on-surface-variant, #bbb);
+}
+.editor-mini input[type="range"] { width: 70px; }
+.editor-mini .value { min-width: 22px; text-align: right; color: var(--md-sys-on-surface, #eee); }
+.editor-hint { font-size: 10px; color: var(--md-sys-on-surface-variant, #888); }
+#editor-bar select {
+  padding: 4px 6px;
+  font-size: 12px;
+  background: var(--md-sys-surface-3, rgba(0,0,0,0.2));
+  color: var(--md-sys-on-surface, #eee);
+  border: 1px solid var(--md-sys-outline, rgba(255,255,255,0.2));
+  border-radius: 6px;
+}
+.md-field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.md-field-row label { font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+
+/* 画笔光标圆环 */
+.editor-brush-cursor {
+  position: fixed;
+  pointer-events: none;
+  border: 1.5px solid rgba(255, 82, 56, 0.9);
+  background: rgba(255, 82, 56, 0.08);
+  border-radius: 50%;
+  transform: translate(0, 0);
+  z-index: 50;
+  display: none;
+}
+
+/* 名称叠加层（纯视觉，不拦截鼠标——交互由 EditorController 在 glCanvas 上处理） */
+.name-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+@media (max-width: 600px) {
+  #editor-bar { gap: 6px 10px; padding: 6px 8px; }
+  #editor-bar .editor-group { padding-right: 8px; }
+  .editor-mini input[type="range"] { width: 50px; }
 }
