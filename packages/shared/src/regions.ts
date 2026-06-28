@@ -141,44 +141,27 @@ export function computeClimate(
   const rainfall = new Float32Array(size);
 
   const invH = 1 / height;
-  const invW = 1 / width;
+  const landRange = 1 - seaLevel;
 
+  // ── 1. 温度场（Azgaar：纬度余弦 + 海拔修正 + 海洋调节）──
   for (let y = 0; y < height; y++) {
-    const lat = (y * invH - 0.5) * 2; // -1 (south pole) to 1 (north pole)
+    const lat = (y * invH - 0.5) * 2; // -1 南极 → 1 北极
     const absLat = Math.abs(lat);
-
-    // Hadley cell temperature bands
-    let hadleyTemp: number;
-    if (absLat < 0.2) {
-      hadleyTemp = 1.0; // equatorial hot
-    } else if (absLat < 0.4) {
-      hadleyTemp = 0.7; // subtropical
-    } else if (absLat < 0.6) {
-      hadleyTemp = 0.4; // temperate
-    } else if (absLat < 0.8) {
-      hadleyTemp = 0.1; // subpolar
-    } else {
-      hadleyTemp = -0.3; // polar
-    }
-
-    // Hadley cell moisture bands: equator wet, subtropics dry, mid-lat wet, poles dry
-    let hadleyMoist: number;
-    if (absLat < 0.15) {
-      hadleyMoist = 0.8; // ITCZ - wet
-    } else if (absLat < 0.35) {
-      hadleyMoist = 0.3; // subtropical high - dry
-    } else if (absLat < 0.55) {
-      hadleyMoist = 0.6; // mid-latitude - moderate
-    } else {
-      hadleyMoist = 0.3; // polar - dry
-    }
-
+    // 赤道热(1)，极地冷(-0.3)，余弦分布
+    const latTemp = 1 - absLat * absLat * 1.3;
     const row = y * width;
     for (let x = 0; x < width; x++) {
       const idx = row + x;
       const elev = elevation[idx];
-
-      let temp = hadleyTemp - elev * 0.5 + tempOffset;
+      let temp = latTemp;
+      if (elev > seaLevel) {
+        // 海拔每升高一个单位（相对陆地范围）降温
+        temp -= ((elev - seaLevel) / (landRange + 1e-4)) * 0.7;
+      } else {
+        // 海洋温度更温和（接近纬度均值，不极端）
+        temp = latTemp * 0.85 + 0.1;
+      }
+      temp += tempOffset;
       temp = temp < -1 ? -1 : temp > 1 ? 1 : temp;
       temperature[idx] = temp;
 
@@ -187,62 +170,123 @@ export function computeClimate(
       else if (temp > 0) tempZone[idx] = 2;
       else if (temp > -0.3) tempZone[idx] = 3;
       else tempZone[idx] = 4;
-
-      let moist: number;
-      if (elev <= seaLevel) {
-        moist = 0.9;
-      } else {
-        // Apply rain strength: scales moisture (rainfall intensity multiplier)
-        moist = hadleyMoist * rainStrength;
-      }
-      moisture[idx] = moist < 0 ? 0 : moist > 1 ? 1 : moist;
-      rainfall[idx] = (moisture[idx] * (temp + 0.5 > 0 ? temp + 0.5 : 0)) * rainStrength;
     }
   }
 
-  // Rain shadow effect: wind blows from west to east (windDirectionX=1, windDirectionY=0)
-  // Moisture drops as wind crosses mountain ridges
-  if (windDirectionX !== 0 || windDirectionY !== 0) {
-    const norm = Math.sqrt(windDirectionX * windDirectionX + windDirectionY * windDirectionY);
-    const wdx = windDirectionX / norm;
-    const wdy = windDirectionY / norm;
+  // ── 2. 风带模型（Azgaar 三环环流）──
+  // 每个纬度有主导风向（屏幕坐标 y 向下）：
+  //   信风带 (0-30°)：北半球从 NE 来 → 风向 (-1, +1)
+  //   西风带 (30-60°)：北半球从 SW 来 → 风向 (+1, -1)
+  //   极地东风 (60-90°)：北半球从 NE 来 → 风向 (-1, +1)
+  // 用户传入的 windDirX/Y 作为全局偏置叠加
+  const windField = new Float32Array(size * 2);
+  for (let y = 0; y < height; y++) {
+    const lat = (y * invH - 0.5) * 2;
+    const absLat = Math.abs(lat);
+    const sign = lat >= 0 ? 1 : -1; // 北半球 +1, 南半球 -1
+    let wbx: number, wby: number;
+    if (absLat < 0.33) {
+      // 信风：吹向赤道（向 y 中心），从东来
+      wbx = -1; wby = sign; // 北半球 (-1,+1) 南半球 (-1,-1)
+    } else if (absLat < 0.66) {
+      // 西风带：从西来，吹向极地
+      wbx = 1; wby = -sign;
+    } else {
+      // 极地东风：从东来，吹向赤道
+      wbx = -1; wby = sign;
+    }
+    // 叠加用户风向偏置
+    wbx += windDirectionX;
+    wby += windDirectionY;
+    const mag = Math.sqrt(wbx * wbx + wby * wby) || 1;
+    wbx /= mag; wby /= mag;
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      const idx = row + x;
+      windField[idx * 2] = wbx;
+      windField[idx * 2 + 1] = wby;
+    }
+  }
 
-    // Traverse in wind direction, accumulating moisture depletion
-    for (let pass = 0; pass < 2; pass++) {
-      // Determine traversal order based on wind direction
-      const xStart = wdx > 0 ? 0 : width - 1;
-      const xEnd = wdx > 0 ? width : -1;
-      const xStep = wdx > 0 ? 1 : -1;
-      const yStart = wdy > 0 ? 0 : height - 1;
-      const yEnd = wdy > 0 ? height : -1;
-      const yStep = wdy > 0 ? 1 : -1;
+  // ── 3. 湿气传递（Azgaar 核心创新）──
+  // 海洋 = 湿气源；风把湿气吹向陆地；遇上升地形释放降水（雨影）
+  // 初始化：海洋高湿气，陆地低湿气
+  for (let i = 0; i < size; i++) {
+    if (elevation[i] <= seaLevel) {
+      moisture[i] = 0.95;
+    } else {
+      moisture[i] = 0.1;
+    }
+  }
 
-      for (let y = yStart; y !== yEnd; y += yStep) {
-        let moistureShadow = 1.0;
-        for (let x = xStart; x !== xEnd; x += xStep) {
-          const idx = y * width + x;
-          if (elevation[idx] <= seaLevel) continue;
-
-          // Apply rain shadow: moisture decreases after crossing high terrain
-          // Also check diagonal upwind neighbors
-          const upwindX = x - Math.round(wdx);
-          const upwindY = y - Math.round(wdy);
-          if (upwindX >= 0 && upwindX < width && upwindY >= 0 && upwindY < height) {
-            const upwindIdx = upwindY * width + upwindX;
-            const elevDiff = elevation[idx] - elevation[upwindIdx];
-            if (elevDiff > 0.05) {
-              // Mountain ridge: moisture drops on leeward side
-              moistureShadow *= (1 - elevDiff * 0.5);
-            }
-          }
-
-          if (moistureShadow < 1.0) {
-            moisture[idx] = moisture[idx] * moistureShadow;
-            if (moisture[idx] < 0) moisture[idx] = 0;
+  const PASSES = 4; // 多次迭代传递湿气
+  for (let pass = 0; pass < PASSES; pass++) {
+    const prev = new Float32Array(moisture);
+    for (let y = 1; y < height - 1; y++) {
+      const row = y * width;
+      for (let x = 1; x < width - 1; x++) {
+        const idx = row + x;
+        // 海洋持续补充湿气（蒸发源）
+        if (elevation[idx] <= seaLevel) {
+          moisture[idx] = 0.95 * rainStrength;
+          continue;
+        }
+        const wbx = windField[idx * 2];
+        const wby = windField[idx * 2 + 1];
+        // 上风单元（风从哪来）
+        const uxC = x - Math.round(wbx);
+        const uyC = y - Math.round(wby);
+        // 取上风方向 3 邻居的湿气加权
+        let incoming = 0;
+        let weightSum = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = uxC + dx;
+            const ny = uyC + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+            const ni = ny * width + nx;
+            const dot = dx * wbx + dy * wby; // 与风向同向权重高
+            if (dot < -0.1) continue;
+            const w = dot + 0.5;
+            incoming += prev[ni] * w;
+            weightSum += w;
           }
         }
+        if (weightSum < 1e-4) { moisture[idx] = moisture[idx] * 0.5; continue; }
+        incoming /= weightSum;
+
+        // 遇上升地形释放降水（雨影）
+        const upwindIdx = uyC * width + uxC;
+        const upwindElev = (uxC >= 0 && uxC < width && uyC >= 0 && uyC < height) ? elevation[upwindIdx] : elevation[idx];
+        const elevDiff = elevation[idx] - upwindElev;
+        let released = 0;
+        let carried = incoming;
+        if (elevDiff > 0.01) {
+          // 地形抬升 → 降水释放
+          released = incoming * Math.min(0.6, elevDiff * 2.5);
+          carried = incoming - released;
+        }
+        // 温度也影响持水能力（冷空气持水少 → 更多降水）
+        const tempFactor = 0.5 + temperature[idx] * 0.5;
+        if (carried > tempFactor) {
+          released += (carried - tempFactor) * 0.5;
+          carried = tempFactor;
+        }
+        rainfall[idx] += released * rainStrength;
+        // 湿气随距离衰减 + 剩余携带
+        moisture[idx] = carried * 0.92 + moisture[idx] * 0.08;
       }
     }
+  }
+
+  // 归一化降雨量
+  let maxRain = 1e-4;
+  for (let i = 0; i < size; i++) if (rainfall[i] > maxRain) maxRain = rainfall[i];
+  const invMaxR = 1 / maxRain;
+  for (let i = 0; i < size; i++) {
+    moisture[i] = moisture[i] < 0 ? 0 : moisture[i] > 1 ? 1 : moisture[i];
+    rainfall[i] = rainfall[i] * invMaxR;
+    rainfall[i] = rainfall[i] < 0 ? 0 : rainfall[i] > 1 ? 1 : rainfall[i];
   }
 
   return { temperature, tempZone, moisture, rainfall };

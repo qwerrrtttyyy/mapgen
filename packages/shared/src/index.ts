@@ -84,16 +84,25 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const plates = generatePlates(seed, params.plateCount, width, height, params.landmass);
   const { plateId, plateDist } = assignPlates(width, height, plates);
   const boundary = computeBoundaries(width, height, plateId);
-  const { boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
-  // Merge boundary intensity into boundary mask
+  const { boundaryType, boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
+  // 带符号构造力：汇聚(+山脉) / 离散(-裂谷) / 走滑(轻微+)
+  const size0 = width * height;
+  const tectonicForce = new Float32Array(size0);
+  for (let i = 0; i < size0; i++) {
+    if (boundary[i] === 0) continue;
+    if (boundaryType[i] === 1) tectonicForce[i] = boundaryIntensity[i];
+    else if (boundaryType[i] === 2) tectonicForce[i] = -boundaryIntensity[i];
+    else if (boundaryType[i] === 3) tectonicForce[i] = boundaryIntensity[i] * 0.3;
+  }
+  // 渲染蒙版：边界亮度随强度增强
   for (let i = 0; i < boundary.length; i++) {
-    if (boundary[i] > 0) boundary[i] = Math.min(1, boundary[i] + boundaryIntensity[i] * 0.5);
+    if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + boundaryIntensity[i] * 0.3);
   }
   const checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
 
   advance('elevation');
   let { elevation, slope, ridge, ridgeMask } = generateElevation(
-    width, height, seed, plateId, plates, boundary,
+    width, height, seed, plateId, plates, plateDist, tectonicForce,
     params.noiseType, params.fbmType, params.octaves,
     params.lacunarity, params.persistence, params.seaLevel,
     params.mountainFold, params.coastDetail

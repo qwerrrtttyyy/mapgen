@@ -120,47 +120,69 @@ export function generateRivers(
   const flowDir = computeFlowDirection(width, height, elevation, seaLevel);
   const accumulation = computeFlowAccumulation(width, height, flowDir, seaLevel, elevation);
 
-  // Find river sources: land pixels with enough accumulation
-  const sources: { x: number; y: number; score: number }[] = [];
+  // ── 候选源点：高累积流量 + 较高海拔 + 有湿度 ──
+  const candidates: { x: number; y: number; score: number }[] = [];
   for (let y = 2; y < height - 2; y++) {
     for (let x = 2; x < width - 2; x++) {
       const idx = y * width + x;
-      if (elevation[idx] > seaLevel + 0.05 && accumulation[idx] >= 1) {
-        sources.push({ x, y, score: accumulation[idx] });
+      if (elevation[idx] > seaLevel + 0.08 && accumulation[idx] >= 2 && moisture[idx] > 0.2) {
+        // 评分：累积流量为主，湿度加权
+        candidates.push({ x, y, score: accumulation[idx] * (0.5 + moisture[idx]) });
       }
     }
   }
+  candidates.sort((a, b) => b.score - a.score);
 
-  sources.sort((a, b) => b.score - a.score);
+  // ── 地理分散选源：避免河流挤在一起 ──
+  const minDist = Math.max(8, Math.sqrt((width * height) / Math.max(count, 1)) * 0.4);
+  const minDist2 = minDist * minDist;
   const used = new Uint8Array(size);
-  const maxRivers = Math.min(count, sources.length);
-  for (let i = 0; i < maxRivers; i++) {
+  const sources: { x: number; y: number }[] = [];
+  for (const c of candidates) {
+    if (sources.length >= count) break;
+    let ok = true;
+    for (const s of sources) {
+      const dx = c.x - s.x, dy = c.y - s.y;
+      if (dx * dx + dy * dy < minDist2) { ok = false; break; }
+    }
+    if (ok) sources.push({ x: c.x, y: c.y });
+  }
+
+  const maxAccum = (() => {
+    let m = 1;
+    for (let i = 0; i < size; i++) if (accumulation[i] > m) m = accumulation[i];
+    return m;
+  })();
+
+  // ── 追踪每条河流 ──
+  for (let i = 0; i < sources.length; i++) {
     const src = sources[i];
-    const srcIdx = src.y * width + src.x;
-    if (used[srcIdx]) continue;
-    const segments = [];
+    const segments: RiverSegment[] = [];
     let cx = src.x, cy = src.y, steps = 0;
-    const maxSteps = Math.max(width, height) * 3;
+    const maxSteps = Math.max(width, height) * 4;
+
     while (steps < maxSteps) {
-      const idx = cy * width + cx;
       if (cx < 0 || cx >= width || cy < 0 || cy >= height) break;
-      if (elevation[idx] <= seaLevel) break;
-      // Junction: stop if we hit an existing river (but not at the source)
-      if (used[idx] && steps > 0) break;
-      if (used[idx]) break; // source already used
-      segments.push({
-        x: cx, y: cy,
-        width: 1 + Math.floor(segments.length / 20),
-        depth: 0.1 + segments.length * 0.001
-      });
+      const idx = cy * width + cx;
+      if (elevation[idx] <= seaLevel) break; // 入海
+      if (used[idx] && steps > 0) break; // 汇入已有河流
+
+      // 宽度由累积流量开方驱动（Azgaar 风格）
+      const accNorm = accumulation[idx] / maxAccum;
+      const w = 1 + Math.sqrt(accNorm) * 6;
+      const depth = 0.05 + Math.sqrt(accNorm) * 0.4;
+
+      segments.push({ x: cx, y: cy, width: w, depth });
       used[idx] = 1;
+
       const dir = flowDir[idx];
-      if (dir < 0) break;
-      cx = cx + D8_DX[dir];
-      cy = cy + D8_DY[dir];
+      if (dir < 0) break; // 内陆洼地（湖泊）
+      cx += D8_DX[dir];
+      cy += D8_DY[dir];
       steps++;
     }
-    if (segments.length > 2) {
+
+    if (segments.length > 3) {
       rivers.push({
         id: i,
         segments,
@@ -171,24 +193,28 @@ export function generateRivers(
         mouthY: segments[segments.length - 1].y,
       });
 
-      for (let j = 0; j < segments.length; j++) {
-        const s = segments[j];
+      // 绘制河流（含宽度羽化）
+      for (const s of segments) {
         const idx = s.y * width + s.x;
-        riverMask[idx] = 1;
-        riverWidth[idx] = s.width;
-        riverDepth[idx] = s.depth;
-
-        const w = Math.floor(s.width / 2);
+        const intensity = Math.min(1, s.width / 4);
+        if (intensity > riverMask[idx]) {
+          riverMask[idx] = intensity;
+          riverWidth[idx] = s.width;
+          riverDepth[idx] = s.depth;
+        }
+        const w = Math.floor(s.width / 2) + 1;
         for (let dy = -w; dy <= w; dy++) {
           for (let dx = -w; dx <= w; dx++) {
             const px = s.x + dx, py = s.y + dy;
-            if (px >= 0 && px < width && py >= 0 && py < height) {
-              const pidx = py * width + px;
-              if (!riverMask[pidx]) {
-                riverMask[pidx] = 0.7;
-                riverWidth[pidx] = s.width * 0.7;
-                riverDepth[pidx] = s.depth * 0.7;
-              }
+            if (px < 0 || px >= width || py < 0 || py >= height) continue;
+            const pidx = py * width + px;
+            const dist2 = dx * dx + dy * dy;
+            const fall = 1 - Math.min(1, dist2 / (w * w + 1));
+            const val = intensity * fall * 0.6;
+            if (val > riverMask[pidx]) {
+              riverMask[pidx] = val;
+              riverWidth[pidx] = s.width * fall;
+              riverDepth[pidx] = s.depth * fall;
             }
           }
         }

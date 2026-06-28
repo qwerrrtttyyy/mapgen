@@ -131,7 +131,8 @@ function partialRegenerate(phase: string): void {
     // Re-generate elevation from existing plates
     const elevationResult = generateElevation(
       width, height, seed, plateId, plates,
-      new Float32Array(size), // boundary - not stored, use zero
+      extractChannel(md.plateTex, 3), // plateDist
+      new Float32Array(size), // tectonicForce - not stored, use zero
       params.noiseType, params.fbmType, params.octaves,
       params.lacunarity, params.persistence, params.seaLevel,
       params.mountainFold, params.coastDetail

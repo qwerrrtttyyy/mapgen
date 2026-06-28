@@ -4,7 +4,8 @@ import type { Plate } from './tectonic.js';
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
 export function generateElevation(
-  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[], boundary: Float32Array,
+  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[],
+  plateDist: Float32Array, tectonicForce: Float32Array,
   noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
   mountainFold: number, coastDetail: number
 ): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
@@ -14,63 +15,95 @@ export function generateElevation(
   const ridge = new Float32Array(size);
   const ridgeMask = new Float32Array(size);
   const noise = createNoise(seed, noiseType);
+  const warpNoise = createNoise(seed + 777, 'simplex');
   const detailNoise = createNoise(seed + 1, 'simplex');
+  const ridgeNoise = createNoise(seed + 999, 'perlin');
+
   const plateTypes = new Uint8Array(plates.length);
-  const plateElevs = new Float32Array(plates.length);
   for (let i = 0; i < plates.length; i++) {
     plateTypes[i] = plates[i].type === 'continent' ? 1 : 0;
-    plateElevs[i] = plates[i].elevation;
   }
 
-  const nxArr = new Float32Array(width);
-  for (let x = 0; x < width; x++) nxArr[x] = x / width;
-  const nyArr = new Float32Array(height);
-  for (let y = 0; y < height; y++) nyArr[y] = y / height;
+  // 预计算每个板块的归一化距离（0=中心, 1=边缘）
+  // plateDist 是到板块中心的欧氏距离，需估计各板块的最大距离用于归一化
+  const plateMaxDist = new Float32Array(plates.length);
+  for (let i = 0; i < size; i++) {
+    const pid = plateId[i] | 0;
+    if (plateDist[i] > plateMaxDist[pid]) plateMaxDist[pid] = plateDist[i];
+  }
+
+  const invW = 1 / width;
+  const invH = 1 / height;
 
   for (let y = 0; y < height; y++) {
+    const ny = y * invH;
+    const row = y * width;
     for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      const nx = nxArr[x];
-      const ny = nyArr[y];
+      const idx = row + x;
+      const nx = x * invW;
       const pid = plateId[idx] | 0;
       const isContinental = plateTypes[pid] === 1;
 
-      // FBM noise as primary elevation source (smooth, continuous)
-      const n = noise.fbm(nx * 4, ny * 4, octaves, lacunarity, persistence, fbmType);
-      let elev = n * 0.6;
-
-      // Plate type modifier: shift elevation up for continents, down for oceans
+      // ── 1. 板块基础高度（Azgaar：板块类型决定陆/海基底）──
+      const maxD = plateMaxDist[pid] || 1;
+      const normDist = plateDist[idx] / maxD; // 0 中心 → 1 边缘
+      let elev: number;
       if (isContinental) {
-        elev += 0.2 + plateElevs[pid] * 0.3;
+        // 大陆：内部高，边缘大陆架下降
+        const shelf = smoothstep(0.5, 1.0, normDist); // 边缘 ~0.4 衰减
+        elev = 0.35 - shelf * 0.15;
       } else {
-        elev -= 0.2 + Math.abs(plateElevs[pid]) * 0.3;
+        // 大洋：中心深，边缘略浅（洋中脊由构造力处理）
+        const abyss = 1 - smoothstep(0.0, 0.7, normDist);
+        elev = -0.35 - abyss * 0.25;
       }
 
-      // Boundary mountains (only on continental sides)
-      const b = boundary[idx];
-      if (b > 0) {
-        if (isContinental) {
-          elev += b * mountainFold * (0.3 + 0.3 * noise.sample(nx * 8, ny * 8));
+      // ── 2. 边界构造力（汇聚→山脉, 离散→裂谷, 高斯剖面）──
+      const tf = tectonicForce[idx];
+      if (tf !== 0) {
+        if (tf > 0) {
+          // 汇聚边界：山脉，高度随构造力增长
+          elev += tf * mountainFold * 0.7;
+          // 山脉噪声细节（山脊走向）
+          elev += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.2;
         } else {
-          // Oceanic boundaries: slight elevation rise
-          elev += b * mountainFold * 0.1;
+          // 离散边界：裂谷/海岭
+          elev += tf * mountainFold * 0.4;
         }
       }
 
-      // Coast detail
-      const distToSea = Math.abs(elev - seaLevel);
-      if (distToSea < 0.15 && coastDetail > 0) {
-        const coastNoise = detailNoise.fbm(nx * 16, ny * 16, 3, 2, 0.5, 'standard');
-        elev += coastNoise * coastDetail * 0.05;
+      // ── 3. 域形变（domain warp）让海岸线有机化 ──
+      const warpX = warpNoise.fbm(nx * 3, ny * 3, 3, 2, 0.5, 'standard') * 0.06;
+      const warpY = warpNoise.fbm(nx * 3 + 31.4, ny * 3 + 17.7, 3, 2, 0.5, 'standard') * 0.06;
+
+      // ── 4. 多尺度地形噪声（丘陵/山谷）──
+      const terrain = noise.fbm(
+        (nx + warpX) * 5, (ny + warpY) * 5,
+        octaves, lacunarity, persistence, fbmType
+      );
+      // 陆地用 ridged 增强山脊，海洋用 standard 平滑
+      if (isContinental) {
+        elev += terrain * 0.22;
+      } else {
+        elev += terrain * 0.12;
       }
 
-      elev = Math.max(-1, Math.min(1, elev));
-      const r = Math.abs(noise.sample(nx * 12, ny * 12));
+      // ── 5. 山脊场（用于独立山脊图层）──
+      const r = ridgeNoise.fbm(nx * 8, ny * 8, 4, 2, 0.5, 'ridged');
       ridge[idx] = r;
-      ridgeMask[idx] = r > 0.6 ? 1 : 0;
-      elevation[idx] = elev;
+      ridgeMask[idx] = r > 0.55 && elev > seaLevel ? 1 : 0;
+
+      // ── 6. 海岸细节抖动 ──
+      if (coastDetail > 0 && Math.abs(elev - seaLevel) < 0.12) {
+        const cn = detailNoise.fbm(nx * 18, ny * 18, 3, 2, 0.5, 'standard');
+        elev += cn * coastDetail * 0.06;
+      }
+
+      elevation[idx] = elev < -1 ? -1 : elev > 1 ? 1 : elev;
     }
   }
+
+  // ── 坡度计算 ──
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
@@ -80,6 +113,11 @@ export function generateElevation(
     }
   }
   return { elevation, slope, ridge, ridgeMask };
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
 }
 
 export function hydraulicErosion(
