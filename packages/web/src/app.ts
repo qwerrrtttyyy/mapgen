@@ -183,11 +183,13 @@ function partialRegenerate(phase: string): void {
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
     }
+    // 侵蚀改写了高程，必须重算 slope（否则 elevTex 通道1 仍是旧值，地形区误分类）
+    const erodedSlope = recomputeSlope(width, height, elevation);
     // Re-pack elevTex
     for (let i = 0; i < size; i++) {
       const i4 = i * 4;
       md.elevTex[i4] = elevation[i];
-      md.elevTex[i4 + 1] = slope[i];
+      md.elevTex[i4 + 1] = erodedSlope[i];
       md.elevTex[i4 + 2] = ridge[i];
       md.elevTex[i4 + 3] = ridgeMask[i];
     }
@@ -207,7 +209,17 @@ function partialRegenerate(phase: string): void {
   } else if (phase === 'climate') {
     const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
       params.windDirX, params.windDirY, params.rainStrength);
-    repackMoistTemp(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone);
+    moisture = climateResult.moisture;
+    // 湿度变了，河流与地形区必须随之刷新（与 erosion/elevation 分支对称）
+    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
+    const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
+    const regions = analyzeRegions(width, height, elevation, moisture, climateResult.temperature, plateId, params.seaLevel, seed);
+    repackMoistTempRiver(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
+      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes);
+    md.rivers = riverResult.rivers;
+    md.regions = regions;
+    md.seed = seed;
   } else if (phase === 'rivers') {
     const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
     const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
@@ -393,51 +405,6 @@ function repackMoistTempRiver(
     md.riverTex[i4 + 1] = riverWidth[i];
     md.riverTex[i4 + 2] = riverDepth[i];
     md.riverTex[i4 + 3] = lakes[i];
-    md.tempTex[i4] = temp;
-    md.tempTex[i4 + 1] = tz;
-    md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
-    md.tempTex[i4 + 3] = 0;
-  }
-}
-
-function repackMoistTemp(
-  md: MapData, moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array
-): void {
-  const size = md.width * md.height;
-  const inv4 = 0.25;
-  const inv13 = 1 / 15;
-  const seaLevel = state.params.seaLevel;
-  const snowLine = state.params.snowLine;
-
-  function classifyBiome(elev: number, temp: number, moist: number): number {
-    if (elev <= seaLevel) return 0;
-    if (temp < snowLine && elev > 0.6) return 1;
-    if (elev > 0.7) return 2;
-    if (temp < -0.3) return 3;
-    if (temp < 0.1) return moist > 0.3 ? 4 : 5;
-    if (temp < 0.35) return moist > 0.5 ? 6 : 5;
-    if (temp < 0.55) {
-      if (moist > 0.7) return 7;
-      if (moist > 0.5) return 8;
-      if (moist > 0.3) return 9;
-      return 10;
-    }
-    if (moist > 0.7) return 11;
-    if (moist > 0.45) return 12;
-    if (moist > 0.2) return 13;
-    return 14;
-  }
-
-  for (let i = 0; i < size; i++) {
-    const i4 = i * 4;
-    const elev = md.elevTex[i4];
-    const temp = temperature[i];
-    const moist = moisture[i];
-    const tz = tempZone[i] * inv4;
-    md.moistTex[i4] = moist;
-    md.moistTex[i4 + 1] = rainfall[i];
-    md.moistTex[i4 + 2] = temp;
-    md.moistTex[i4 + 3] = tz;
     md.tempTex[i4] = temp;
     md.tempTex[i4 + 1] = tz;
     md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;

@@ -151,9 +151,10 @@ export function generateElevation(
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
-      const dx = elevation[idx + 1] - elevation[idx - 1];
-      const dy = elevation[idx + width] - elevation[idx - width];
-      slope[idx] = Math.sqrt(dx * dx + dy * dy) * width * 0.5;
+      // 中心差分，量纲=每像素高程差（与 app.ts recomputeSlope / detectTerrainRegions 阈值标度一致）
+      const dzdx = (elevation[idx + 1] - elevation[idx - 1]) * 0.5;
+      const dzdy = (elevation[idx + width] - elevation[idx - width]) * 0.5;
+      slope[idx] = Math.sqrt(dzdx * dzdx + dzdy * dzdy);
     }
   }
   return { elevation, slope, ridge, ridgeMask };

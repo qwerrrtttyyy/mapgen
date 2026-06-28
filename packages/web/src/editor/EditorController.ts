@@ -81,7 +81,10 @@ export class EditorController {
   setMode(mode: EditorMode): void {
     if (this.mode === mode) return;
     // 退出旧模式清理
-    if (this.mode === 'brush') this.hideBrushCursor();
+    if (this.mode === 'brush') {
+      this.hideBrushCursor();
+      this.dragging = false; // 离开 brush 时强制结束拖拽，避免悬浮自动涂刷（Bug-D）
+    }
     if (this.mode === 'vector-line' || this.mode === 'vector-poly') this.cancelVector();
     this.mode = mode;
     if (mode === 'brush') this.showBrushCursor();

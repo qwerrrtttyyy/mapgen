@@ -174,19 +174,19 @@ export function computeBoundaryTypes(
         continue;
       }
 
-      // Dot product of relative velocity with boundary normal
-      // Positive = moving toward each other = convergent
-      // Negative = moving apart = divergent
+      // Dot product of relative velocity with boundary normal.
+      // n = cx2 - cx1（从板块1指向板块2），relV = v2 - v1（板块2相对板块1）。
+      // 汇聚：板块1朝+n、板块2朝-n ⇒ relV·n < 0；离散：板块1朝-n、板块2朝+n ⇒ relV·n > 0。
       const dot = (relVX * nx_norm + relVY * ny_norm) / normLen;
 
-      if (dot > 0.003) {
+      if (dot < -0.003) {
         // Convergent boundary: plates moving toward each other → higher mountains
         boundaryType[idx] = 1;
-        boundaryIntensity[idx] = dot * 10;
-      } else if (dot < -0.003) {
+        boundaryIntensity[idx] = -dot * 10;
+      } else if (dot > 0.003) {
         // Divergent boundary: plates moving apart → rifts/lower elevation
         boundaryType[idx] = 2;
-        boundaryIntensity[idx] = -dot * 10;
+        boundaryIntensity[idx] = dot * 10;
       } else {
         // Transform boundary: plates sliding past → linear features
         boundaryType[idx] = 3;
