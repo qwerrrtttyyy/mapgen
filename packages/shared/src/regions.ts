@@ -219,7 +219,7 @@ export function computeClimate(
     }
   }
 
-  const PASSES = 4; // 多次迭代传递湿气
+  const PASSES = 10; // 多次迭代传递湿气（保证内陆湿度传播）
   for (let pass = 0; pass < PASSES; pass++) {
     const prev = new Float32Array(moisture);
     for (let y = 1; y < height - 1; y++) {
@@ -233,38 +233,30 @@ export function computeClimate(
         }
         const wbx = windField[idx * 2];
         const wby = windField[idx * 2 + 1];
-        // 上风单元（风从哪来）
+        // 上风单元（风从哪来）—— 单像素平流
         const uxC = x - Math.round(wbx);
         const uyC = y - Math.round(wby);
-        // 取上风方向 3 邻居的湿气加权
-        let incoming = 0;
-        let weightSum = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            const nx = uxC + dx;
-            const ny = uyC + dy;
-            if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-            const ni = ny * width + nx;
-            const dot = dx * wbx + dy * wby; // 与风向同向权重高
-            if (dot < -0.1) continue;
-            const w = dot + 0.5;
-            incoming += prev[ni] * w;
-            weightSum += w;
-          }
+        let incoming: number;
+        if (uxC < 0 || uxC >= width || uyC < 0 || uyC >= height) {
+          incoming = moisture[idx]; // 边界，保持
+        } else {
+          incoming = prev[uyC * width + uxC];
         }
-        if (weightSum < 1e-4) { moisture[idx] = moisture[idx] * 0.5; continue; }
-        incoming /= weightSum;
 
-        // 遇上升地形释放降水（雨影）
-        const upwindIdx = uyC * width + uxC;
-        const upwindElev = (uxC >= 0 && uxC < width && uyC >= 0 && uyC < height) ? elevation[upwindIdx] : elevation[idx];
-        const elevDiff = elevation[idx] - upwindElev;
+        // 雨影释放：仅山地（高于 seaLevel+0.3）触发，避免海岸线被误判为山脉
+        // 海拔越高持续释放越强（平顶山也不穿透），上升梯度额外加成
+        const mountainThreshold = seaLevel + 0.3;
         let released = 0;
         let carried = incoming;
-        if (elevDiff > 0.01) {
-          // 地形抬升 → 降水释放
-          released = incoming * Math.min(0.6, elevDiff * 2.5);
-          carried = incoming - released;
+        if (elevation[idx] > mountainThreshold) {
+          const elevAbove = elevation[idx] - mountainThreshold;
+          const baseRate = Math.min(0.4, elevAbove * 0.8);
+          const upwindElev = (uxC >= 0 && uxC < width && uyC >= 0 && uyC < height) ? elevation[uyC * width + uxC] : elevation[idx];
+          const elevDiff = Math.max(0, elevation[idx] - upwindElev);
+          const slopeBonus = Math.min(0.4, elevDiff * 0.6);
+          const totalRate = Math.min(0.85, baseRate + slopeBonus);
+          released = carried * totalRate;
+          carried = carried - released;
         }
         // 温度也影响持水能力（冷空气持水少 → 更多降水）
         const tempFactor = 0.5 + temperature[idx] * 0.5;
@@ -273,8 +265,8 @@ export function computeClimate(
           carried = tempFactor;
         }
         rainfall[idx] += released * rainStrength;
-        // 湿气随距离衰减 + 剩余携带
-        moisture[idx] = carried * 0.92 + moisture[idx] * 0.08;
+        // 平流携带 + 距离衰减
+        moisture[idx] = carried * 0.9 + moisture[idx] * 0.1;
       }
     }
   }

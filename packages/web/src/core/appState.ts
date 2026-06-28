@@ -2,6 +2,7 @@ import type { MapData, MapParams } from '@mapgen/core';
 
 export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
+export type GenMode = 'procedural' | 'blank';
 
 export interface UIParams {
   seedStr: string;
@@ -26,6 +27,7 @@ export interface UIParams {
   rainStrength: number;
   windDirX: number;
   windDirY: number;
+  mode: GenMode;
   style: number;
   showBoundaries: boolean;
   boundaryWidth: number;
@@ -91,6 +93,7 @@ export function createDefaultParams(): UIParams {
     rainStrength: 1.0,
     windDirX: 1.0,
     windDirY: 0,
+    mode: 'procedural',
     style: 0,
     showBoundaries: true,
     boundaryWidth: 0.8,
@@ -146,6 +149,7 @@ export function toMapParams(state: UIParams): MapParams {
     rainStrength: state.rainStrength,
     windDirX: state.windDirX,
     windDirY: state.windDirY,
+    mode: state.mode,
   };
 }
 

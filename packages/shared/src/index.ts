@@ -3,12 +3,16 @@ export { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, 
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
 export { analyzeRegions, computeClimate, type Region, type ClimateData } from './regions.js';
+export { generateNames, type NameManifest, type NameablePlate, type NameableRegion, type NamedPlate, type NamedRegion, type PlateKind, type TerrainType } from './naming.js';
+export { detectTerrainRegions, type DetectedRegion, CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, type BrushTarget, type VectorTarget } from './editor.js';
 
 import { hashSeed } from './noise.js';
 import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
 import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 import { generateRivers, type River } from './rivers.js';
 import { analyzeRegions, computeClimate, type Region } from './regions.js';
+import { generateNames, type NameablePlate, type NameableRegion, type NameManifest } from './naming.js';
+import { detectTerrainRegions } from './editor.js';
 import type { NoiseType, FbmType } from './noise.js';
 
 const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
@@ -36,6 +40,8 @@ export interface MapParams {
   rainStrength?: number;
   windDirX?: number;
   windDirY?: number;
+  /** 生成模式：procedural=噪声+构造驱动；blank=空白海域待手绘（AC-10.1） */
+  mode?: 'procedural' | 'blank';
 }
 
 export interface MapData {
@@ -49,6 +55,7 @@ export interface MapData {
   plates: Plate[];
   regions: Region[];
   rivers: River[];
+  names: NameManifest;
   seed: number;
 }
 
@@ -68,7 +75,8 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     { name: 'lakes', weight: 5 },
     { name: 'rivers', weight: 10 },
     { name: 'regions', weight: 5 },
-    { name: 'packing', weight: 5 },
+    { name: 'naming', weight: 3 },
+    { name: 'packing', weight: 2 },
   ];
   const totalWeight = phases.reduce((s, p) => s + p.weight, 0);
   let progress = 0;
@@ -80,40 +88,85 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     if (onProgress) onProgress(progress, phaseName);
   }
 
-  advance('tectonic');
-  const plates = generatePlates(seed, params.plateCount, width, height, params.landmass);
-  const { plateId, plateDist } = assignPlates(width, height, plates);
-  const boundary = computeBoundaries(width, height, plateId);
-  const { boundaryType, boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
-  // 带符号构造力：汇聚(+山脉) / 离散(-裂谷) / 走滑(轻微+)
   const size0 = width * height;
-  const tectonicForce = new Float32Array(size0);
-  for (let i = 0; i < size0; i++) {
-    if (boundary[i] === 0) continue;
-    if (boundaryType[i] === 1) tectonicForce[i] = boundaryIntensity[i];
-    else if (boundaryType[i] === 2) tectonicForce[i] = -boundaryIntensity[i];
-    else if (boundaryType[i] === 3) tectonicForce[i] = boundaryIntensity[i] * 0.3;
-  }
-  // 渲染蒙版：边界亮度随强度增强
-  for (let i = 0; i < boundary.length; i++) {
-    if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + boundaryIntensity[i] * 0.3);
-  }
-  const checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
+  const isBlank = params.mode === 'blank';
 
-  advance('elevation');
-  let { elevation, slope, ridge, ridgeMask } = generateElevation(
-    width, height, seed, plateId, plates, plateDist, tectonicForce,
-    params.noiseType, params.fbmType, params.octaves,
-    params.lacunarity, params.persistence, params.seaLevel,
-    params.mountainFold, params.coastDetail
-  );
-  const checkpointElevation = { elevation: new Float32Array(elevation), slope: new Float32Array(slope), ridge: new Float32Array(ridge), ridgeMask: new Float32Array(ridgeMask) };
+  let plates: Plate[];
+  let plateId: Float32Array;
+  let plateDist: Float32Array;
+  let boundary: Float32Array;
+  let tectonicForce: Float32Array;
+  let elevation: Float32Array;
+  let slope: Float32Array;
+  let ridge: Float32Array;
+  let ridgeMask: Float32Array;
+  let checkpointTectonic: { plates: Plate[]; plateId: Float32Array; plateDist: Float32Array; boundary: Float32Array };
+  let checkpointElevation: { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array };
+  let checkpointErosion: { elevation: Float32Array };
 
-  advance('erosion');
-  if (params.erosionIterations > 0 && params.erosionStrength > 0) {
-    elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength, 0.01);
+  if (isBlank) {
+    // 空白模式：全海域，N 个海洋板块，平坦海底，等待手绘（AC-10.1）
+    advance('tectonic');
+    plates = generatePlates(seed, params.plateCount, width, height, 0).map(p => ({ ...p, type: 'ocean' as const }));
+    const assigned = assignPlates(width, height, plates);
+    plateId = assigned.plateId;
+    plateDist = assigned.plateDist;
+    boundary = computeBoundaries(width, height, plateId);
+    const bt = computeBoundaryTypes(width, height, plateId, plates);
+    tectonicForce = new Float32Array(size0); // 无构造力 → 无山脉
+    for (let i = 0; i < boundary.length; i++) {
+      if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + bt.boundaryIntensity[i] * 0.3);
+    }
+    checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
+
+    advance('elevation');
+    elevation = new Float32Array(size0).fill(params.seaLevel - 0.3);
+    slope = new Float32Array(size0);
+    ridge = new Float32Array(size0);
+    ridgeMask = new Float32Array(size0);
+    checkpointElevation = { elevation: new Float32Array(elevation), slope: new Float32Array(slope), ridge: new Float32Array(ridge), ridgeMask: new Float32Array(ridgeMask) };
+
+    advance('erosion');
+    checkpointErosion = { elevation: new Float32Array(elevation) };
+  } else {
+    advance('tectonic');
+    plates = generatePlates(seed, params.plateCount, width, height, params.landmass);
+    const assigned = assignPlates(width, height, plates);
+    plateId = assigned.plateId;
+    plateDist = assigned.plateDist;
+    boundary = computeBoundaries(width, height, plateId);
+    const { boundaryType, boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
+    tectonicForce = new Float32Array(size0);
+    for (let i = 0; i < size0; i++) {
+      if (boundary[i] === 0) continue;
+      if (boundaryType[i] === 1) tectonicForce[i] = boundaryIntensity[i];
+      else if (boundaryType[i] === 2) tectonicForce[i] = -boundaryIntensity[i];
+      else if (boundaryType[i] === 3) tectonicForce[i] = boundaryIntensity[i] * 0.3;
+    }
+    for (let i = 0; i < boundary.length; i++) {
+      if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + boundaryIntensity[i] * 0.3);
+    }
+    checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
+
+    advance('elevation');
+    const elevResult = generateElevation(
+      width, height, seed, plateId, plates, plateDist, tectonicForce,
+      params.noiseType, params.fbmType, params.octaves,
+      params.lacunarity, params.persistence, params.seaLevel,
+      params.mountainFold, params.coastDetail
+    );
+    elevation = elevResult.elevation;
+    slope = elevResult.slope;
+    ridge = elevResult.ridge;
+    ridgeMask = elevResult.ridgeMask;
+    checkpointElevation = { elevation: new Float32Array(elevation), slope: new Float32Array(slope), ridge: new Float32Array(ridge), ridgeMask: new Float32Array(ridgeMask) };
+
+    advance('erosion');
+    if (params.erosionIterations > 0 && params.erosionStrength > 0) {
+      elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength, 0.01);
+    }
+    checkpointErosion = { elevation: new Float32Array(elevation) };
   }
-  const checkpointErosion = { elevation: new Float32Array(elevation) };
 
   advance('climate');
   const { temperature, tempZone, moisture, rainfall } = computeClimate(
@@ -134,6 +187,38 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
 
   advance('regions');
   const regions = analyzeRegions(width, height, elevation, moisture, temperature, plateId, params.seaLevel, seed);
+
+  advance('naming');
+  // 计算每个板块的质心（用于命名方位词 + 名称叠加层定位）
+  const plateSumX = new Float64Array(plates.length);
+  const plateSumY = new Float64Array(plates.length);
+  const plateCount = new Float64Array(plates.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pid = plateId[y * width + x] | 0;
+      plateSumX[pid] += x;
+      plateSumY[pid] += y;
+      plateCount[pid]++;
+    }
+  }
+  const nameablePlates: NameablePlate[] = plates.map((p, i) => ({
+    plateId: i,
+    type: p.type === 'continent' ? 'continent' : 'ocean',
+    centroid: plateCount[i] > 0
+      ? [plateSumX[i] / plateCount[i], plateSumY[i] / plateCount[i]]
+      : [width * 0.5, height * 0.5],
+  }));
+  // 检测地形区连通域并命名
+  const detectedRegions = detectTerrainRegions(
+    width, height, elevation, slope, moisture, params.seaLevel, params.snowLine
+  );
+  const nameableRegions: NameableRegion[] = detectedRegions.map(r => ({
+    key: r.key,
+    type: r.type,
+    centroid: r.centroid,
+    area: r.area,
+  }));
+  const names = generateNames(seed, width, height, nameablePlates, nameableRegions);
 
   advance('packing');
   const size = width * height;
@@ -217,7 +302,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const mapData: MapData = {
     width, height,
     plateTex, elevTex, moistTex, riverTex, tempTex,
-    plates, regions, rivers, seed,
+    plates, regions, rivers, names, seed,
   };
 
   return {

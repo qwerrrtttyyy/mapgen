@@ -1,0 +1,15 @@
+{
+  "pass": [
+    "App loads with canvas + editor bar",
+    "Name overlay canvas exists",
+    "Brush raise stroke applied",
+    "Undo executed (Ctrl+Z)",
+    "Redo executed (Ctrl+Y)",
+    "Blank generation mode runs",
+    "No console errors during session"
+  ],
+  "fail": [
+    "Double-click rename prompt NOT triggered (AC-8.3 regression)"
+  ],
+  "errors": []
+}

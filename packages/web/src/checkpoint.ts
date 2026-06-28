@@ -290,6 +290,7 @@ export class CheckpointManager {
         plates: (data.tectonic?.plates as Plate[]) ?? [],
         regions: [],
         rivers: (data.rivers?.rivers as River[]) ?? [],
+        names: { plates: [], regions: [] },
         seed: 0,
       };
     } catch (e) {

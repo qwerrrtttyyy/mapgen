@@ -196,6 +196,66 @@ export class NoiseEngine {
     }
     return total / maxValue;
   }
+
+  /**
+   * 自然 FBM 体系（AC-1.1, AC-1.2）：
+   * - 谱权重：w_i = persistence^i × (1 - 0.4·i/(oct-1))，抑制高频过强导致的网格伪影
+   * - 域形变：低频独立噪声扰动采样坐标，让海岸线/等高线有机化
+   * - 各向异性（ridged）：沿 ridgeAngle 拉伸，山脊连续
+   */
+  fbmNatural(
+    x: number, y: number, octaves: number, lacunarity: number, persistence: number,
+    type: FbmType = 'standard',
+    opts?: { warpStrength?: number; ridgeAngle?: number; anisotropy?: number }
+  ): number {
+    const warpStrength = opts?.warpStrength ?? 0.35;
+    const ridgeAngle = opts?.ridgeAngle ?? 0;
+    const anisotropy = opts?.anisotropy ?? 0;
+
+    // 域形变：用偏移坐标的独立低频噪声扰动采样点
+    let wx = x, wy = y;
+    if (warpStrength > 0) {
+      const w1 = this.sample(x * 0.5 + 100.3, y * 0.5 + 100.3);
+      const w2 = this.sample(x * 0.5 + 200.7, y * 0.5 + 200.7);
+      wx = x + w1 * warpStrength * 0.3;
+      wy = y + w2 * warpStrength * 0.3;
+    }
+
+    // 各向异性：旋转到 ridge 局部坐标系，沿垂直方向拉伸使山脊沿 ridgeAngle 延伸
+    let sx = wx, sy = wy;
+    if (anisotropy > 0 && type === 'ridged') {
+      const cos = Math.cos(ridgeAngle), sin = Math.sin(ridgeAngle);
+      const xr = wx * cos + wy * sin;       // 沿山脊方向
+      const yr = -wx * sin + wy * cos;      // 垂直山脊方向
+      sx = xr;
+      sy = yr * (1 + anisotropy);
+    }
+
+    let total = 0;
+    let frequency = 1;
+    let maxValue = 0;
+    const oct = Math.max(1, octaves);
+    for (let i = 0; i < oct; i++) {
+      // 谱权重：高频衰减补偿
+      const spectral = oct > 1 ? (1 - 0.4 * i / (oct - 1)) : 1;
+      const amplitude = Math.pow(persistence, i) * spectral;
+      const n = this.sample(sx * frequency, sy * frequency);
+      let v: number;
+      if (type === 'ridged') {
+        v = 1 - Math.abs(n);
+      } else if (type === 'billowy') {
+        v = Math.abs(n);
+      } else if (type === 'warped') {
+        v = this.sample(sx * frequency + n * 0.5, sy * frequency + n * 0.5);
+      } else {
+        v = n;
+      }
+      total += v * amplitude;
+      maxValue += amplitude;
+      frequency *= lacunarity;
+    }
+    return maxValue > 0 ? total / maxValue : 0;
+  }
 }
 
 export function createNoise(seed: number, type: NoiseType = 'perlin'): NoiseEngine {

@@ -1,5 +1,5 @@
 import type { MapData } from '@mapgen/core';
-import { hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers, computeClimate, analyzeRegions } from '@mapgen/core';
+import { hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers, computeClimate, analyzeRegions, detectTerrainRegions, generateNames } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -17,6 +17,8 @@ import { CheckpointPanel } from './ui/checkpointPanel.js';
 import { Shortcuts } from './ui/shortcuts.js';
 import { ContextMenu } from './ui/contextMenu.js';
 import { MapInteraction } from './map/mapInteraction.js';
+import { EditorController, DEFAULT_TOOL_PARAMS, type BrushKind, type EditorMode } from './editor/EditorController.js';
+import { NameOverlay } from './editor/NameOverlay.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
   style: 'u_style',
@@ -58,6 +60,8 @@ let renderer: WebGLRenderer | Canvas2DRenderer | P5Renderer | null = null;
 let checkpointMgr: CheckpointManager | null = null;
 let renderTimeout: number | null = null;
 let mapInteraction: MapInteraction | null = null;
+let editor: EditorController | null = null;
+let nameOverlay: NameOverlay | null = null;
 
 function buildRenderParams(): RenderParams {
   const rp: RenderParams = {};
@@ -97,6 +101,7 @@ function handleResize(): void {
   const rect = container.getBoundingClientRect();
   renderer.resize(Math.floor(rect.width), Math.floor(rect.height));
   render();
+  nameOverlay?.draw();
 }
 
 function partialRegenerate(phase: string): void {
@@ -156,6 +161,21 @@ function partialRegenerate(phase: string): void {
     md.rivers = riverResult.rivers;
     md.regions = regions;
     md.seed = seed;
+  } else if (phase === 'editor-elevation') {
+    // 编辑器高程改动：以当前 elevTex 通道0 为准，重算 slope + 气候 + 河流 + 区域（不重跑侵蚀，保留手绘）
+    const editedSlope = recomputeSlope(width, height, elevation);
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
+      params.windDirX, params.windDirY, params.rainStrength);
+    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
+    const riverResult = generateRivers(width, height, elevation, climateResult.moisture, params.seaLevel, riverCount, seed);
+    const regions = analyzeRegions(width, height, elevation, climateResult.moisture, climateResult.temperature, plateId, params.seaLevel, seed);
+    repackAllTextures(md, elevation, editedSlope, ridge, ridgeMask,
+      climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
+      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes, plateId);
+    md.rivers = riverResult.rivers;
+    md.regions = regions;
+    md.seed = seed;
   } else if (phase === 'erosion') {
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
@@ -203,6 +223,67 @@ function partialRegenerate(phase: string): void {
   }
 
   bus.emit('generating.completed', { mapData: md });
+}
+
+/** 有限差分重算坡度（编辑后高程已变，旧 slope 失效） */
+function recomputeSlope(width: number, height: number, elevation: Float32Array): Float32Array {
+  const slope = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      const xl = x > 0 ? elevation[idx - 1] : elevation[idx];
+      const xr = x < width - 1 ? elevation[idx + 1] : elevation[idx];
+      const yu = y > 0 ? elevation[idx - width] : elevation[idx];
+      const yd = y < height - 1 ? elevation[idx + width] : elevation[idx];
+      const dzdx = (xr - xl) * 0.5;
+      const dzdy = (yd - yu) * 0.5;
+      slope[idx] = Math.sqrt(dzdx * dzdx + dzdy * dzdy);
+    }
+  }
+  return slope;
+}
+
+/** 编辑后刷新名称：重新检测地形区并生成名称，保留旧板块名（含用户改名） */
+function refreshNames(md: MapData): void {
+  const { width, height } = md;
+  const size = width * height;
+  const elevation = new Float32Array(size);
+  const slope = new Float32Array(size);
+  const moisture = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    elevation[i] = md.elevTex[i * 4];
+    slope[i] = md.elevTex[i * 4 + 1];
+    moisture[i] = md.moistTex[i * 4];
+  }
+  const pc = state.params.plateCount;
+  const plateSumX = new Float64Array(md.plates.length);
+  const plateSumY = new Float64Array(md.plates.length);
+  const plateCnt = new Float64Array(md.plates.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pid = Math.round(md.plateTex[(y * width + x) * 4] * pc);
+      if (pid >= 0 && pid < md.plates.length) {
+        plateSumX[pid] += x; plateSumY[pid] += y; plateCnt[pid]++;
+      }
+    }
+  }
+  const nameablePlates = md.plates.map((p, i) => ({
+    plateId: i,
+    type: (p.type === 'continent' ? 'continent' : 'ocean') as 'continent' | 'ocean',
+    centroid: (plateCnt[i] > 0
+      ? [plateSumX[i] / plateCnt[i], plateSumY[i] / plateCnt[i]]
+      : [width * 0.5, height * 0.5]) as [number, number],
+  }));
+  const detected = detectTerrainRegions(width, height, elevation, slope, moisture, state.params.seaLevel, state.params.snowLine);
+  const nameableRegions = detected.map(r => ({ key: r.key, type: r.type, centroid: r.centroid, area: r.area }));
+  const fresh = generateNames(md.seed, width, height, nameablePlates, nameableRegions);
+  // 保留旧板块名（按 plateId，含用户改名）；地形区名随连通域变化而刷新
+  const oldPlateNames = new Map(md.names.plates.map(p => [p.plateId, p.name]));
+  fresh.plates = fresh.plates.map(p => {
+    const old = oldPlateNames.get(p.plateId);
+    return old ? { ...p, name: old } : p;
+  });
+  md.names = fresh;
 }
 
 function repackAllTextures(
@@ -446,6 +527,14 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
   bus.on('regenerate.phase', (phase: string) => {
     partialRegenerate(phase);
   });
+  bus.on('editor.committed', ({ phase }: { phase: string }) => {
+    // 编辑器提交：局部重算（高程→气候/河流/区域 或 板块→高程全链）+ 刷新名称
+    const md = state.mapData;
+    if (!md) return;
+    partialRegenerate(phase);
+    refreshNames(md);
+    bus.emit('names.updated');
+  });
   bus.on('selection.clear', () => clearSelection());
   bus.on('randomSeed.request', () => {
     const seed = String(Math.floor(Math.random() * 99999));
@@ -499,8 +588,120 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
       }
     });
     state.mapData = restored;
+    refreshNames(restored);
+    bus.emit('names.updated');
     bus.emit('generating.completed', { mapData: restored });
   });
+}
+
+/** 绑定编辑器工具栏：工具切换、画笔/矢量参数、撤销重做、模式切换、快捷键 */
+function bindEditorBar(ed: EditorController): void {
+  const bar = document.getElementById('editor-bar');
+  if (!bar) return;
+
+  const brushParams = document.getElementById('brush-params') as HTMLElement | null;
+  const vectorParams = document.getElementById('vector-params') as HTMLElement | null;
+  const vtargetSel = document.getElementById('vectorTarget') as HTMLElement | null;
+  const vheightField = document.getElementById('vmtn-height-field') as HTMLElement | null;
+  const plateField = document.getElementById('brush-plate-field') as HTMLElement | null;
+
+  const toolBtns = bar.querySelectorAll<HTMLButtonElement>('.editor-btn[data-tool]');
+  const setActiveTool = (mode: EditorMode) => {
+    ed.setMode(mode);
+    toolBtns.forEach(b => b.classList.toggle('active', b.dataset.tool === mode));
+    if (brushParams) brushParams.style.display = mode === 'brush' ? '' : 'none';
+    const isVector = mode === 'vector-line' || mode === 'vector-poly';
+    if (vectorParams) vectorParams.style.display = isVector ? '' : 'none';
+    if (vtargetSel) vtargetSel.style.display = mode === 'vector-poly' ? '' : 'none';
+    if (vheightField) vheightField.style.display = mode === 'vector-line' ? '' : 'none';
+  };
+  toolBtns.forEach(btn => btn.addEventListener('click', () => setActiveTool(btn.dataset.tool as EditorMode)));
+
+  const bindRange = (id: string, valId: string, key: 'brushRadius' | 'brushStrength' | 'vectorWidth' | 'vectorMountainHeight') => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    const val = document.getElementById(valId);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      ed.setTool({ [key]: parseFloat(el.value) });
+      if (val) val.textContent = el.value;
+    });
+  };
+  bindRange('brushRadius', 'brushRadius-val', 'brushRadius');
+  bindRange('brushStrength', 'brushStrength-val', 'brushStrength');
+  bindRange('vectorWidth', 'vectorWidth-val', 'vectorWidth');
+  bindRange('vectorMountainHeight', 'vectorMountainHeight-val', 'vectorMountainHeight');
+
+  const brushKind = document.getElementById('brushKind') as HTMLSelectElement | null;
+  brushKind?.addEventListener('change', () => {
+    ed.setTool({ brushKind: brushKind.value as BrushKind });
+    if (plateField) plateField.style.display = brushKind.value === 'plate-paint' ? '' : 'none';
+  });
+
+  const brushTargetPlate = document.getElementById('brushTargetPlate') as HTMLInputElement | null;
+  brushTargetPlate?.addEventListener('change', () => {
+    ed.setTool({ brushTargetPlate: parseInt(brushTargetPlate.value, 10) || 0 });
+  });
+
+  const vectorTarget = document.getElementById('vectorTarget') as HTMLSelectElement | null;
+  vectorTarget?.addEventListener('change', () => {
+    ed.setTool({ vectorTarget: vectorTarget.value as 'land' | 'sea' | 'lake' });
+  });
+
+  const undoBtn = document.getElementById('btn-undo') as HTMLButtonElement | null;
+  const redoBtn = document.getElementById('btn-redo') as HTMLButtonElement | null;
+  const updateUndoRedo = () => {
+    if (undoBtn) undoBtn.disabled = !ed.canUndo;
+    if (redoBtn) redoBtn.disabled = !ed.canRedo;
+  };
+  undoBtn?.addEventListener('click', () => { ed.undo(); updateUndoRedo(); });
+  redoBtn?.addEventListener('click', () => { ed.redo(); updateUndoRedo(); });
+  bus.on('editor.committed', updateUndoRedo);
+  bus.on('editor.mode.changed', updateUndoRedo);
+
+  let namesVisible = true;
+  const namesBtn = document.getElementById('btn-toggle-names') as HTMLButtonElement | null;
+  namesBtn?.classList.add('active');
+  namesBtn?.addEventListener('click', () => {
+    namesVisible = !namesVisible;
+    bus.emit('overlay.toggle', namesVisible);
+    namesBtn.classList.toggle('active', namesVisible);
+  });
+
+  // 生成模式切换
+  document.querySelectorAll<HTMLInputElement>('input[name="genMode"]').forEach(r => {
+    r.addEventListener('change', () => {
+      if (r.checked) {
+        setParam('mode', r.value as 'procedural' | 'blank');
+        generateMapAction();
+      }
+    });
+  });
+
+  // 快捷键：Ctrl+Z 撤销 / Ctrl+Shift+Z|Ctrl+Y 重做 / B M P D A V 工具
+  const keyHandler = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    const k = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && k === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) ed.redo(); else ed.undo();
+      updateUndoRedo();
+    } else if ((e.ctrlKey || e.metaKey) && k === 'y') {
+      e.preventDefault();
+      ed.redo();
+      updateUndoRedo();
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      switch (k) {
+        case 'b': setActiveTool('brush'); break;
+        case 'm': setActiveTool('vector-line'); break;
+        case 'p': setActiveTool('vector-poly'); break;
+        case 'd': setActiveTool('drag-plate'); break;
+        case 'a': setActiveTool('annotate'); break;
+        case 'v': setActiveTool('idle'); break;
+      }
+    }
+  };
+  document.addEventListener('keydown', keyHandler);
 }
 
 async function initRenderer(canvas: HTMLCanvasElement, launcher?: Launcher | null): Promise<void> {
@@ -574,6 +775,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('resize', handleResize);
 
   mapInteraction = new MapInteraction(canvas);
+
+  // 编辑器子系统（AC-5/6/7/9/10）：控制器 + 名称叠加层 + 工具栏
+  editor = new EditorController(canvas);
+  const container = document.getElementById('canvas-container');
+  if (container) nameOverlay = new NameOverlay(container);
+  bindEditorBar(editor);
 
   launcher?.setProgress(0.9, '准备生成地图...');
 

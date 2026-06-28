@@ -44,6 +44,13 @@
             <label>陆地比例 <span class="value" id="landmass-val">0.4</span></label>
             <input type="range" id="landmass" min="0.1" max="0.9" step="0.05" value="0.4">
           </div>
+          <div class="md-field">
+            <label>生成模式</label>
+            <div class="md-field-row">
+              <label><input type="radio" name="genMode" value="procedural" checked> 程序生成</label>
+              <label><input type="radio" name="genMode" value="blank"> 空白手绘</label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -294,6 +301,46 @@
     </div>
     <div id="canvas-container">
       <canvas id="glCanvas"></canvas>
+      <div id="editor-bar">
+        <div class="editor-group">
+          <span class="editor-label">工具</span>
+          <button class="editor-btn" data-tool="idle" title="选择/查看">查看</button>
+          <button class="editor-btn" data-tool="brush" title="画笔 (B)">画笔</button>
+          <button class="editor-btn" data-tool="vector-line" title="矢量山脉 (M)">山脉线</button>
+          <button class="editor-btn" data-tool="vector-poly" title="矢量地形 (P)">地形面</button>
+          <button class="editor-btn" data-tool="drag-plate" title="拖拽板块 (D)">拖板块</button>
+          <button class="editor-btn" data-tool="annotate" title="标注/改名 (A)">标注</button>
+        </div>
+        <div class="editor-group" id="brush-params">
+          <span class="editor-label">画笔</span>
+          <select id="brushKind">
+            <option value="raise">抬升</option>
+            <option value="lower">沉降</option>
+            <option value="land">成陆</option>
+            <option value="sea">成海</option>
+            <option value="plate-paint">涂板块</option>
+          </select>
+          <label class="editor-mini">半径 <input type="range" id="brushRadius" min="2" max="60" value="14"><span class="value" id="brushRadius-val">14</span></label>
+          <label class="editor-mini">强度 <input type="range" id="brushStrength" min="0.05" max="1" step="0.05" value="0.3"><span class="value" id="brushStrength-val">0.3</span></label>
+          <label class="editor-mini" id="brush-plate-field" style="display:none">目标板块 <input type="number" id="brushTargetPlate" min="0" max="19" value="1" style="width:48px"></label>
+        </div>
+        <div class="editor-group" id="vector-params" style="display:none">
+          <span class="editor-label">矢量</span>
+          <label class="editor-mini">宽度 <input type="range" id="vectorWidth" min="1" max="20" value="4"><span class="value" id="vectorWidth-val">4</span></label>
+          <label class="editor-mini" id="vmtn-height-field">山高 <input type="range" id="vectorMountainHeight" min="0.2" max="1" step="0.05" value="0.65"><span class="value" id="vectorMountainHeight-val">0.65</span></label>
+          <select id="vectorTarget">
+            <option value="land">陆地</option>
+            <option value="sea">海洋</option>
+            <option value="lake">湖泊</option>
+          </select>
+          <span class="editor-hint">点击加点 · Enter/双击完成 · Esc取消</span>
+        </div>
+        <div class="editor-group">
+          <button class="editor-btn" id="btn-undo" title="撤销 (Ctrl+Z)" disabled>↶撤销</button>
+          <button class="editor-btn" id="btn-redo" title="重做 (Ctrl+Y)" disabled>↷重做</button>
+          <button class="editor-btn" id="btn-toggle-names" title="显示/隐藏名称">名称</button>
+        </div>
+      </div>
       <div id="layer-bar">
         <button class="layer-btn active" data-style="0" title="地形">地形</button>
         <button class="layer-btn" data-style="9" title="Azgaar">Azgaar</button>

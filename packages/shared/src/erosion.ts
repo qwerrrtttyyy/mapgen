@@ -15,7 +15,6 @@ export function generateElevation(
   const ridge = new Float32Array(size);
   const ridgeMask = new Float32Array(size);
   const noise = createNoise(seed, noiseType);
-  const warpNoise = createNoise(seed + 777, 'simplex');
   const detailNoise = createNoise(seed + 1, 'simplex');
   const ridgeNoise = createNoise(seed + 999, 'perlin');
 
@@ -58,42 +57,26 @@ export function generateElevation(
         elev = -0.35 - abyss * 0.25;
       }
 
-      // ── 2. 边界构造力（汇聚→山脉, 离散→裂谷, 高斯剖面）──
-      const tf = tectonicForce[idx];
-      if (tf !== 0) {
-        if (tf > 0) {
-          // 汇聚边界：山脉，高度随构造力增长
-          elev += tf * mountainFold * 0.7;
-          // 山脉噪声细节（山脊走向）
-          elev += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.2;
-        } else {
-          // 离散边界：裂谷/海岭
-          elev += tf * mountainFold * 0.4;
-        }
-      }
-
-      // ── 3. 域形变（domain warp）让海岸线有机化 ──
-      const warpX = warpNoise.fbm(nx * 3, ny * 3, 3, 2, 0.5, 'standard') * 0.06;
-      const warpY = warpNoise.fbm(nx * 3 + 31.4, ny * 3 + 17.7, 3, 2, 0.5, 'standard') * 0.06;
-
-      // ── 4. 多尺度地形噪声（丘陵/山谷）──
-      const terrain = noise.fbm(
-        (nx + warpX) * 5, (ny + warpY) * 5,
-        octaves, lacunarity, persistence, fbmType
-      );
-      // 陆地用 ridged 增强山脊，海洋用 standard 平滑
+      // ── 2. 多尺度地形噪声（自然 FBM：谱权重+域形变+各向异性）──
+      // 陆地：ridged（山脊）混合 standard（细节），海洋：standard 平滑
       if (isContinental) {
-        elev += terrain * 0.22;
+        const ridged = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'ridged',
+          { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 });
+        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
+          { warpStrength: 0.4 });
+        elev += ridged * 0.12 + detail * 0.14;
       } else {
-        elev += terrain * 0.12;
+        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
+          { warpStrength: 0.3 });
+        elev += detail * 0.10;
       }
 
-      // ── 5. 山脊场（用于独立山脊图层）──
+      // ── 3. 山脊场（用于独立山脊图层）──
       const r = ridgeNoise.fbm(nx * 8, ny * 8, 4, 2, 0.5, 'ridged');
       ridge[idx] = r;
       ridgeMask[idx] = r > 0.55 && elev > seaLevel ? 1 : 0;
 
-      // ── 6. 海岸细节抖动 ──
+      // ── 4. 海岸细节抖动 ──
       if (coastDetail > 0 && Math.abs(elev - seaLevel) < 0.12) {
         const cn = detailNoise.fbm(nx * 18, ny * 18, 3, 2, 0.5, 'standard');
         elev += cn * coastDetail * 0.06;
@@ -103,7 +86,68 @@ export function generateElevation(
     }
   }
 
-  // ── 坡度计算 ──
+  // （构造力在边界平滑后叠加，避免被平滑稀释）
+
+  // ── 板块边界过渡带平滑（AC-4.1）──
+  // 标记边界带：plateId 变化像素的半径 2 邻域，对整个带做 2 pass 邻域平均，过渡 ≥3px 单调
+  const boundaryBand = new Uint8Array(size);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const pid = plateId[idx];
+      if (plateId[idx - 1] !== pid || plateId[idx + 1] !== pid ||
+          plateId[idx - width] !== pid || plateId[idx + width] !== pid) {
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            const ny = y + dy, nx = x + dx;
+            if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+              boundaryBand[ny * width + nx] = 1;
+            }
+          }
+        }
+      }
+    }
+  }
+  const smoothed = new Float32Array(elevation);
+  for (let pass = 0; pass < 2; pass++) {
+    const src = pass === 0 ? elevation : smoothed;
+    const dst = pass === 0 ? smoothed : elevation;
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+        if (!boundaryBand[idx]) { if (pass === 1) dst[idx] = src[idx]; continue; }
+        let sum = src[idx];
+        let cnt = 1;
+        for (let dy = -2; dy <= 2; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ni = (y + dy) * width + (x + dx);
+            sum += src[ni];
+            cnt++;
+          }
+        }
+        dst[idx] = sum / cnt;
+      }
+    }
+  }
+
+  // ── 边界构造力叠加（AC-4.2，平滑后施加避免被稀释）──
+  // 汇聚→山脉（ridhed 噪声增强走向），离散→裂谷
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const tf = tectonicForce[idx];
+      if (tf === 0) continue;
+      const nx = x / width, ny = y / height;
+      if (tf > 0) {
+        let m = tf * mountainFold * 0.8;
+        m += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.25;
+        elevation[idx] = Math.min(1, elevation[idx] + m);
+      } else {
+        elevation[idx] = Math.max(-1, elevation[idx] + tf * mountainFold * 0.4);
+      }
+    }
+  }
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
