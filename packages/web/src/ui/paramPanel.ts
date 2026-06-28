@@ -24,6 +24,11 @@ const RENDER_ONLY_PARAMS = new Set<string>([
   'laserSelection', 'laserColor',
 ]);
 
+// Range params that affect generation — trigger regen on change (mouse release)
+const GENERATION_TRIGGER_PARAMS = new Set<string>([
+  'riverCount', 'rainStrength', 'windDirX', 'windDirY',
+]);
+
 // 抽出强类型 setter，调用方无需再做 unknown 断言
 function setTypedParam<K extends keyof UIParams>(key: K, value: UIParams[K]): void {
   setParam(key, value);
@@ -107,6 +112,16 @@ export class ParamPanel {
       };
       input.addEventListener('input', handler);
       this.unsub.push(() => input.removeEventListener('input', handler));
+
+      // Generation-affecting params: regenerate on release (change event)
+      if (GENERATION_TRIGGER_PARAMS.has(input.id)) {
+        const changeHandler = () => {
+          commitParams();
+          bus.emit('generate.request');
+        };
+        input.addEventListener('change', changeHandler);
+        this.unsub.push(() => input.removeEventListener('change', changeHandler));
+      }
     });
   }
 

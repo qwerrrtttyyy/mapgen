@@ -22,6 +22,10 @@ export interface UIParams {
   snowLine: number;
   coastDetail: number;
   lakeDensity: number;
+  riverCount: number;
+  rainStrength: number;
+  windDirX: number;
+  windDirY: number;
   style: number;
   showBoundaries: boolean;
   boundaryWidth: number;
@@ -83,6 +87,10 @@ export function createDefaultParams(): UIParams {
     snowLine: 0.5,
     coastDetail: 0.5,
     lakeDensity: 0.02,
+    riverCount: 20,
+    rainStrength: 1.0,
+    windDirX: 1.0,
+    windDirY: 0,
     style: 0,
     showBoundaries: true,
     boundaryWidth: 0.8,
@@ -134,6 +142,10 @@ export function toMapParams(state: UIParams): MapParams {
     lakeDensity: state.lakeDensity,
     tempOffset: state.tempOffset,
     snowLine: state.snowLine,
+    riverCount: state.riverCount,
+    rainStrength: state.rainStrength,
+    windDirX: state.windDirX,
+    windDirY: state.windDirY,
   };
 }
 

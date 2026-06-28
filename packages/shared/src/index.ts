@@ -33,6 +33,9 @@ export interface MapParams {
   riverCount?: number;
   tempOffset: number;
   snowLine: number;
+  rainStrength?: number;
+  windDirX?: number;
+  windDirY?: number;
 }
 
 export interface MapData {
@@ -105,7 +108,8 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
 
   advance('climate');
   const { temperature, tempZone, moisture, rainfall } = computeClimate(
-    width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine
+    width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
+    params.windDirX ?? 1, params.windDirY ?? 0, params.rainStrength ?? 1
   );
   const checkpointClimate = { temperature: new Float32Array(temperature), tempZone: new Float32Array(tempZone), moisture: new Float32Array(moisture), rainfall: new Float32Array(rainfall) };
 

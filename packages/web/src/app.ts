@@ -141,9 +141,10 @@ function partialRegenerate(phase: string): void {
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
     }
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine);
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
+      params.windDirX, params.windDirY, params.rainStrength);
     const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = Math.floor(width * height * 0.0005);
+    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
     const riverResult = generateRivers(width, height, elevation, climateResult.moisture, params.seaLevel, riverCount, seed);
     const regions = analyzeRegions(width, height, elevation, climateResult.moisture, climateResult.temperature, plateId, params.seaLevel, seed);
 
@@ -167,10 +168,11 @@ function partialRegenerate(phase: string): void {
       md.elevTex[i4 + 3] = ridgeMask[i];
     }
     // Re-run downstream
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine);
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
+      params.windDirX, params.windDirY, params.rainStrength);
     moisture = climateResult.moisture;
     const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = Math.floor(width * height * 0.0005);
+    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
     const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
     const regions = analyzeRegions(width, height, elevation, moisture, climateResult.temperature, plateId, params.seaLevel, seed);
     repackMoistTempRiver(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
@@ -179,11 +181,12 @@ function partialRegenerate(phase: string): void {
     md.regions = regions;
     md.seed = seed;
   } else if (phase === 'climate') {
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine);
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
+      params.windDirX, params.windDirY, params.rainStrength);
     repackMoistTemp(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone);
   } else if (phase === 'rivers') {
     const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = Math.floor(width * height * 0.0005);
+    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
     const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
     const regions = analyzeRegions(width, height, elevation, moisture, extractChannel(md.moistTex, 2), plateId, params.seaLevel, seed);
     for (let i = 0; i < size; i++) {
@@ -354,6 +357,33 @@ function repackMoistTemp(
     md.tempTex[i4 + 1] = tz;
     md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
     md.tempTex[i4 + 3] = 0;
+  }
+}
+
+function bindLayerBar(): void {
+  const bar = document.getElementById('layer-bar');
+  if (!bar) return;
+  const styleSelect = document.getElementById('style') as HTMLSelectElement | null;
+
+  const updateActive = (styleVal: number) => {
+    bar.querySelectorAll<HTMLButtonElement>('.layer-btn').forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.style) === styleVal);
+    });
+  };
+
+  bar.querySelectorAll<HTMLButtonElement>('.layer-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const styleVal = Number(btn.dataset.style);
+      setParam('style', styleVal);
+      if (styleSelect) styleSelect.value = String(styleVal);
+      updateActive(styleVal);
+      bus.emit('render.request');
+    });
+  });
+
+  // Sync layer-bar active state when style select changes
+  if (styleSelect) {
+    styleSelect.addEventListener('change', () => updateActive(Number(styleSelect.value)));
   }
 }
 
@@ -536,6 +566,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkpointPanel.bind(checkpointMgr);
 
   bindMobileDrawer();
+  bindLayerBar();
   bindGlobalEvents(canvas);
 
   handleResize();

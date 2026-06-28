@@ -117,6 +117,29 @@
             <label>雪线 <span class="value" id="snowLine-val">0.5</span></label>
             <input type="range" id="snowLine" min="0.1" max="1.0" step="0.05" value="0.5">
           </div>
+          <div class="md-field">
+            <label>降雨强度 <span class="value" id="rainStrength-val">1.0</span></label>
+            <input type="range" id="rainStrength" min="0" max="2" step="0.1" value="1.0">
+          </div>
+          <div class="md-field">
+            <label>风向 X <span class="value" id="windDirX-val">1.0</span></label>
+            <input type="range" id="windDirX" min="-1" max="1" step="0.1" value="1.0">
+          </div>
+          <div class="md-field">
+            <label>风向 Y <span class="value" id="windDirY-val">0</span></label>
+            <input type="range" id="windDirY" min="-1" max="1" step="0.1" value="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- 河流 -->
+      <div class="md-card">
+        <div class="md-card-title">河流 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label>河流数量 <span class="value" id="riverCount-val">20</span></label>
+            <input type="range" id="riverCount" min="0" max="80" value="20">
+          </div>
         </div>
       </div>
 
@@ -126,7 +149,29 @@
         <div class="md-card-content">
           <div class="md-field">
             <label>渲染风格</label>
-            <select id="style"><option value="0">地形</option><option value="1">板块</option><option value="2">羊皮纸</option><option value="3">卫星</option><option value="4">低多边形</option><option value="5">地形详情</option><option value="6">生物群落</option><option value="7">等高线</option><option value="8">浮雕</option><option value="9">Azgaar</option></select>
+            <select id="style">
+              <optgroup label="综合渲染">
+                <option value="0">地形</option>
+                <option value="1">板块</option>
+                <option value="2">羊皮纸</option>
+                <option value="3">卫星</option>
+                <option value="4">低多边形</option>
+                <option value="5">地形详情</option>
+                <option value="6">生物群落</option>
+                <option value="7">等高线</option>
+                <option value="8">浮雕</option>
+                <option value="9">Azgaar</option>
+              </optgroup>
+              <optgroup label="单图层观察">
+                <option value="10">高程图</option>
+                <option value="11">坡度图</option>
+                <option value="12">湿度图</option>
+                <option value="13">温度图</option>
+                <option value="14">板块图</option>
+                <option value="15">生物群系图</option>
+                <option value="16">山脊图</option>
+              </optgroup>
+            </select>
           </div>
           <div class="md-field">
             <label>光照角度 <span class="value" id="lightAngle-val">0.8</span></label>
@@ -249,6 +294,18 @@
     </div>
     <div id="canvas-container">
       <canvas id="glCanvas"></canvas>
+      <div id="layer-bar">
+        <button class="layer-btn active" data-style="0" title="地形">地形</button>
+        <button class="layer-btn" data-style="9" title="Azgaar">Azgaar</button>
+        <span class="layer-sep"></span>
+        <button class="layer-btn" data-style="10" title="高程">高程</button>
+        <button class="layer-btn" data-style="11" title="坡度">坡度</button>
+        <button class="layer-btn" data-style="12" title="湿度">湿度</button>
+        <button class="layer-btn" data-style="13" title="温度">温度</button>
+        <button class="layer-btn" data-style="14" title="板块">板块</button>
+        <button class="layer-btn" data-style="15" title="生物群系">群系</button>
+        <button class="layer-btn" data-style="16" title="山脊">山脊</button>
+      </div>
       <div id="progress-container">
         <div id="progress-text">初始化...</div>
         <div id="progress-bar-track"><div id="progress-bar"></div></div>

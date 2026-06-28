@@ -131,7 +131,8 @@ export function computeClimate(
   width: number, height: number, elevation: Float32Array, seaLevel: number,
   tempOffset: number, snowLine: number,
   windDirectionX: number = 1,
-  windDirectionY: number = 0
+  windDirectionY: number = 0,
+  rainStrength: number = 1
 ): ClimateData {
   const size = width * height;
   const temperature = new Float32Array(size);
@@ -191,10 +192,11 @@ export function computeClimate(
       if (elev <= seaLevel) {
         moist = 0.9;
       } else {
-        moist = hadleyMoist;
+        // Apply rain strength: scales moisture (rainfall intensity multiplier)
+        moist = hadleyMoist * rainStrength;
       }
       moisture[idx] = moist < 0 ? 0 : moist > 1 ? 1 : moist;
-      rainfall[idx] = moisture[idx] * (temp + 0.5 > 0 ? temp + 0.5 : 0);
+      rainfall[idx] = (moisture[idx] * (temp + 0.5 > 0 ? temp + 0.5 : 0)) * rainStrength;
     }
   }
 

@@ -247,6 +247,98 @@ vec3 reliefColor(float h, float sea, float shade) {
     col = pow(col, vec3(0.9));
     return col;
 }
+// 图层可视化风格 (style 10-16)
+vec3 layerElevation(float h, float sea) {
+    // 灰度高程图，海平面以下蓝色
+    if (h < sea) {
+        float t = clamp((h - (sea - 0.6)) / 0.6, 0.0, 1.0);
+        return mix(vec3(0.02, 0.04, 0.15), vec3(0.08, 0.22, 0.45), t);
+    }
+    float t = (h - sea) / (1.0 - sea + 0.001);
+    // 热力图配色：深绿→黄→橙→红→白
+    vec3 c1 = vec3(0.1, 0.35, 0.1);
+    vec3 c2 = vec3(0.3, 0.6, 0.15);
+    vec3 c3 = vec3(0.85, 0.75, 0.25);
+    vec3 c4 = vec3(0.85, 0.35, 0.12);
+    vec3 c5 = vec3(0.95, 0.95, 0.98);
+    if (t < 0.25) return mix(c1, c2, t / 0.25);
+    if (t < 0.5) return mix(c2, c3, (t - 0.25) / 0.25);
+    if (t < 0.75) return mix(c3, c4, (t - 0.5) / 0.25);
+    return mix(c4, c5, (t - 0.75) / 0.25);
+}
+vec3 layerSlope(float h, float sea) {
+    vec2 tx = 1.0 / u_resolution;
+    float hL = texture(u_elevTex, v_uv - vec2(tx.x, 0.0)).r;
+    float hR = texture(u_elevTex, v_uv + vec2(tx.x, 0.0)).r;
+    float hD = texture(u_elevTex, v_uv - vec2(0.0, tx.y)).r;
+    float hU = texture(u_elevTex, v_uv + vec2(0.0, tx.y)).r;
+    float s = sqrt(pow(hR - hL, 2.0) + pow(hU - hD, 2.0)) * 10.0;
+    s = clamp(s, 0.0, 1.0);
+    return mix(vec3(0.05, 0.05, 0.1), vec3(1.0, 0.9, 0.2), s);
+}
+vec3 layerMoisture(float moisture, float h, float sea) {
+    if (h < sea) return vec3(0.05, 0.1, 0.25);
+    // 湿度热力图：棕(干)→黄→青→蓝(湿)
+    float m = clamp(moisture, 0.0, 1.0);
+    vec3 c1 = vec3(0.5, 0.35, 0.15);
+    vec3 c2 = vec3(0.85, 0.75, 0.25);
+    vec3 c3 = vec3(0.25, 0.7, 0.55);
+    vec3 c4 = vec3(0.1, 0.35, 0.7);
+    if (m < 0.33) return mix(c1, c2, m / 0.33);
+    if (m < 0.66) return mix(c2, c3, (m - 0.33) / 0.33);
+    return mix(c3, c4, (m - 0.66) / 0.34);
+}
+vec3 layerTemperature(float temp, float h, float sea) {
+    if (h < sea) return vec3(0.05, 0.1, 0.25);
+    // 温度热力图：蓝(冷)→青→黄→橙→红(热)
+    float t = clamp(temp, 0.0, 1.0);
+    vec3 c1 = vec3(0.2, 0.3, 0.85);
+    vec3 c2 = vec3(0.25, 0.65, 0.85);
+    vec3 c3 = vec3(0.9, 0.85, 0.3);
+    vec3 c4 = vec3(0.95, 0.5, 0.15);
+    vec3 c5 = vec3(0.85, 0.15, 0.12);
+    if (t < 0.25) return mix(c1, c2, t / 0.25);
+    if (t < 0.5) return mix(c2, c3, (t - 0.25) / 0.25);
+    if (t < 0.75) return mix(c3, c4, (t - 0.5) / 0.25);
+    return mix(c4, c5, (t - 0.75) / 0.25);
+}
+vec3 layerPlates(float plateId, float boundary, float h, float sea) {
+    float hue = fract(plateId * 0.618033988749895 + 0.05);
+    vec3 base = hsv2rgb(vec3(hue, 0.65, 0.85));
+    if (h < sea) base = hsv2rgb(vec3(hue, 0.45, 0.5));
+    if (boundary > 0.1) {
+        base = mix(base, vec3(1.0, 0.3, 0.15), boundary * 0.8);
+    }
+    return base;
+}
+vec3 layerBiome(float biomeNorm, float h, float sea) {
+    if (h < sea) return vec3(0.05, 0.12, 0.3);
+    // 15 种 Whittaker 生物群系配色
+    int b = int(clamp(round(biomeNorm * 15.0), 0.0, 14.0));
+    vec3 colors[15];
+    colors[0] = vec3(0.1, 0.25, 0.5);   // 海洋
+    colors[1] = vec3(0.95, 0.95, 1.0);  // 雪/冰
+    colors[2] = vec3(0.55, 0.5, 0.45);  // 岩石
+    colors[3] = vec3(0.85, 0.88, 0.92); // 冰盖
+    colors[4] = vec3(0.5, 0.55, 0.45);  // 苔原
+    colors[5] = vec3(0.6, 0.55, 0.4);   // 寒漠
+    colors[6] = vec3(0.15, 0.35, 0.2);  // 针叶林
+    colors[7] = vec3(0.1, 0.4, 0.15);   // 温带雨林
+    colors[8] = vec3(0.2, 0.5, 0.18);   // 温带森林
+    colors[9] = vec3(0.55, 0.55, 0.3);  // 灌丛
+    colors[10] = vec3(0.65, 0.65, 0.35);// 草原
+    colors[11] = vec3(0.05, 0.3, 0.08); // 热带雨林
+    colors[12] = vec3(0.15, 0.45, 0.12);// 热带季雨林
+    colors[13] = vec3(0.7, 0.65, 0.25); // 稀树草原
+    colors[14] = vec3(0.85, 0.75, 0.45);// 热漠
+    return colors[b];
+}
+vec3 layerRidge(float ridge, float ridgeMask, float h, float sea) {
+    if (h < sea) return vec3(0.05, 0.1, 0.25);
+    vec3 col = mix(vec3(0.15, 0.12, 0.1), vec3(0.95, 0.6, 0.2), ridge);
+    if (ridgeMask > 0.5) col = mix(col, vec3(1.0, 0.85, 0.4), 0.6);
+    return col;
+}
 vec3 azgaarColor(float h, float sea, float moisture, float temp, float river, float shade, float boundary) {
     vec3 col;
     if (h < sea - 0.15) {
@@ -403,6 +495,19 @@ void main() {
         else if (u_style == 7) col = contourColor(elev, sea, shade);
         else if (u_style == 8) col = reliefColor(elev, sea, shade);
         else if (u_style == 9) col = azgaarColor(elev, sea, moisture, temp, river, shade, boundary);
+        else if (u_style == 10) col = layerElevation(elev, sea);
+        else if (u_style == 11) col = layerSlope(elev, sea);
+        else if (u_style == 12) col = layerMoisture(moisture, elev, sea);
+        else if (u_style == 13) col = layerTemperature(temp, elev, sea);
+        else if (u_style == 14) col = layerPlates(plateId, boundary, elev, sea);
+        else if (u_style == 15) {
+            float biome = texture(u_tempTex, uv).b;
+            col = layerBiome(biome, elev, sea);
+        }
+        else if (u_style == 16) {
+            vec4 elevData = texture(u_elevTex, uv);
+            col = layerRidge(elevData.b, elevData.a, elev, sea);
+        }
     }
     if (u_showBoundaries > 0.5 && u_style != 2 && u_style != 4 && u_style != 9) {
         float bw = u_boundaryWidth * 0.05; float bMask = smoothstep(bw, bw + 0.02, boundary);
