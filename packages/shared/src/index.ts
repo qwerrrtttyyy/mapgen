@@ -4,7 +4,7 @@ export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
 export { analyzeRegions, computeClimate, type Region, type ClimateData } from './regions.js';
 export { generateNames, type NameManifest, type NameablePlate, type NameableRegion, type NamedPlate, type NamedRegion, type PlateKind, type TerrainType } from './naming.js';
-export { detectTerrainRegions, type DetectedRegion, CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, type BrushTarget, type VectorTarget } from './editor.js';
+export { detectTerrainRegions, type DetectedRegion, CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, recomputePlateGeometry, type BrushTarget, type VectorTarget } from './editor.js';
 
 import { hashSeed } from './noise.js';
 import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
@@ -169,20 +169,39 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   }
 
   advance('climate');
-  const { temperature, tempZone, moisture, rainfall } = computeClimate(
-    width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-    params.windDirX ?? 1, params.windDirY ?? 0, params.rainStrength ?? 1
-  );
+  // blank 模式：全海域，无陆地 → 气候/湖泊/河流无意义，跳过计算（避免无谓遍历）
+  let temperature: Float32Array, tempZone: Float32Array, moisture: Float32Array, rainfall: Float32Array;
+  let lakes: Float32Array;
+  let rivers: River[];
+  let riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array;
+  if (isBlank) {
+    temperature = new Float32Array(size0);
+    tempZone = new Float32Array(size0);
+    moisture = new Float32Array(size0).fill(1); // 全海 → 高湿
+    rainfall = new Float32Array(size0);
+    lakes = new Float32Array(size0);
+    rivers = [];
+    riverMask = new Float32Array(size0);
+    riverWidth = new Float32Array(size0);
+    riverDepth = new Float32Array(size0);
+  } else {
+    const climate = computeClimate(
+      width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
+      params.windDirX ?? 1, params.windDirY ?? 0, params.rainStrength ?? 1
+    );
+    temperature = climate.temperature; tempZone = climate.tempZone;
+    moisture = climate.moisture; rainfall = climate.rainfall;
+    advance('lakes');
+    lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+    advance('rivers');
+    const riverCount = params.riverCount ?? Math.floor(width * height * 0.0005);
+    const riverResult = generateRivers(
+      width, height, elevation, moisture, params.seaLevel, riverCount, seed
+    );
+    rivers = riverResult.rivers; riverMask = riverResult.riverMask;
+    riverWidth = riverResult.riverWidth; riverDepth = riverResult.riverDepth;
+  }
   const checkpointClimate = { temperature: new Float32Array(temperature), tempZone: new Float32Array(tempZone), moisture: new Float32Array(moisture), rainfall: new Float32Array(rainfall) };
-
-  advance('lakes');
-  const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-
-  advance('rivers');
-  const riverCount = params.riverCount ?? Math.floor(width * height * 0.0005);
-  const { rivers, riverMask, riverWidth, riverDepth } = generateRivers(
-    width, height, elevation, moisture, params.seaLevel, riverCount, seed
-  );
   const checkpointRivers = { rivers, riverMask: new Float32Array(riverMask), riverWidth: new Float32Array(riverWidth), riverDepth: new Float32Array(riverDepth), lakes: new Float32Array(lakes) };
 
   advance('regions');

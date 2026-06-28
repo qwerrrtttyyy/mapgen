@@ -137,12 +137,13 @@ export function generateNames(
     [shuffledProper[i], shuffledProper[j]] = [shuffledProper[j], shuffledProper[i]];
   }
   let properIdx = 0;
+  let serial = 1; // 词库耗尽后追加的序号
   const namedRegions: NamedRegion[] = regions.map(r => {
+    // 取下一个未用专有名；若全部用尽，追加序号保证唯一
     let proper: string = shuffledProper[properIdx % shuffledProper.length];
     properIdx++;
-    // 防重复：若词库耗尽，追加序号
     while (usedProper.has(proper)) {
-      proper = `${shuffledProper[properIdx % shuffledProper.length]}${usedProper.size}`;
+      proper = `${shuffledProper[properIdx % shuffledProper.length]}${serial++}`;
       properIdx++;
     }
     usedProper.add(proper);

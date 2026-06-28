@@ -1,5 +1,5 @@
 import type { MapData } from '@mapgen/core';
-import { hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers, computeClimate, analyzeRegions, detectTerrainRegions, generateNames } from '@mapgen/core';
+import { hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers, computeClimate, analyzeRegions, detectTerrainRegions, generateNames, recomputePlateGeometry } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -133,10 +133,13 @@ function partialRegenerate(phase: string): void {
   }
 
   if (phase === 'elevation') {
+    // 板块已变（plate-paint/拖拽）：重算 plateDist + plates.type，避免 generateElevation 用错配几何量
+    const geo = recomputePlateGeometry(width, height, plateId, plates, elevation, params.seaLevel);
+    md.plates = geo.plates;
     // Re-generate elevation from existing plates
     const elevationResult = generateElevation(
-      width, height, seed, plateId, plates,
-      extractChannel(md.plateTex, 3), // plateDist
+      width, height, seed, plateId, geo.plates,
+      geo.plateDist, // 重算后的 plateDist（修正 Bug-1）
       new Float32Array(size), // tectonicForce - not stored, use zero
       params.noiseType, params.fbmType, params.octaves,
       params.lacunarity, params.persistence, params.seaLevel,

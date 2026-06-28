@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { detectTerrainRegions, type DetectedRegion } from '../editor.js';
-import { CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate } from '../editor.js';
+import { CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, recomputePlateGeometry } from '../editor.js';
+import type { Plate } from '../tectonic.js';
 
 describe('地形区检测 (AC-8.2)', () => {
   const W = 50, H = 50;
@@ -238,5 +239,59 @@ describe('板块拖拽 (AC-7.1)', () => {
     expect(plateId[0 * W + 0]).toBe(1);
     // 非重叠点 (12,12) 还原后不再是板块 1
     expect(plateId[12 * W + 12]).not.toBe(1);
+  });
+});
+
+// ── 板块几何重算（plate-paint 后修正 Bug-1）──
+describe('板块几何重算 recomputePlateGeometry', () => {
+  const W = 40, H = 40;
+  const seaLevel = 0;
+
+  function makePlates(n: number): Plate[] {
+    return Array.from({ length: n }, (_, i) => ({
+      id: i, x: 0.5, y: 0.5, vx: 0, vy: 0,
+      type: 'ocean' as const, color: [0, 0, 0], area: 0, boundary: 0, growth: 0,
+      elevation: 0, moisture: 0, temperature: 0, name: `P${i}`, selected: false,
+    }));
+  }
+
+  it('基于 plateId 重算质心与 plateDist', () => {
+    // 板块 0 占左半（x<20），板块 1 占右半（x>=20）
+    const plateId = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) plateId[y * W + x] = x < 20 ? 0 : 1;
+    const elevation = new Float32Array(W * H).fill(-0.3);
+    const geo = recomputePlateGeometry(W, H, plateId, makePlates(2), elevation, seaLevel);
+    // 板块 0 质心 x ≈ 9.5（左半 0..19 的中心）
+    expect(geo.plates[0].x * W).toBeCloseTo(9.5, 1);
+    expect(geo.plates[1].x * W).toBeCloseTo(29.5, 1);
+    // plateDist：板块 0 中心像素 (10,20) 到质心 (9.5,19.5) 距离 ≈ 0
+    const centerDist = geo.plateDist[20 * W + 10];
+    expect(centerDist).toBeLessThan(1.5);
+    // 边缘像素距离更大
+    const edgeDist = geo.plateDist[0 * W + 0];
+    expect(edgeDist).toBeGreaterThan(centerDist);
+  });
+
+  it('按平均高程推断板块 type（陆/海）', () => {
+    const plateId = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) plateId[y * W + x] = x < 20 ? 0 : 1;
+    const elevation = new Float32Array(W * H);
+    // 板块 0 区域高程 > seaLevel（陆地），板块 1 区域 < seaLevel（海洋）
+    for (let i = 0; i < W * H; i++) elevation[i] = plateId[i] === 0 ? 0.4 : -0.4;
+    const geo = recomputePlateGeometry(W, H, plateId, makePlates(2), elevation, seaLevel);
+    expect(geo.plates[0].type).toBe('continent');
+    expect(geo.plates[1].type).toBe('ocean');
+  });
+
+  it('空板块（无像素）回落到原 plate 位置，type 为 ocean', () => {
+    const plateId = new Float32Array(W * H); // 全板块 0
+    const elevation = new Float32Array(W * H).fill(-0.3);
+    const plates = makePlates(2);
+    plates[1] = { ...plates[1], x: 0.3, y: 0.7 };
+    const geo = recomputePlateGeometry(W, H, plateId, plates, elevation, seaLevel);
+    // 板块 1 无像素 → 回落原 x/y
+    expect(geo.plates[1].x).toBe(0.3);
+    expect(geo.plates[1].y).toBe(0.7);
+    expect(geo.plates[1].type).toBe('ocean');
   });
 });

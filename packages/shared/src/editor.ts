@@ -2,6 +2,7 @@
 // 本文件先实现 detectTerrainRegions（命名系统依赖）；编辑命令/撤销栈在批次 F 补充。
 
 import type { TerrainType } from './naming.js';
+import type { Plate } from './tectonic.js';
 
 export interface DetectedRegion {
   key: string;
@@ -349,6 +350,63 @@ export function applyVectorPolygon(
     redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
     undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
   };
+}
+
+// ── 板块几何重算（plate-paint/拖拽后，plateId 已变，需同步 plateDist + plates.type）──
+/**
+ * 基于当前 plateId 重算每个板块的质心、type、plateDist。
+ * - 质心：板块所有像素的算术平均（像素坐标）。
+ * - type：板块像素平均高程 > seaLevel → continent，否则 ocean。
+ * - plateDist：每个像素到所属板块质心的欧氏距离（像素单位）。
+ *
+ * 用于 plate-paint / 板块拖拽后局部重算高程前，修正 generateElevation 依赖的几何量。
+ */
+export function recomputePlateGeometry(
+  width: number, height: number,
+  plateId: Float32Array, plates: Plate[],
+  elevation: Float32Array, seaLevel: number
+): { plateDist: Float32Array; plates: Plate[] } {
+  const size = width * height;
+  const n = plates.length;
+  const sumX = new Float64Array(n);
+  const sumY = new Float64Array(n);
+  const cnt = new Float64Array(n);
+  const sumElev = new Float64Array(n);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      const pid = plateId[idx] | 0;
+      if (pid < 0 || pid >= n) continue;
+      sumX[pid] += x; sumY[pid] += y; cnt[pid]++;
+      sumElev[pid] += elevation[idx];
+    }
+  }
+  const cx = new Float64Array(n);
+  const cy = new Float64Array(n);
+  const newPlates: Plate[] = plates.map((p, i) => {
+    const ccx = cnt[i] > 0 ? sumX[i] / cnt[i] : p.x * width;
+    const ccy = cnt[i] > 0 ? sumY[i] / cnt[i] : p.y * height;
+    cx[i] = ccx; cy[i] = ccy;
+    const meanElev = cnt[i] > 0 ? sumElev[i] / cnt[i] : seaLevel - 0.3;
+    return {
+      ...p,
+      x: ccx / width,
+      y: ccy / height,
+      type: (meanElev > seaLevel ? 'continent' : 'ocean') as 'continent' | 'ocean',
+      area: cnt[i],
+    };
+  });
+  const plateDist = new Float32Array(size);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      const pid = plateId[idx] | 0;
+      if (pid < 0 || pid >= n) { plateDist[idx] = 0; continue; }
+      const dx = x - cx[pid], dy = y - cy[pid];
+      plateDist[idx] = Math.sqrt(dx * dx + dy * dy);
+    }
+  }
+  return { plateDist, plates: newPlates };
 }
 
 // ── 板块拖拽（AC-7.1）──
