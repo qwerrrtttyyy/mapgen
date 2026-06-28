@@ -75,6 +75,8 @@ export class WebGLRenderer {
       u_moistureTex: this._createTex(),
       u_tempTex: this._createTex(),
       u_riverTex: this._createTex(),
+      u_currentTex: this._createTex(),
+      u_iceTex: this._createTex(),
       u_selectionMaskTex: this._createTex(),
       u_trailTex: this._createTex(),
     };
@@ -128,6 +130,24 @@ export class WebGLRenderer {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.width, data.height, 0, gl.RGBA, gl.FLOAT, texData[i]);
       } else {
         const norm = WebGLRenderer._normalizeToUint8(texData[i]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, norm);
+      }
+    }
+
+    // 世界式生成纹理（可选，缺省零纹理避免采样未定义数据）
+    const empty = new Float32Array(data.width * data.height * 4);
+    const currentData = data.currentTex ?? empty;
+    const iceData = data.iceTex ?? empty;
+    const worldTex: Array<[string, Float32Array]> = [
+      ['u_currentTex', currentData],
+      ['u_iceTex', iceData],
+    ];
+    for (const [name, arr] of worldTex) {
+      gl.bindTexture(gl.TEXTURE_2D, this.textures[name]);
+      if (useFloat) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.width, data.height, 0, gl.RGBA, gl.FLOAT, arr);
+      } else {
+        const norm = WebGLRenderer._normalizeToUint8(arr);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, norm);
       }
     }

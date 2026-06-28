@@ -11,24 +11,67 @@ export interface DetectedRegion {
   area: number;
 }
 
+/** 世界式生成数据（可选，用于检测冰川/三角洲等地形） */
+export interface TerrainDetectOptions {
+  /** 陆地冰厚（来自 ice.ts）——检测冰川 */
+  landIce?: Float32Array;
+  /** 海岸距离场（陆地正）——检测三角洲 */
+  coastDist?: Float32Array;
+  /** 河流掩码——检测三角洲 */
+  riverMask?: Float32Array;
+  /** v2: 火山概率场 [0,1]（来自 volcanism.ts）——强化火山检测 */
+  volcanoProb?: Float32Array;
+  /** v2: 生物群系 ID（来自 biomes.ts）——细分地形区 */
+  biomeId?: Uint8Array;
+  /** v2: Strahler 河序（来自 watershed.ts）——大河河谷标注 */
+  streamOrder?: Uint8Array;
+  /** v2: 盆地编号（来自 watershed.ts）——大河流域标注 */
+  basinId?: Int32Array;
+}
+
 // 类型 ID 编码（用于 Uint8Array 标记图）
 const TYPE_IDS: Record<string, number> = {
   ocean: 0, mountain: 1, plateau: 2, basin: 3, desert: 4, forest: 5, plain: 6,
+  glacier: 7, delta: 8, volcano: 9, archipelago: 10,
 };
-const TYPE_NAMES = ['ocean', 'mountain', 'plateau', 'basin', 'desert', 'forest', 'plain'] as const;
+const TYPE_NAMES = ['ocean', 'mountain', 'plateau', 'basin', 'desert', 'forest', 'plain', 'glacier', 'delta', 'volcano', 'archipelago'] as const;
 
 const SLOPE_MOUNTAIN = 0.15;
 const SLOPE_FLAT = 0.05;
+const GLACIER_ICE_THRESHOLD = 0.3;   // 陆地冰厚超过此值 → 冰川
+const DELTA_COAST_RANGE = 10;        // 距海岸像素数
+const DELTA_RIVER_THRESHOLD = 0.05;  // 河流掩码
+const VOLCANO_MAX_AREA = 100;        // 火山：孤立小山峰
+const VOLCANO_MIN_ELEV = 0.75;       // 火山最低高程
+const VOLCANO_PROB_THRESHOLD = 0.35; // v2: 火山概率阈值
+const ARCHIPELAGO_MAX_AREA = 50;     // 群岛：小岛最大面积
 
 /**
  * 单像素地形分类。
- * 优先级：海洋 → 山脉 → 高原 → 盆地 → 沙漠 → 森林 → 平原
+ * 优先级：海洋 → 冰川 → 三角洲 → 火山 → 山脉 → 高原 → 盆地 → 沙漠 → 森林 → 平原
+ * 冰川/三角洲/火山需要 options 中的 world-gen 数据，缺省时跳过。
  */
 function classifyTerrain(
   elev: number, slope: number, moist: number,
-  seaLevel: number, snowLine: number
+  seaLevel: number, snowLine: number,
+  idx: number, opts?: TerrainDetectOptions
 ): number {
   if (elev <= seaLevel) return TYPE_IDS.ocean;
+  // 冰川：陆地 + 冰厚充足
+  if (opts?.landIce && opts.landIce[idx] > GLACIER_ICE_THRESHOLD) return TYPE_IDS.glacier;
+  // 三角洲：近海岸 + 河流出海 + 低坡度 + 低海拔
+  if (opts?.coastDist && opts?.riverMask) {
+    const cd = opts.coastDist[idx];
+    if (cd > 0 && cd < DELTA_COAST_RANGE && opts.riverMask[idx] > DELTA_RIVER_THRESHOLD
+        && slope < 0.03 && elev < seaLevel + 0.08) {
+      return TYPE_IDS.delta;
+    }
+  }
+  // v2: 火山——高海拔 + 火山概率高 + 陡坡
+  if (opts?.volcanoProb && opts.volcanoProb[idx] > VOLCANO_PROB_THRESHOLD
+      && elev > seaLevel + 0.3 && slope > SLOPE_MOUNTAIN * 0.7) {
+    return TYPE_IDS.volcano;
+  }
   if (elev > snowLine * 0.7 && slope > SLOPE_MOUNTAIN) return TYPE_IDS.mountain;
   if (elev > snowLine * 0.7 && slope < SLOPE_FLAT) return TYPE_IDS.plateau;
   // 盆地：低洼且平坦的谷底
@@ -39,25 +82,29 @@ function classifyTerrain(
 }
 
 /**
- * 检测地形区连通域（AC-8.2）。
- * 4 邻接连通域标记 + 碎片过滤 + 质心/面积计算。
+ * 检测地形区连通域（AC-8.2 + 世界式增强）。
+ * 4 邻接连通域标记 + 碎片过滤 + 质心/面积计算 + 后处理（火山/群岛）。
  *
  * @param minArea 面积小于此值的碎片被丢弃（默认 30 像素）
+ * @param options 可选世界式数据（landIce/coastDist/riverMask），启用冰川/三角洲检测
  */
 export function detectTerrainRegions(
   width: number, height: number,
   elevation: Float32Array, slope: Float32Array, moisture: Float32Array,
   seaLevel: number, snowLine: number,
-  minArea: number = 30
+  minArea: number = 30,
+  options?: TerrainDetectOptions
 ): DetectedRegion[] {
   const size = width * height;
   const typeMap = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
-    typeMap[i] = classifyTerrain(elevation[i], slope[i], moisture[i], seaLevel, snowLine);
+    typeMap[i] = classifyTerrain(elevation[i], slope[i], moisture[i], seaLevel, snowLine, i, options);
   }
 
   const visited = new Uint8Array(size);
   const regions: DetectedRegion[] = [];
+  // 收集小碎片用于群岛检测（面积 < minArea 但 >= 5）
+  const smallFragments: DetectedRegion[] = [];
   let regionCounter = 0;
   const dirs = [-1, 1, -width, width];
 
@@ -70,10 +117,15 @@ export function detectTerrainRegions(
       // 迭代 DFS（避免大区域递归爆栈）
       const stack = [idx];
       let sumX = 0, sumY = 0, count = 0;
+      // 用于火山/群岛后处理：记录边界是否邻海
+      let oceanBorderCount = 0;
+      let landBorderCount = 0;
+      const pixels: number[] = [];
       while (stack.length > 0) {
         const ci = stack.pop()!;
         if (visited[ci]) continue;
         visited[ci] = 1;
+        pixels.push(ci);
         const cx = ci % width;
         const cy = (ci / width) | 0;
         sumX += cx; sumY += cy; count++;
@@ -84,17 +136,94 @@ export function detectTerrainRegions(
           if (d === width && cy === height - 1) continue;
           const ni = ci + d;
           if (ni < 0 || ni >= size) continue;
-          if (visited[ni] || typeMap[ni] !== t) continue;
-          stack.push(ni);
+          if (visited[ni]) continue;
+          if (typeMap[ni] === t) {
+            stack.push(ni);
+          } else if (typeMap[ni] === TYPE_IDS.ocean) {
+            oceanBorderCount++;
+          } else {
+            landBorderCount++;
+          }
         }
+      }
+
+      const centroid: [number, number] = [sumX / count, sumY / count];
+
+      // 后处理：火山——小面积山脉 + 高海拔 + 相对孤立（海/不同类型边界占比高）
+      if (t === TYPE_IDS.mountain && count < VOLCANO_MAX_AREA) {
+        let sumElev = 0;
+        for (const p of pixels) sumElev += elevation[p];
+        const avgElev = sumElev / count;
+        const totalBorder = oceanBorderCount + landBorderCount;
+        if (avgElev > VOLCANO_MIN_ELEV && (totalBorder === 0 || oceanBorderCount / totalBorder > 0.4)) {
+          regions.push({
+            key: `r${regionCounter++}`,
+            type: 'volcano' as TerrainType,
+            centroid, area: count,
+          });
+          continue;
+        }
+      }
+
+      // 后处理：群岛——小面积陆地 + 几乎完全被海包围
+      if (count < ARCHIPELAGO_MAX_AREA && count >= 5
+          && oceanBorderCount > 0
+          && (oceanBorderCount + landBorderCount === 0 || oceanBorderCount / (oceanBorderCount + landBorderCount) > 0.7)) {
+        smallFragments.push({
+          key: `r${regionCounter++}`,
+          type: 'archipelago' as TerrainType,
+          centroid, area: count,
+        });
+        continue;
       }
 
       if (count >= minArea) {
         regions.push({
           key: `r${regionCounter++}`,
           type: TYPE_NAMES[t] as TerrainType,
-          centroid: [sumX / count, sumY / count],
-          area: count,
+          centroid, area: count,
+        });
+      } else if (count >= 5) {
+        // 小碎片收集，供群岛聚类
+        smallFragments.push({
+          key: `r${regionCounter++}`,
+          type: TYPE_NAMES[t] as TerrainType,
+          centroid, area: count,
+        });
+      }
+    }
+  }
+
+  // 群岛聚类：邻近的小碎片（质心距离 < 30 像素）合并为一个群岛区域
+  if (smallFragments.length >= 3) {
+    const CLUSTER_DIST = 30;
+    const used = new Uint8Array(smallFragments.length);
+    for (let i = 0; i < smallFragments.length; i++) {
+      if (used[i]) continue;
+      const cluster = [i];
+      used[i] = 1;
+      for (let j = i + 1; j < smallFragments.length; j++) {
+        if (used[j]) continue;
+        const dx = smallFragments[j].centroid[0] - smallFragments[i].centroid[0];
+        const dy = smallFragments[j].centroid[1] - smallFragments[i].centroid[1];
+        if (dx * dx + dy * dy < CLUSTER_DIST * CLUSTER_DIST) {
+          cluster.push(j);
+          used[j] = 1;
+        }
+      }
+      if (cluster.length >= 3) {
+        // 合并为一个群岛
+        let cx = 0, cy = 0, ca = 0;
+        for (const ci of cluster) {
+          cx += smallFragments[ci].centroid[0] * smallFragments[ci].area;
+          cy += smallFragments[ci].centroid[1] * smallFragments[ci].area;
+          ca += smallFragments[ci].area;
+        }
+        regions.push({
+          key: `r${regionCounter++}`,
+          type: 'archipelago' as TerrainType,
+          centroid: [cx / ca, cy / ca],
+          area: ca,
         });
       }
     }

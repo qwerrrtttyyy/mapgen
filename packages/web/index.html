@@ -139,6 +139,28 @@
         </div>
       </div>
 
+      <!-- 世界式生成 -->
+      <div class="md-card">
+        <div class="md-card-title">世界式生成 <span class="arrow">▼</span></div>
+        <div class="md-card-content">
+          <div class="md-field">
+            <label><input type="checkbox" id="enableOceanCurrents" checked> 洋流系统</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableIceSheet" checked> 动态冰盖+冰川侵蚀</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableMonsoon" checked> 季风</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableContinentality" checked> 大陆度修正</label>
+          </div>
+          <div class="md-field">
+            <label><input type="checkbox" id="enableHadleyEnhancement" checked> Hadley 环流强化</label>
+          </div>
+        </div>
+      </div>
+
       <!-- 河流 -->
       <div class="md-card">
         <div class="md-card-title">河流 <span class="arrow">▼</span></div>
@@ -177,6 +199,8 @@
                 <option value="14">板块图</option>
                 <option value="15">生物群系图</option>
                 <option value="16">山脊图</option>
+                <option value="17">洋流图</option>
+                <option value="18">冰盖图</option>
               </optgroup>
             </select>
           </div>
@@ -352,6 +376,8 @@
         <button class="layer-btn" data-style="14" title="板块">板块</button>
         <button class="layer-btn" data-style="15" title="生物群系">群系</button>
         <button class="layer-btn" data-style="16" title="山脊">山脊</button>
+        <button class="layer-btn" data-style="17" title="洋流">洋流</button>
+        <button class="layer-btn" data-style="18" title="冰盖">冰盖</button>
       </div>
       <div id="progress-container">
         <div id="progress-text">初始化...</div>

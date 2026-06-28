@@ -11,6 +11,8 @@ uniform sampler2D u_elevTex;
 uniform sampler2D u_moistureTex;
 uniform sampler2D u_tempTex;
 uniform sampler2D u_riverTex;
+uniform sampler2D u_currentTex;
+uniform sampler2D u_iceTex;
 uniform sampler2D u_selectionMaskTex;
 uniform sampler2D u_trailTex;
 uniform int u_style;
@@ -339,6 +341,64 @@ vec3 layerRidge(float ridge, float ridgeMask, float h, float sea) {
     if (ridgeMask > 0.5) col = mix(col, vec3(1.0, 0.85, 0.4), 0.6);
     return col;
 }
+// 洋流可视化：海洋上叠加流场——暖流偏红、寒流偏蓝，流速越快越亮
+// 陆地用暗色地形底图，海岸线高亮
+vec3 layerCurrents(vec4 curData, float h, float sea, vec2 uv) {
+    vec3 base;
+    if (h < sea) {
+        float depth = clamp((sea - h) / 0.5, 0.0, 1.0);
+        base = mix(vec3(0.10, 0.30, 0.55), vec3(0.04, 0.10, 0.28), depth);
+    } else {
+        float t = clamp((h - sea) / 0.4, 0.0, 1.0);
+        base = mix(vec3(0.35, 0.30, 0.20), vec3(0.55, 0.50, 0.45), t);
+    }
+    if (h < sea) {
+        // 解码流速向量 [-1,1] 与温度增量
+        vec2 flow = curData.rg * 2.0 - 1.0;
+        float tempDelta = curData.b * 2.0 - 1.0;
+        float speed = curData.a * 0.25; // 已 ×4 打包，还原
+        // 流向条纹：用 uv 沿流向投影产生周期性亮带
+        float streak = sin(dot(uv * 80.0, flow) + u_time * 1.5) * 0.5 + 0.5;
+        streak = pow(streak, 3.0) * clamp(speed * 4.0, 0.0, 1.0);
+        // 暖流(向极/正 tempDelta)偏红橙，寒流偏青蓝
+        vec3 warm = vec3(0.95, 0.35, 0.15);
+        vec3 cold = vec3(0.15, 0.55, 0.95);
+        vec3 flowColor = tempDelta > 0.0
+            ? mix(vec3(0.0), warm, tempDelta)
+            : mix(vec3(0.0), cold, -tempDelta);
+        base = mix(base, base * 0.6 + flowColor * 0.8, streak * 0.7);
+    }
+    return base;
+}
+// 冰盖可视化：陆地冰白色、海冰浅青、冰川流向用蓝色条纹
+vec3 layerIce(vec4 iceData, float h, float sea, float temp, vec2 uv) {
+    vec3 base;
+    if (h < sea) {
+        float depth = clamp((sea - h) / 0.5, 0.0, 1.0);
+        base = mix(vec3(0.08, 0.18, 0.40), vec3(0.02, 0.06, 0.18), depth);
+    } else {
+        float t = clamp((h - sea) / 0.5, 0.0, 1.0);
+        base = mix(vec3(0.30, 0.35, 0.22), vec3(0.60, 0.55, 0.48), t);
+    }
+    float landIce = iceData.r;
+    float seaIce = iceData.g;
+    vec2 glacierFlow = iceData.ba * 2.0 - 1.0;
+    // 海冰覆盖
+    if (h < sea && seaIce > 0.01) {
+        vec3 iceCol = vec3(0.85, 0.92, 0.98);
+        base = mix(base, iceCol, clamp(seaIce * 1.5, 0.0, 0.9));
+    }
+    // 陆地冰盖
+    if (h >= sea && landIce > 0.01) {
+        vec3 iceCol = mix(vec3(0.92, 0.95, 1.0), vec3(0.75, 0.80, 0.88), landIce);
+        // 冰川流向条纹
+        float streak = sin(dot(uv * 60.0, glacierFlow) + u_time * 0.8) * 0.5 + 0.5;
+        streak = pow(streak, 4.0) * clamp(landIce * 2.0, 0.0, 1.0);
+        iceCol = mix(iceCol, vec3(0.55, 0.70, 0.95), streak * 0.3);
+        base = mix(base, iceCol, clamp(landIce * 1.2, 0.0, 0.95));
+    }
+    return base;
+}
 vec3 azgaarColor(float h, float sea, float moisture, float temp, float river, float shade, float boundary) {
     vec3 col;
     if (h < sea - 0.15) {
@@ -507,6 +567,14 @@ void main() {
         else if (u_style == 16) {
             vec4 elevData = texture(u_elevTex, uv);
             col = layerRidge(elevData.b, elevData.a, elev, sea);
+        }
+        else if (u_style == 17) {
+            vec4 curData = texture(u_currentTex, uv);
+            col = layerCurrents(curData, elev, sea, uv);
+        }
+        else if (u_style == 18) {
+            vec4 iceData = texture(u_iceTex, uv);
+            col = layerIce(iceData, elev, sea, temp, uv);
         }
     }
     if (u_showBoundaries > 0.5 && u_style != 2 && u_style != 4 && u_style != 9) {

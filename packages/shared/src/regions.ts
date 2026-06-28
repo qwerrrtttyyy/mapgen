@@ -127,12 +127,29 @@ export function analyzeRegions(
   return regions;
 }
 
+/** 行星级气候增强选项（全部可选，缺省=关闭，向后兼容）。 */
+export interface ClimateEnhanceOptions {
+  /** 海岸距离场（陆地正）—— 大陆度修正 */
+  coastDist?: Float32Array;
+  /** 洋流温度增量（暖+/寒-）—— 沿岸温度修正 */
+  currentTempDelta?: Float32Array;
+  /** 开启大陆度修正（内陆偏冷） */
+  enableContinentality?: boolean;
+  /** 开启洋流沿岸温度修正 */
+  enableOceanCurrents?: boolean;
+  /** 开启 Hadley cell 强化（ITCZ 增湿 + 副热带高压沙漠带减湿） */
+  enableHadleyEnhancement?: boolean;
+  /** 开启季风（热带沿海陆地增湿） */
+  enableMonsoon?: boolean;
+}
+
 export function computeClimate(
   width: number, height: number, elevation: Float32Array, seaLevel: number,
   tempOffset: number, snowLine: number,
   windDirectionX: number = 1,
   windDirectionY: number = 0,
-  rainStrength: number = 1
+  rainStrength: number = 1,
+  enhance?: ClimateEnhanceOptions,
 ): ClimateData {
   const size = width * height;
   const temperature = new Float32Array(size);
@@ -281,5 +298,100 @@ export function computeClimate(
     rainfall[i] = rainfall[i] < 0 ? 0 : rainfall[i] > 1 ? 1 : rainfall[i];
   }
 
+  // ── 行星级增强（可选）──
+  if (enhance) {
+    applyClimateEnhancements(
+      width, height, elevation, seaLevel,
+      temperature, tempZone, moisture, rainfall,
+      enhance,
+    );
+  }
+
   return { temperature, tempZone, moisture, rainfall };
+}
+
+/**
+ * 行星级气候增强：
+ *   1. 大陆度：内陆温度偏冷（冬冷简化），高纬更明显
+ *   2. 洋流：沿岸温度 += currentTempDelta（暖流增温、寒流降温）
+ *   3. Hadley 强化：ITCZ（赤道带）增湿增雨；副热带高压带（30°）减湿减雨 → 沙漠带
+ *   4. 季风：热带沿海陆地增湿增雨（海陆热力差驱动，简化为常驻增湿）
+ */
+function applyClimateEnhancements(
+  width: number, height: number, elevation: Float32Array, seaLevel: number,
+  temperature: Float32Array, tempZone: Float32Array,
+  moisture: Float32Array, rainfall: Float32Array,
+  enhance: ClimateEnhanceOptions,
+): void {
+  const size = width * height;
+  const invH = 1 / height;
+  const hasCoast = !!enhance.coastDist;
+  const hasCurrent = !!enhance.currentTempDelta;
+  const coastDist = enhance.coastDist;
+  const currentDelta = enhance.currentTempDelta;
+
+  // 大陆度归一化阈值（像素）
+  const CONTINENT_MAX = 30;
+
+  for (let y = 0; y < height; y++) {
+    const lat = (y * invH - 0.5) * 2;
+    const absLat = Math.abs(lat);
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      const idx = row + x;
+      const isLand = elevation[idx] > seaLevel;
+
+      // 1. 大陆度温度修正（仅陆地）：内陆偏冷，高纬更显著
+      if (enhance.enableContinentality && isLand && hasCoast && coastDist) {
+        const cd = coastDist[idx];
+        if (cd > 0) {
+          const cont = Math.min(1, cd / CONTINENT_MAX);
+          // 内陆偏冷 0~0.15，高纬（absLat 大）幅度更大
+          const chill = cont * 0.15 * (0.5 + absLat);
+          temperature[idx] = Math.max(-1, temperature[idx] - chill);
+        }
+      }
+
+      // 2. 洋流沿岸温度修正（陆地+海洋均受影响）
+      if (enhance.enableOceanCurrents && hasCurrent && currentDelta) {
+        temperature[idx] = Math.max(-1, Math.min(1, temperature[idx] + currentDelta[idx]));
+      }
+
+      // 3. Hadley cell 强化
+      if (enhance.enableHadleyEnhancement) {
+        if (absLat < 0.15) {
+          // ITCZ 赤道辐合带：增湿增雨
+          const itczStrength = 1 - absLat / 0.15;
+          moisture[idx] = Math.min(1, moisture[idx] + itczStrength * 0.3);
+          rainfall[idx] = Math.min(1, rainfall[idx] + itczStrength * 0.25);
+        } else if (absLat > 0.30 && absLat < 0.45) {
+          // 副热带高压带：减湿减雨（沙漠成因）
+          // 距离 30°/45° 中点越近越干旱
+          const desertStrength = 1 - Math.abs(absLat - 0.375) / 0.075;
+          if (isLand) {
+            moisture[idx] = Math.max(0, moisture[idx] - desertStrength * 0.4);
+            rainfall[idx] = Math.max(0, rainfall[idx] - desertStrength * 0.5);
+          }
+        }
+      }
+
+      // 4. 季风：热带沿海陆地增湿（海陆热力差驱动）
+      if (enhance.enableMonsoon && isLand && absLat < 0.3 && hasCoast && coastDist) {
+        const cd = coastDist[idx];
+        if (cd > 0 && cd < 15) {
+          const monsoonStrength = (1 - cd / 15) * (1 - absLat / 0.3);
+          moisture[idx] = Math.min(1, moisture[idx] + monsoonStrength * 0.35);
+          rainfall[idx] = Math.min(1, rainfall[idx] + monsoonStrength * 0.3);
+        }
+      }
+
+      // 重算 tempZone（温度可能已变）
+      const t = temperature[idx];
+      if (t > 0.6) tempZone[idx] = 0;
+      else if (t > 0.3) tempZone[idx] = 1;
+      else if (t > 0) tempZone[idx] = 2;
+      else if (t > -0.3) tempZone[idx] = 3;
+      else tempZone[idx] = 4;
+    }
+  }
 }

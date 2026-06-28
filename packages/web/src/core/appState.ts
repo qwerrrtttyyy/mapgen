@@ -56,6 +56,12 @@ export interface UIParams {
   cursorActive: boolean;
   cursorPos: number[];
   cursorSize: number;
+  // ── 世界式生成开关（默认全开，可单独关闭）──
+  enableOceanCurrents: boolean;
+  enableIceSheet: boolean;
+  enableMonsoon: boolean;
+  enableContinentality: boolean;
+  enableHadleyEnhancement: boolean;
 }
 
 export interface AppState {
@@ -122,6 +128,12 @@ export function createDefaultParams(): UIParams {
     cursorActive: false,
     cursorPos: [0.5, 0.5],
     cursorSize: 12.0,
+    // 世界式生成开关（默认全开）
+    enableOceanCurrents: true,
+    enableIceSheet: true,
+    enableMonsoon: true,
+    enableContinentality: true,
+    enableHadleyEnhancement: true,
   };
 }
 
@@ -150,6 +162,11 @@ export function toMapParams(state: UIParams): MapParams {
     windDirX: state.windDirX,
     windDirY: state.windDirY,
     mode: state.mode,
+    enableOceanCurrents: state.enableOceanCurrents,
+    enableIceSheet: state.enableIceSheet,
+    enableMonsoon: state.enableMonsoon,
+    enableContinentality: state.enableContinentality,
+    enableHadleyEnhancement: state.enableHadleyEnhancement,
   };
 }
 

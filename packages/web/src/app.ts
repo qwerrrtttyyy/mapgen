@@ -3,6 +3,7 @@ import {
   hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers,
   analyzeRegions, recomputePlateGeometry, computeSlope, regenerateNames,
   extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures, packElevTex,
+  packCurrentTex, packIceTex,
   runDownstreamPipeline, applyDownstreamToMapData, type TexturePackParams,
 } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
@@ -132,14 +133,26 @@ function partialRegenerate(phase: string): void {
   const riverCount = params.riverCount && params.riverCount > 0
     ? params.riverCount
     : Math.floor(width * height * 0.0005);
-  // 下游管线共用入参（climate→lakes→rivers→regions）
+  // 下游管线共用入参（coast→currents→climate→ice→lakes→rivers→regions）
+  // 世界式开关从 params 读取（缺省=全开），与 generateMap 主流程一致
   const downstreamInput = (elevation: Float32Array) => ({
     width, height, elevation, plateId,
     seaLevel: params.seaLevel,
     tempOffset: params.tempOffset, snowLine: params.snowLine,
     windDirX: params.windDirX, windDirY: params.windDirY, rainStrength: params.rainStrength,
     lakeDensity: params.lakeDensity, riverCount, seed,
+    enableOceanCurrents: params.enableOceanCurrents,
+    enableIceSheet: params.enableIceSheet,
+    enableMonsoon: params.enableMonsoon,
+    enableContinentality: params.enableContinentality,
+    enableHadleyEnhancement: params.enableHadleyEnhancement,
   });
+
+  // 下游产物中的洋流/冰盖纹理打包（所有跑完整 downstream 的分支共用）
+  const packWorldTex = (ds: ReturnType<typeof runDownstreamPipeline>) => {
+    packCurrentTex(md, ds.currents.vx, ds.currents.vy, ds.currents.tempDelta, ds.currents.speed);
+    packIceTex(md, ds.ice.landIce, ds.ice.seaIce, ds.ice.glacierVx, ds.ice.glacierVy);
+  };
 
   if (phase === 'elevation') {
     // 板块已变（plate-paint/拖拽）：重算 plateDist + plates.type，避免 generateElevation 用错配几何量
@@ -157,37 +170,41 @@ function partialRegenerate(phase: string): void {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
     }
     const ds = runDownstreamPipeline(downstreamInput(elevation));
-    packAllTextures(md, elevation, elevResult.slope, elevResult.ridge, elevResult.ridgeMask,
+    // 使用 elevationAfter/slopeAfter：冰川侵蚀可能改写过高程，slopeAfter 已重算
+    packAllTextures(md, ds.elevationAfter, ds.slopeAfter, elevResult.ridge, elevResult.ridgeMask,
       ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
       ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    packWorldTex(ds);
     applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'editor-elevation') {
-    // 编辑器高程改动：以当前 elevTex 通道0 为准，重算 slope + 下游（不重跑侵蚀，保留手绘）
+    // 编辑器高程改动：以当前 elevTex 通道0 为准，跑下游（冰川侵蚀可能进一步改写）
     const elevation = elevation0;
-    const editedSlope = computeSlope(width, height, elevation);
     const ds = runDownstreamPipeline(downstreamInput(elevation));
-    packAllTextures(md, elevation, editedSlope, ridge, ridgeMask,
+    packAllTextures(md, ds.elevationAfter, ds.slopeAfter, ridge, ridgeMask,
       ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
       ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    packWorldTex(ds);
     applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'erosion') {
-    // 侵蚀改写了高程，必须重算 slope（否则 elevTex 通道1 仍是旧值，地形区误分类）
+    // 侵蚀改写了高程 → 下游冰川侵蚀可能再次改写 → 用 elevationAfter/slopeAfter 打包
     let elevation = elevation0;
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
     }
-    const erodedSlope = computeSlope(width, height, elevation);
-    packElevTex(md, elevation, erodedSlope, ridge, ridgeMask);
     const ds = runDownstreamPipeline(downstreamInput(elevation));
+    packElevTex(md, ds.elevationAfter, ds.slopeAfter, ridge, ridgeMask);
     packClimateRiverTextures(md, ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
       ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    packWorldTex(ds);
     applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'climate') {
-    // 湿度变了，河流与地形区必须随之刷新（与 erosion/elevation 分支对称）
+    // 气候变了 → 冰盖/冰川侵蚀随之变 → 高程可能变 → 用 elevationAfter/slopeAfter 刷新 elevTex
     const elevation = elevation0;
     const ds = runDownstreamPipeline(downstreamInput(elevation));
+    packElevTex(md, ds.elevationAfter, ds.slopeAfter, ridge, ridgeMask);
     packClimateRiverTextures(md, ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
       ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    packWorldTex(ds);
     applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'rivers') {
     // 仅刷新湖泊+河流+区域（气候未变，跳过 computeClimate 节省开销）

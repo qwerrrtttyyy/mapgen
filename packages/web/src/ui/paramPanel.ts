@@ -29,6 +29,12 @@ const GENERATION_TRIGGER_PARAMS = new Set<string>([
   'riverCount', 'rainStrength', 'windDirX', 'windDirY',
 ]);
 
+// Checkbox params that affect generation — trigger regen on toggle
+const GENERATION_TRIGGER_CHECKBOXES = new Set<string>([
+  'enableOceanCurrents', 'enableIceSheet', 'enableMonsoon',
+  'enableContinentality', 'enableHadleyEnhancement',
+]);
+
 // 抽出强类型 setter，调用方无需再做 unknown 断言
 function setTypedParam<K extends keyof UIParams>(key: K, value: UIParams[K]): void {
   setParam(key, value);
@@ -149,7 +155,12 @@ export class ParamPanel {
       const handler = () => {
         const key = input.id as keyof UIParams;
         setTypedParam(key, input.checked);
-        bus.emit('render.request');
+        if (GENERATION_TRIGGER_CHECKBOXES.has(input.id)) {
+          commitParams();
+          bus.emit('generate.request');
+        } else {
+          bus.emit('render.request');
+        }
       };
       input.addEventListener('change', handler);
       this.unsub.push(() => input.removeEventListener('change', handler));

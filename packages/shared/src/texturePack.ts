@@ -4,14 +4,21 @@
 //   elevTex:  R=elevation  G=slope  B=ridge  A=ridgeMask
 //   moistTex: R=moisture   G=rainfall  B=temperature  A=tempZone/4
 //   riverTex: R=riverMask  G=riverWidth  B=riverDepth  A=lakes
-//   tempTex:  R=temperature  G=tempZone/4  B=biome/15  A=0
+//   tempTex:  R=temperature  G=tempZone/4  B=biome/15(简单) 或 biomeId/31(高级)  A=0
 //   plateTex: R=plateId/plateCount  G=plateType(0/1)  B=boundary  A=plateDist
 //             （packAllTextures 保留 R/G，清零 B/A——boundary/plateDist 在 repack 路径不重算）
+//   biomeTex:     R=biomeId/31  G=isLand  B=koppenBand  A=streamOrder/7
+//   watershedTex: R=basinId/65535  G=isDivide  B=streamOrder/7  A=0
+//   volcanismTex: R=volcanoProb  G=calderaMask/2  B=hotspotStrength  A=0
+//   seasonTex:    R=夏温度delta  G=冬温度delta  B=夏降水delta  A=冬降水delta（均 [-1,1]→[0,1]）
 
 import type { MapData } from './index.js';
+import { getBiomeInfo } from './biomes.js';
 
 const INV4 = 0.25;
 const INV13 = 1 / 15;
+const INV31 = 1 / 31;
+const INV7 = 1 / 7;
 
 /** 15 种生物群系分类（与 tempTex 通道 B 编码一致）。 */
 export function classifyBiome(elev: number, temp: number, moist: number, seaLevel: number, snowLine: number): number {
@@ -138,5 +145,146 @@ export function packElevTex(
     md.elevTex[i4 + 1] = slope[i];
     md.elevTex[i4 + 2] = ridge[i];
     md.elevTex[i4 + 3] = ridgeMask[i];
+  }
+}
+
+/**
+ * 打包洋流纹理 RGBA: R=vx G=vy B=tempDelta A=speed。
+ * 流速 [-1,1] 映射到 [0,1]；tempDelta 同理；speed 直接 clamp。
+ * 若 md.currentTex 不存在则按需创建。
+ */
+export function packCurrentTex(
+  md: MapData,
+  vx: Float32Array, vy: Float32Array, tempDelta: Float32Array, speed: Float32Array,
+): void {
+  const size = md.width * md.height;
+  if (!md.currentTex || md.currentTex.length !== size * 4) {
+    md.currentTex = new Float32Array(size * 4);
+  }
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    md.currentTex[i4] = (vx[i] + 1) * 0.5;
+    md.currentTex[i4 + 1] = (vy[i] + 1) * 0.5;
+    md.currentTex[i4 + 2] = (tempDelta[i] + 1) * 0.5;
+    md.currentTex[i4 + 3] = Math.min(1, speed[i] * 4);
+  }
+}
+
+/**
+ * 打包冰盖纹理 RGBA: R=landIce G=seaIce B=glacierVx A=glacierVy。
+ * 冰厚 [0,1] 直接存储；流向 [-1,1] 映射到 [0,1]。
+ * 若 md.iceTex 不存在则按需创建。
+ */
+export function packIceTex(
+  md: MapData,
+  landIce: Float32Array, seaIce: Float32Array,
+  glacierVx: Float32Array, glacierVy: Float32Array,
+): void {
+  const size = md.width * md.height;
+  if (!md.iceTex || md.iceTex.length !== size * 4) {
+    md.iceTex = new Float32Array(size * 4);
+  }
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    md.iceTex[i4] = landIce[i];
+    md.iceTex[i4 + 1] = seaIce[i];
+    md.iceTex[i4 + 2] = (glacierVx[i] + 1) * 0.5;
+    md.iceTex[i4 + 3] = (glacierVy[i] + 1) * 0.5;
+  }
+}
+
+/**
+ * v2: 打包生物群系纹理 RGBA: R=biomeId/31 G=isLand B=koppenBand A=streamOrder/7。
+ * 若 md.biomeTex 不存在则按需创建。
+ */
+export function packBiomeTex(
+  md: MapData,
+  biomeId: Uint8Array,
+  streamOrder: Uint8Array,
+): void {
+  const size = md.width * md.height;
+  if (!md.biomeTex || md.biomeTex.length !== size * 4) {
+    md.biomeTex = new Float32Array(size * 4);
+  }
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    const id = biomeId[i];
+    const info = getBiomeInfo(id);
+    md.biomeTex[i4] = id * INV31;
+    md.biomeTex[i4 + 1] = info.isLand ? 1 : 0;
+    const band = ['X','A','B','C','D','E','M'].indexOf(info.koppen);
+    md.biomeTex[i4 + 2] = band * INV7;
+    md.biomeTex[i4 + 3] = streamOrder[i] * INV7;
+  }
+}
+
+/**
+ * v2: 打包流域纹理 RGBA: R=basinId/65535 G=isDivide B=streamOrder/7 A=0。
+ * 若 md.watershedTex 不存在则按需创建。
+ */
+export function packWatershedTex(
+  md: MapData,
+  basinId: Int32Array,
+  isDivide: Uint8Array,
+  streamOrder: Uint8Array,
+): void {
+  const size = md.width * md.height;
+  if (!md.watershedTex || md.watershedTex.length !== size * 4) {
+    md.watershedTex = new Float32Array(size * 4);
+  }
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    const b = basinId[i];
+    md.watershedTex[i4] = b < 0 ? 0 : Math.min(1, b / 65535);
+    md.watershedTex[i4 + 1] = isDivide[i];
+    md.watershedTex[i4 + 2] = streamOrder[i] * INV7;
+    md.watershedTex[i4 + 3] = 0;
+  }
+}
+
+/**
+ * v2: 打包火山纹理 RGBA: R=volcanoProb G=calderaMask/2 B=hotspotStrength A=0。
+ * 若 md.volcanismTex 不存在则按需创建。
+ */
+export function packVolcanismTex(
+  md: MapData,
+  volcanoProb: Float32Array,
+  calderaMask: Uint8Array,
+  hotspotStrength: number, // 全局最大热点强度
+): void {
+  const size = md.width * md.height;
+  if (!md.volcanismTex || md.volcanismTex.length !== size * 4) {
+    md.volcanismTex = new Float32Array(size * 4);
+  }
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    md.volcanismTex[i4] = volcanoProb[i];
+    md.volcanismTex[i4 + 1] = calderaMask[i] * 0.5;
+    md.volcanismTex[i4 + 2] = hotspotStrength * 0.5;
+    md.volcanismTex[i4 + 3] = 0;
+  }
+}
+
+/**
+ * v2: 打包季节纹理 RGBA: R=夏温度delta G=冬温度delta B=夏降水delta A=冬降水delta。
+ * delta 范围 [-1,1] → [0,1]。若 md.seasonTex 不存在则按需创建。
+ */
+export function packSeasonTex(
+  md: MapData,
+  summerTempDelta: Float32Array,
+  winterTempDelta: Float32Array,
+  summerRainDelta: Float32Array,
+  winterRainDelta: Float32Array,
+): void {
+  const size = md.width * md.height;
+  if (!md.seasonTex || md.seasonTex.length !== size * 4) {
+    md.seasonTex = new Float32Array(size * 4);
+  }
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    md.seasonTex[i4]     = (summerTempDelta[i] + 1) * 0.5;
+    md.seasonTex[i4 + 1] = (winterTempDelta[i] + 1) * 0.5;
+    md.seasonTex[i4 + 2] = (summerRainDelta[i] + 1) * 0.5;
+    md.seasonTex[i4 + 3] = (winterRainDelta[i] + 1) * 0.5;
   }
 }

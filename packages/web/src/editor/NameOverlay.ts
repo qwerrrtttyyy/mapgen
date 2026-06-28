@@ -3,6 +3,7 @@
 
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
+import { computeDetailPatch, detectDetailPeaks, type DetailPeak } from '@mapgen/core';
 
 interface VectorPreview { points: number[][]; mode: string; }
 
@@ -13,6 +14,9 @@ export class NameOverlay {
   private unsub: (() => void)[] = [];
   private vectorPreview: VectorPreview = { points: [], mode: '' };
   private visible = true;
+  // 惰性生成缓存：仅在视野显著变化时重算
+  private cachedPeaks: DetailPeak[] = [];
+  private cachedViewportKey = '';
 
   constructor(container: HTMLElement) {
     this.host = container;
@@ -63,32 +67,121 @@ export class NameOverlay {
     if (!md) return;
     const { scale, ox, oy } = geo;
 
-    if (scale < 2.5) {
-      // 缩放不足时名称拥挤，仅画矢量预览
-      this.drawVectorPreview(scale, ox, oy);
-      return;
-    }
+    // ── LOD 分级：缩放越大，显示越多细节 ──
+    // Tier 0 (scale < 1.5): 仅板块名
+    // Tier 1 (1.5-3): + 大地形区 (area > 200)
+    // Tier 2 (3-6):   + 中地形区 (area > 80)
+    // Tier 3 (> 6):   + 全部地形区 (area > 20) + 地形类型色标
+    const showPlates = true;
+    const regionMinArea = scale < 1.5 ? Infinity
+      : scale < 3 ? 200
+      : scale < 6 ? 80
+      : 20;
+    const showTypeColor = scale >= 6; // 高缩放时按地形类型着色
 
     const names = md.names;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     // 板块名（较大、半透明底）
-    ctx.font = `600 ${Math.max(11, Math.min(20, scale * 4))}px sans-serif`;
-    for (const p of names.plates) {
-      const [sx, sy] = this.mapToScreen(p.centroid[0], p.centroid[1], scale, ox, oy);
-      this.drawLabel(sx, sy, p.name, 'rgba(20,28,40,0.55)', '#f4f6ff');
+    if (showPlates) {
+      ctx.font = `600 ${Math.max(11, Math.min(20, scale * 4))}px sans-serif`;
+      for (const p of names.plates) {
+        const [sx, sy] = this.mapToScreen(p.centroid[0], p.centroid[1], scale, ox, oy);
+        this.drawLabel(sx, sy, p.name, 'rgba(20,28,40,0.55)', '#f4f6ff');
+      }
     }
 
-    // 地形区名（较小，过滤小碎片）
-    ctx.font = `500 ${Math.max(9, Math.min(14, scale * 3))}px sans-serif`;
-    for (const r of names.regions) {
-      if (r.area < 40) continue;
-      const [sx, sy] = this.mapToScreen(r.centroid[0], r.centroid[1], scale, ox, oy);
-      this.drawLabel(sx, sy, r.name, 'rgba(40,30,20,0.5)', '#fff7e6');
+    // 地形区名（按 LOD 层级过滤，高缩放时按类型着色）
+    if (regionMinArea < Infinity) {
+      ctx.font = `500 ${Math.max(9, Math.min(14, scale * 3))}px sans-serif`;
+      for (const r of names.regions) {
+        if (r.area < regionMinArea) continue;
+        const [sx, sy] = this.mapToScreen(r.centroid[0], r.centroid[1], scale, ox, oy);
+        const colors = showTypeColor ? this.typeColors(r.type) : { bg: 'rgba(40,30,20,0.5)', fg: '#fff7e6' };
+        this.drawLabel(sx, sy, r.name, colors.bg, colors.fg);
+      }
+    }
+
+    // 惰性生成：高缩放时对可见区域计算高分辨率细节，检测并标注小山峰
+    if (scale >= 6) {
+      this.drawDetailPeaks(scale, ox, oy);
     }
 
     this.drawVectorPreview(scale, ox, oy);
+  }
+
+  /**
+   * 惰性生成高分辨率细节 + 山峰标注。
+   * 仅在视野显著变化时重算（缓存 viewportKey），避免每帧重复计算。
+   */
+  private drawDetailPeaks(scale: number, ox: number, oy: number): void {
+    const md = state.mapData;
+    if (!md) return;
+    const { width: mw, height: mh } = md;
+    // 可见区域在地图坐标中的范围（像素）
+    const rect = this.host.getBoundingClientRect();
+    const visW = rect.width / scale;
+    const visH = rect.height / scale;
+    // 视野中心（地图坐标）
+    const cx = (mw - visW) / 2 + 0; // 简化：取地图中心附近（实际应从 pan 状态取）
+    const cy = (mh - visH) / 2 + 0;
+    const rx = Math.max(0, cx);
+    const ry = Math.max(0, cy);
+    const rw = Math.min(mw - rx, visW);
+    const rh = Math.min(mh - ry, visH);
+
+    // 缓存键：视野位置量化到 16 像素格，移动超过 16px 才重算
+    const key = `${Math.round(rx / 16)},${Math.round(ry / 16)},${Math.round(rw)},${Math.round(rh)}`;
+    if (key !== this.cachedViewportKey) {
+      this.cachedViewportKey = key;
+      // 提取基础高程
+      const size = mw * mh;
+      const baseElev = new Float32Array(size);
+      for (let i = 0; i < size; i++) baseElev[i] = md.elevTex[i * 4];
+      // 限制输出网格大小以保证性能（最多 96×96）
+      const outW = Math.min(96, Math.round(rw));
+      const outH = Math.min(96, Math.round(rh));
+      const patch = computeDetailPatch(
+        baseElev, mw, mh,
+        { x: rx, y: ry, w: rw, h: rh, outW, outH },
+        md.seed, 'perlin', 'standard', 2.0, 0.5, 0.04, 3,
+      );
+      this.cachedPeaks = detectDetailPeaks(patch, state.params.seaLevel, 0.025, 6);
+    }
+
+    // 绘制山峰标记（▲ + 高程）
+    const ctx = this.ctx;
+    ctx.font = `600 ${Math.max(8, Math.min(11, scale * 2))}px sans-serif`;
+    for (const p of this.cachedPeaks) {
+      const [sx, sy] = this.mapToScreen(p.mapX, p.mapY, scale, ox, oy);
+      // 仅绘制可见区域内的峰
+      if (sx < 0 || sy < 0 || sx > rect.width || sy > rect.height) continue;
+      ctx.fillStyle = 'rgba(200,80,30,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - 4);
+      ctx.lineTo(sx - 3.5, sy + 2);
+      ctx.lineTo(sx + 3.5, sy + 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,230,0.85)';
+      ctx.fillText(p.elevation.toFixed(2), sx, sy + 10);
+    }
+  }
+
+  /** 按地形类型返回标签配色（高缩放时区分冰川/火山/三角洲等） */
+  private typeColors(type: string): { bg: string; fg: string } {
+    switch (type) {
+      case 'glacier':     return { bg: 'rgba(180,210,240,0.6)', fg: '#0a1a30' };
+      case 'volcano':     return { bg: 'rgba(200,60,30,0.6)',   fg: '#fff0e8' };
+      case 'delta':       return { bg: 'rgba(80,120,60,0.55)',  fg: '#f0fff0' };
+      case 'archipelago': return { bg: 'rgba(40,80,140,0.6)',   fg: '#e0f0ff' };
+      case 'mountain':    return { bg: 'rgba(80,60,40,0.55)',   fg: '#fff7e6' };
+      case 'desert':      return { bg: 'rgba(180,150,80,0.55)', fg: '#3a2a10' };
+      case 'forest':      return { bg: 'rgba(30,70,30,0.55)',   fg: '#e8ffe8' };
+      case 'basin':       return { bg: 'rgba(60,70,90,0.55)',   fg: '#e8f0ff' };
+      default:            return { bg: 'rgba(40,30,20,0.5)',    fg: '#fff7e6' };
+    }
   }
 
   private drawLabel(x: number, y: number, text: string, bg: string, fg: string): void {

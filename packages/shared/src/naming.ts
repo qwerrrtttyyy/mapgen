@@ -4,7 +4,7 @@
 import { detectTerrainRegions } from './editor.js';
 
 export type PlateKind = 'continent' | 'ocean';
-export type TerrainType = 'mountain' | 'plain' | 'plateau' | 'basin' | 'desert' | 'forest';
+export type TerrainType = 'mountain' | 'plain' | 'plateau' | 'basin' | 'desert' | 'forest' | 'glacier' | 'delta' | 'volcano' | 'archipelago';
 
 export interface NameablePlate {
   plateId: number;
@@ -57,6 +57,10 @@ const TERRAIN_WORDS: Record<TerrainType, readonly string[]> = {
   basin: ['盆地', '洼地'],
   desert: ['沙漠', '荒原'],
   forest: ['森林', '林地'],
+  glacier: ['冰川', '冰原', '冰盖'],
+  delta: ['三角洲', '河口'],
+  volcano: ['火山', '熔岩峰'],
+  archipelago: ['群岛', '列岛'],
 };
 
 // 专有名词库（≥ 50，确保大地图地形区专有名不重复）
@@ -174,7 +178,7 @@ export function generateNames(
  * @param slope       预提取的坡度场（若未提供则从 elevTex 通道1 读取）
  */
 export function regenerateNames(
-  md: { width: number; height: number; elevTex: Float32Array; moistTex: Float32Array; plateTex: Float32Array; plates: { type: string }[]; names: NameManifest; seed: number },
+  md: { width: number; height: number; elevTex: Float32Array; moistTex: Float32Array; plateTex: Float32Array; plates: { type: string }[]; names: NameManifest; seed: number; iceTex?: Float32Array; coastDist?: Float32Array; riverTex?: Float32Array },
   seaLevel: number,
   snowLine: number,
   plateCount: number,
@@ -189,6 +193,19 @@ export function regenerateNames(
     elevation[i] = md.elevTex[i * 4];
     if (!slope) sl[i] = md.elevTex[i * 4 + 1];
     moisture[i] = md.moistTex[i * 4];
+  }
+  // 提取世界式数据用于地形区检测（冰川/三角洲）
+  const terrainOpts: import('./editor.js').TerrainDetectOptions = {};
+  if (md.iceTex) {
+    const landIce = new Float32Array(size);
+    for (let i = 0; i < size; i++) landIce[i] = md.iceTex[i * 4];
+    terrainOpts.landIce = landIce;
+  }
+  if (md.coastDist) terrainOpts.coastDist = md.coastDist;
+  if (md.riverTex) {
+    const riverMask = new Float32Array(size);
+    for (let i = 0; i < size; i++) riverMask[i] = md.riverTex[i * 4];
+    terrainOpts.riverMask = riverMask;
   }
   // 板块质心
   const plateSumX = new Float64Array(md.plates.length);
@@ -209,8 +226,8 @@ export function regenerateNames(
       ? [plateSumX[i] / plateCnt[i], plateSumY[i] / plateCnt[i]]
       : [width * 0.5, height * 0.5]) as [number, number],
   }));
-  // 检测地形区（detectTerrainRegions 已在顶部静态导入）
-  const detected = detectTerrainRegions(width, height, elevation, sl, moisture, seaLevel, snowLine);
+  // 检测地形区（detectTerrainRegions 已在顶部静态导入，含世界式增强）
+  const detected = detectTerrainRegions(width, height, elevation, sl, moisture, seaLevel, snowLine, 30, terrainOpts);
   const nameableRegions: NameableRegion[] = detected.map(r => ({ key: r.key, type: r.type, centroid: r.centroid, area: r.area }));
   const fresh = generateNames(md.seed, width, height, nameablePlates, nameableRegions);
   // 保留旧板块名（按 plateId，含用户改名）；地形区名随连通域变化而刷新
