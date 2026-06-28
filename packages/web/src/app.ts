@@ -1,5 +1,10 @@
 import type { MapData } from '@mapgen/core';
-import { hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers, computeClimate, analyzeRegions, detectTerrainRegions, generateNames, recomputePlateGeometry } from '@mapgen/core';
+import {
+  hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers,
+  analyzeRegions, recomputePlateGeometry, computeSlope, regenerateNames,
+  extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures, packElevTex,
+  runDownstreamPipeline, applyDownstreamToMapData, type TexturePackParams,
+} from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -112,119 +117,86 @@ function partialRegenerate(phase: string): void {
   const size = width * height;
   const seed = hashSeed(params.seedStr);
 
-  // Extract raw arrays from packed textures
-  const extractChannel = (tex: Float32Array, channel: number): Float32Array => {
-    const arr = new Float32Array(size);
-    for (let i = 0; i < size; i++) arr[i] = tex[i * 4 + channel];
-    return arr;
+  // 从打包纹理提取单通道场（共享 core 实现，避免本地 extractChannel 重复）
+  const elevation0 = extractChannel(md.elevTex, 0, size);
+  const ridge = extractChannel(md.elevTex, 2, size);
+  const ridgeMask = extractChannel(md.elevTex, 3, size);
+  const moisture0 = extractChannel(md.moistTex, 0, size);
+  const plateId = extractPlateId(md.plateTex, params.plateCount, size);
+
+  const tp: TexturePackParams = {
+    seaLevel: params.seaLevel,
+    snowLine: params.snowLine,
+    plateCount: params.plateCount,
   };
-
-  let elevation = extractChannel(md.elevTex, 0);
-  const slope = extractChannel(md.elevTex, 1);
-  const ridge = extractChannel(md.elevTex, 2);
-  const ridgeMask = extractChannel(md.elevTex, 3);
-  let moisture = extractChannel(md.moistTex, 0);
-
-  // Extract plateId from plateTex
-  const plateCount = params.plateCount;
-  const plateId = new Float32Array(size);
-  for (let i = 0; i < size; i++) {
-    plateId[i] = Math.round(md.plateTex[i * 4] * plateCount);
-  }
+  const riverCount = params.riverCount && params.riverCount > 0
+    ? params.riverCount
+    : Math.floor(width * height * 0.0005);
+  // 下游管线共用入参（climate→lakes→rivers→regions）
+  const downstreamInput = (elevation: Float32Array) => ({
+    width, height, elevation, plateId,
+    seaLevel: params.seaLevel,
+    tempOffset: params.tempOffset, snowLine: params.snowLine,
+    windDirX: params.windDirX, windDirY: params.windDirY, rainStrength: params.rainStrength,
+    lakeDensity: params.lakeDensity, riverCount, seed,
+  });
 
   if (phase === 'elevation') {
     // 板块已变（plate-paint/拖拽）：重算 plateDist + plates.type，避免 generateElevation 用错配几何量
-    const geo = recomputePlateGeometry(width, height, plateId, plates, elevation, params.seaLevel);
+    const geo = recomputePlateGeometry(width, height, plateId, plates, elevation0, params.seaLevel);
     md.plates = geo.plates;
-    // Re-generate elevation from existing plates
-    const elevationResult = generateElevation(
-      width, height, seed, plateId, geo.plates,
-      geo.plateDist, // 重算后的 plateDist（修正 Bug-1）
-      new Float32Array(size), // tectonicForce - not stored, use zero
+    const elevResult = generateElevation(
+      width, height, seed, plateId, geo.plates, geo.plateDist,
+      new Float32Array(size), // tectonicForce 未持久化，零向量占位
       params.noiseType, params.fbmType, params.octaves,
       params.lacunarity, params.persistence, params.seaLevel,
       params.mountainFold, params.coastDetail
     );
-    elevation = elevationResult.elevation;
-    // Fall through to erosion, climate, rivers — elevation regen requires all downstream
+    let elevation = elevResult.elevation;
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
     }
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-      params.windDirX, params.windDirY, params.rainStrength);
-    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
-    const riverResult = generateRivers(width, height, elevation, climateResult.moisture, params.seaLevel, riverCount, seed);
-    const regions = analyzeRegions(width, height, elevation, climateResult.moisture, climateResult.temperature, plateId, params.seaLevel, seed);
-
-    // Re-pack all textures
-    repackAllTextures(md, elevation, elevationResult.slope, elevationResult.ridge, elevationResult.ridgeMask,
-      climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
-      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes, plateId);
-    md.rivers = riverResult.rivers;
-    md.regions = regions;
-    md.seed = seed;
+    const ds = runDownstreamPipeline(downstreamInput(elevation));
+    packAllTextures(md, elevation, elevResult.slope, elevResult.ridge, elevResult.ridgeMask,
+      ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
+      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'editor-elevation') {
-    // 编辑器高程改动：以当前 elevTex 通道0 为准，重算 slope + 气候 + 河流 + 区域（不重跑侵蚀，保留手绘）
-    const editedSlope = recomputeSlope(width, height, elevation);
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-      params.windDirX, params.windDirY, params.rainStrength);
-    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
-    const riverResult = generateRivers(width, height, elevation, climateResult.moisture, params.seaLevel, riverCount, seed);
-    const regions = analyzeRegions(width, height, elevation, climateResult.moisture, climateResult.temperature, plateId, params.seaLevel, seed);
-    repackAllTextures(md, elevation, editedSlope, ridge, ridgeMask,
-      climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
-      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes, plateId);
-    md.rivers = riverResult.rivers;
-    md.regions = regions;
-    md.seed = seed;
+    // 编辑器高程改动：以当前 elevTex 通道0 为准，重算 slope + 下游（不重跑侵蚀，保留手绘）
+    const elevation = elevation0;
+    const editedSlope = computeSlope(width, height, elevation);
+    const ds = runDownstreamPipeline(downstreamInput(elevation));
+    packAllTextures(md, elevation, editedSlope, ridge, ridgeMask,
+      ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
+      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'erosion') {
+    // 侵蚀改写了高程，必须重算 slope（否则 elevTex 通道1 仍是旧值，地形区误分类）
+    let elevation = elevation0;
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
       elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
     }
-    // 侵蚀改写了高程，必须重算 slope（否则 elevTex 通道1 仍是旧值，地形区误分类）
-    const erodedSlope = recomputeSlope(width, height, elevation);
-    // Re-pack elevTex
-    for (let i = 0; i < size; i++) {
-      const i4 = i * 4;
-      md.elevTex[i4] = elevation[i];
-      md.elevTex[i4 + 1] = erodedSlope[i];
-      md.elevTex[i4 + 2] = ridge[i];
-      md.elevTex[i4 + 3] = ridgeMask[i];
-    }
-    // Re-run downstream
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-      params.windDirX, params.windDirY, params.rainStrength);
-    moisture = climateResult.moisture;
-    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
-    const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
-    const regions = analyzeRegions(width, height, elevation, moisture, climateResult.temperature, plateId, params.seaLevel, seed);
-    repackMoistTempRiver(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
-      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes);
-    md.rivers = riverResult.rivers;
-    md.regions = regions;
-    md.seed = seed;
+    const erodedSlope = computeSlope(width, height, elevation);
+    packElevTex(md, elevation, erodedSlope, ridge, ridgeMask);
+    const ds = runDownstreamPipeline(downstreamInput(elevation));
+    packClimateRiverTextures(md, ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
+      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'climate') {
-    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-      params.windDirX, params.windDirY, params.rainStrength);
-    moisture = climateResult.moisture;
     // 湿度变了，河流与地形区必须随之刷新（与 erosion/elevation 分支对称）
-    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
-    const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
-    const regions = analyzeRegions(width, height, elevation, moisture, climateResult.temperature, plateId, params.seaLevel, seed);
-    repackMoistTempRiver(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
-      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes);
-    md.rivers = riverResult.rivers;
-    md.regions = regions;
-    md.seed = seed;
+    const elevation = elevation0;
+    const ds = runDownstreamPipeline(downstreamInput(elevation));
+    packClimateRiverTextures(md, ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
+      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
+    applyDownstreamToMapData(md, ds, seed);
   } else if (phase === 'rivers') {
+    // 仅刷新湖泊+河流+区域（气候未变，跳过 computeClimate 节省开销）
+    const elevation = elevation0;
+    const moisture = moisture0;
+    const temperature = extractChannel(md.moistTex, 2, size);
     const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverCount = params.riverCount > 0 ? params.riverCount : Math.floor(width * height * 0.0005);
     const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
-    const regions = analyzeRegions(width, height, elevation, moisture, extractChannel(md.moistTex, 2), plateId, params.seaLevel, seed);
+    const regions = analyzeRegions(width, height, elevation, moisture, temperature, plateId, params.seaLevel, seed);
     for (let i = 0; i < size; i++) {
       const i4 = i * 4;
       md.riverTex[i4] = riverResult.riverMask[i];
@@ -238,178 +210,6 @@ function partialRegenerate(phase: string): void {
   }
 
   bus.emit('generating.completed', { mapData: md });
-}
-
-/** 有限差分重算坡度（编辑后高程已变，旧 slope 失效） */
-function recomputeSlope(width: number, height: number, elevation: Float32Array): Float32Array {
-  const slope = new Float32Array(width * height);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      const xl = x > 0 ? elevation[idx - 1] : elevation[idx];
-      const xr = x < width - 1 ? elevation[idx + 1] : elevation[idx];
-      const yu = y > 0 ? elevation[idx - width] : elevation[idx];
-      const yd = y < height - 1 ? elevation[idx + width] : elevation[idx];
-      const dzdx = (xr - xl) * 0.5;
-      const dzdy = (yd - yu) * 0.5;
-      slope[idx] = Math.sqrt(dzdx * dzdx + dzdy * dzdy);
-    }
-  }
-  return slope;
-}
-
-/** 编辑后刷新名称：重新检测地形区并生成名称，保留旧板块名（含用户改名） */
-function refreshNames(md: MapData): void {
-  const { width, height } = md;
-  const size = width * height;
-  const elevation = new Float32Array(size);
-  const slope = new Float32Array(size);
-  const moisture = new Float32Array(size);
-  for (let i = 0; i < size; i++) {
-    elevation[i] = md.elevTex[i * 4];
-    slope[i] = md.elevTex[i * 4 + 1];
-    moisture[i] = md.moistTex[i * 4];
-  }
-  const pc = state.params.plateCount;
-  const plateSumX = new Float64Array(md.plates.length);
-  const plateSumY = new Float64Array(md.plates.length);
-  const plateCnt = new Float64Array(md.plates.length);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const pid = Math.round(md.plateTex[(y * width + x) * 4] * pc);
-      if (pid >= 0 && pid < md.plates.length) {
-        plateSumX[pid] += x; plateSumY[pid] += y; plateCnt[pid]++;
-      }
-    }
-  }
-  const nameablePlates = md.plates.map((p, i) => ({
-    plateId: i,
-    type: (p.type === 'continent' ? 'continent' : 'ocean') as 'continent' | 'ocean',
-    centroid: (plateCnt[i] > 0
-      ? [plateSumX[i] / plateCnt[i], plateSumY[i] / plateCnt[i]]
-      : [width * 0.5, height * 0.5]) as [number, number],
-  }));
-  const detected = detectTerrainRegions(width, height, elevation, slope, moisture, state.params.seaLevel, state.params.snowLine);
-  const nameableRegions = detected.map(r => ({ key: r.key, type: r.type, centroid: r.centroid, area: r.area }));
-  const fresh = generateNames(md.seed, width, height, nameablePlates, nameableRegions);
-  // 保留旧板块名（按 plateId，含用户改名）；地形区名随连通域变化而刷新
-  const oldPlateNames = new Map(md.names.plates.map(p => [p.plateId, p.name]));
-  fresh.plates = fresh.plates.map(p => {
-    const old = oldPlateNames.get(p.plateId);
-    return old ? { ...p, name: old } : p;
-  });
-  md.names = fresh;
-}
-
-function repackAllTextures(
-  md: MapData, elevation: Float32Array, slope: Float32Array, ridge: Float32Array, ridgeMask: Float32Array,
-  moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array,
-  riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array, lakes: Float32Array,
-  plateId: Float32Array
-): void {
-  const size = md.width * md.height;
-  const invPlateCount = 1 / state.params.plateCount;
-  const inv4 = 0.25;
-  const inv13 = 1 / 15;
-  const seaLevel = state.params.seaLevel;
-  const snowLine = state.params.snowLine;
-
-  function classifyBiome(elev: number, temp: number, moist: number): number {
-    if (elev <= seaLevel) return 0;
-    if (temp < snowLine && elev > 0.6) return 1;
-    if (elev > 0.7) return 2;
-    if (temp < -0.3) return 3;
-    if (temp < 0.1) return moist > 0.3 ? 4 : 5;
-    if (temp < 0.35) return moist > 0.5 ? 6 : 5;
-    if (temp < 0.55) {
-      if (moist > 0.7) return 7;
-      if (moist > 0.5) return 8;
-      if (moist > 0.3) return 9;
-      return 10;
-    }
-    if (moist > 0.7) return 11;
-    if (moist > 0.45) return 12;
-    if (moist > 0.2) return 13;
-    return 14;
-  }
-
-  for (let i = 0; i < size; i++) {
-    const i4 = i * 4;
-    const elev = elevation[i];
-    const temp = temperature[i];
-    const moist = moisture[i];
-    const tz = tempZone[i] * inv4;
-    const pid = plateId[i] | 0;
-
-    md.plateTex[i4 + 2] = 0; // boundary not regenerated
-    md.plateTex[i4 + 3] = 0; // plateDist not regenerated
-    md.elevTex[i4] = elev;
-    md.elevTex[i4 + 1] = slope[i];
-    md.elevTex[i4 + 2] = ridge[i];
-    md.elevTex[i4 + 3] = ridgeMask[i];
-    md.moistTex[i4] = moist;
-    md.moistTex[i4 + 1] = rainfall[i];
-    md.moistTex[i4 + 2] = temp;
-    md.moistTex[i4 + 3] = tz;
-    md.riverTex[i4] = riverMask[i];
-    md.riverTex[i4 + 1] = riverWidth[i];
-    md.riverTex[i4 + 2] = riverDepth[i];
-    md.riverTex[i4 + 3] = lakes[i];
-    md.tempTex[i4] = temp;
-    md.tempTex[i4 + 1] = tz;
-    md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
-    md.tempTex[i4 + 3] = 0;
-  }
-}
-
-function repackMoistTempRiver(
-  md: MapData, moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array,
-  riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array, lakes: Float32Array
-): void {
-  const size = md.width * md.height;
-  const inv4 = 0.25;
-  const inv13 = 1 / 15;
-  const seaLevel = state.params.seaLevel;
-  const snowLine = state.params.snowLine;
-
-  function classifyBiome(elev: number, temp: number, moist: number): number {
-    if (elev <= seaLevel) return 0;
-    if (temp < snowLine && elev > 0.6) return 1;
-    if (elev > 0.7) return 2;
-    if (temp < -0.3) return 3;
-    if (temp < 0.1) return moist > 0.3 ? 4 : 5;
-    if (temp < 0.35) return moist > 0.5 ? 6 : 5;
-    if (temp < 0.55) {
-      if (moist > 0.7) return 7;
-      if (moist > 0.5) return 8;
-      if (moist > 0.3) return 9;
-      return 10;
-    }
-    if (moist > 0.7) return 11;
-    if (moist > 0.45) return 12;
-    if (moist > 0.2) return 13;
-    return 14;
-  }
-
-  for (let i = 0; i < size; i++) {
-    const i4 = i * 4;
-    const elev = md.elevTex[i4];
-    const temp = temperature[i];
-    const moist = moisture[i];
-    const tz = tempZone[i] * inv4;
-    md.moistTex[i4] = moist;
-    md.moistTex[i4 + 1] = rainfall[i];
-    md.moistTex[i4 + 2] = temp;
-    md.moistTex[i4 + 3] = tz;
-    md.riverTex[i4] = riverMask[i];
-    md.riverTex[i4 + 1] = riverWidth[i];
-    md.riverTex[i4 + 2] = riverDepth[i];
-    md.riverTex[i4 + 3] = lakes[i];
-    md.tempTex[i4] = temp;
-    md.tempTex[i4 + 1] = tz;
-    md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
-    md.tempTex[i4 + 3] = 0;
-  }
 }
 
 function bindLayerBar(): void {
@@ -502,7 +302,7 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
     const md = state.mapData;
     if (!md) return;
     partialRegenerate(phase);
-    refreshNames(md);
+    regenerateNames(md, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
     bus.emit('names.updated');
   });
   bus.on('selection.clear', () => clearSelection());
@@ -558,7 +358,7 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
       }
     });
     state.mapData = restored;
-    refreshNames(restored);
+    regenerateNames(restored, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
     bus.emit('names.updated');
     bus.emit('generating.completed', { mapData: restored });
   });

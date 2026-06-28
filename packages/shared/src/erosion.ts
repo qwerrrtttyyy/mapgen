@@ -1,5 +1,6 @@
 import { createNoise, type NoiseType, type FbmType } from './noise.js';
 import type { Plate } from './tectonic.js';
+import { computeSlope } from './slope.js';
 
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
@@ -11,7 +12,6 @@ export function generateElevation(
 ): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
   const size = width * height;
   const elevation = new Float32Array(size);
-  const slope = new Float32Array(size);
   const ridge = new Float32Array(size);
   const ridgeMask = new Float32Array(size);
   const noise = createNoise(seed, noiseType);
@@ -148,15 +148,8 @@ export function generateElevation(
       }
     }
   }
-  for (let y = 1; y < height - 1; y++) {
-    for (let x = 1; x < width - 1; x++) {
-      const idx = y * width + x;
-      // 中心差分，量纲=每像素高程差（与 app.ts recomputeSlope / detectTerrainRegions 阈值标度一致）
-      const dzdx = (elevation[idx + 1] - elevation[idx - 1]) * 0.5;
-      const dzdy = (elevation[idx + width] - elevation[idx - width]) * 0.5;
-      slope[idx] = Math.sqrt(dzdx * dzdx + dzdy * dzdy);
-    }
-  }
+  // 坡度由共享 computeSlope 计算（与编辑器/refreshNames 标度一致）
+  const slope = computeSlope(width, height, elevation);
   return { elevation, slope, ridge, ridgeMask };
 }
 

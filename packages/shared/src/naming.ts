@@ -1,6 +1,8 @@
 // 命名系统：自动为板块与地形区生成叙事化名称
 // AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4（种子驱动确定性）
 
+import { detectTerrainRegions } from './editor.js';
+
 export type PlateKind = 'continent' | 'ocean';
 export type TerrainType = 'mountain' | 'plain' | 'plateau' | 'basin' | 'desert' | 'forest';
 
@@ -159,4 +161,63 @@ export function generateNames(
   });
 
   return { plates: namedPlates, regions: namedRegions };
+}
+
+/**
+ * 编辑后刷新名称：从 MapData 纹理重算板块质心、检测地形区、生成名称，并保留旧板块名（含用户改名）。
+ * 高内聚：把 plateCentroid 计算 + detectTerrainRegions + generateNames + 旧名保留 收敛到 core 层。
+ *
+ * @param md          MapData（读 elevTex/moistTex/plateTex，写 names）
+ * @param seaLevel    海平面
+ * @param snowLine    雪线
+ * @param plateCount  板块数（用于 plateTex 解码）
+ * @param slope       预提取的坡度场（若未提供则从 elevTex 通道1 读取）
+ */
+export function regenerateNames(
+  md: { width: number; height: number; elevTex: Float32Array; moistTex: Float32Array; plateTex: Float32Array; plates: { type: string }[]; names: NameManifest; seed: number },
+  seaLevel: number,
+  snowLine: number,
+  plateCount: number,
+  slope?: Float32Array,
+): void {
+  const { width, height } = md;
+  const size = width * height;
+  const elevation = new Float32Array(size);
+  const moisture = new Float32Array(size);
+  const sl = slope ?? new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    elevation[i] = md.elevTex[i * 4];
+    if (!slope) sl[i] = md.elevTex[i * 4 + 1];
+    moisture[i] = md.moistTex[i * 4];
+  }
+  // 板块质心
+  const plateSumX = new Float64Array(md.plates.length);
+  const plateSumY = new Float64Array(md.plates.length);
+  const plateCnt = new Float64Array(md.plates.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pid = Math.round(md.plateTex[(y * width + x) * 4] * plateCount);
+      if (pid >= 0 && pid < md.plates.length) {
+        plateSumX[pid] += x; plateSumY[pid] += y; plateCnt[pid]++;
+      }
+    }
+  }
+  const nameablePlates: NameablePlate[] = md.plates.map((p, i) => ({
+    plateId: i,
+    type: (p.type === 'continent' ? 'continent' : 'ocean') as PlateKind,
+    centroid: (plateCnt[i] > 0
+      ? [plateSumX[i] / plateCnt[i], plateSumY[i] / plateCnt[i]]
+      : [width * 0.5, height * 0.5]) as [number, number],
+  }));
+  // 检测地形区（detectTerrainRegions 已在顶部静态导入）
+  const detected = detectTerrainRegions(width, height, elevation, sl, moisture, seaLevel, snowLine);
+  const nameableRegions: NameableRegion[] = detected.map(r => ({ key: r.key, type: r.type, centroid: r.centroid, area: r.area }));
+  const fresh = generateNames(md.seed, width, height, nameablePlates, nameableRegions);
+  // 保留旧板块名（按 plateId，含用户改名）；地形区名随连通域变化而刷新
+  const oldPlateNames = new Map(md.names.plates.map(p => [p.plateId, p.name]));
+  fresh.plates = fresh.plates.map(p => {
+    const old = oldPlateNames.get(p.plateId);
+    return old ? { ...p, name: old } : p;
+  });
+  md.names = fresh;
 }

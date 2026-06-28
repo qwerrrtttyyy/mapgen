@@ -3,8 +3,11 @@ export { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, 
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
 export { analyzeRegions, computeClimate, type Region, type ClimateData } from './regions.js';
-export { generateNames, type NameManifest, type NameablePlate, type NameableRegion, type NamedPlate, type NamedRegion, type PlateKind, type TerrainType } from './naming.js';
+export { generateNames, regenerateNames, type NameManifest, type NameablePlate, type NameableRegion, type NamedPlate, type NamedRegion, type PlateKind, type TerrainType } from './naming.js';
 export { detectTerrainRegions, type DetectedRegion, CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, recomputePlateGeometry, type BrushTarget, type VectorTarget } from './editor.js';
+export { computeSlope } from './slope.js';
+export { classifyBiome, extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures, packElevTex, type TexturePackParams } from './texturePack.js';
+export { runDownstreamPipeline, applyDownstreamToMapData, type DownstreamInput, type DownstreamResult } from './downstream.js';
 
 import { hashSeed } from './noise.js';
 import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
@@ -13,6 +16,7 @@ import { generateRivers, type River } from './rivers.js';
 import { analyzeRegions, computeClimate, type Region } from './regions.js';
 import { generateNames, type NameablePlate, type NameableRegion, type NameManifest } from './naming.js';
 import { detectTerrainRegions } from './editor.js';
+import { classifyBiome } from './texturePack.js';
 import type { NoiseType, FbmType } from './noise.js';
 
 const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
@@ -258,34 +262,6 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const seaLevel = params.seaLevel;
   const snowLine = params.snowLine;
 
-  function classifyBiome(elev: number, temp: number, moist: number): number {
-    if (elev <= seaLevel) return 0;
-    if (temp < snowLine && elev > 0.6) return 1;
-    if (elev > 0.7) return 2;
-
-    // Whittaker biome classification based on temperature and precipitation
-    if (temp < -0.3) return 3;                          // ice cap
-    if (temp < 0.1) {
-      if (moist > 0.3) return 4;                         // tundra
-      return 5;                                          // cold desert
-    }
-    if (temp < 0.35) {
-      if (moist > 0.5) return 6;                         // taiga
-      return 5;                                          // cold desert
-    }
-    if (temp < 0.55) {
-      if (moist > 0.7) return 7;                         // temperate rainforest
-      if (moist > 0.5) return 8;                         // temperate forest
-      if (moist > 0.3) return 9;                         // woodland/shrubland
-      return 10;                                         // temperate grassland
-    }
-    // temp >= 0.55
-    if (moist > 0.7) return 11;                          // tropical rainforest
-    if (moist > 0.45) return 12;                         // tropical seasonal forest
-    if (moist > 0.2) return 13;                          // savanna
-    return 14;                                           // hot desert
-  }
-
   for (let i = 0; i < size; i++) {
     const pid = plateId[i] | 0;
     const i4 = i * 4;
@@ -311,7 +287,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     riverTex[i4 + 2] = riverDepth[i];
     riverTex[i4 + 3] = lakes[i];
 
-    const biome = classifyBiome(elev, temp, moist);
+    const biome = classifyBiome(elev, temp, moist, seaLevel, snowLine);
     tempTex[i4 + 0] = temp;
     tempTex[i4 + 1] = tz;
     tempTex[i4 + 2] = biome * inv13;
