@@ -22,30 +22,49 @@ export function generateElevation(
     plateElevs[i] = plates[i].elevation;
   }
 
-  // Precompute normalized coordinates to avoid per-pixel divisions
   const nxArr = new Float32Array(width);
   for (let x = 0; x < width; x++) nxArr[x] = x / width;
   const nyArr = new Float32Array(height);
   for (let y = 0; y < height; y++) nyArr[y] = y / height;
 
   for (let y = 0; y < height; y++) {
-    const ny = nyArr[y];
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
       const nx = nxArr[x];
+      const ny = nyArr[y];
       const pid = plateId[idx] | 0;
-      let elev = plateElevs[pid];
-      const b = boundary[idx];
-      if (b > 0 && plateTypes[pid] === 1) {
-        elev += b * mountainFold * (0.5 + 0.5 * noise.sample(nx * 8, ny * 8));
-      }
+      const isContinental = plateTypes[pid] === 1;
+
+      // FBM noise as primary elevation source (smooth, continuous)
       const n = noise.fbm(nx * 4, ny * 4, octaves, lacunarity, persistence, fbmType);
-      elev += n * 0.3;
+      let elev = n * 0.6;
+
+      // Plate type modifier: shift elevation up for continents, down for oceans
+      if (isContinental) {
+        elev += 0.2 + plateElevs[pid] * 0.3;
+      } else {
+        elev -= 0.2 + Math.abs(plateElevs[pid]) * 0.3;
+      }
+
+      // Boundary mountains (only on continental sides)
+      const b = boundary[idx];
+      if (b > 0) {
+        if (isContinental) {
+          elev += b * mountainFold * (0.3 + 0.3 * noise.sample(nx * 8, ny * 8));
+        } else {
+          // Oceanic boundaries: slight elevation rise
+          elev += b * mountainFold * 0.1;
+        }
+      }
+
+      // Coast detail
       const distToSea = Math.abs(elev - seaLevel);
-      if (distToSea < 0.1 && coastDetail > 0) {
+      if (distToSea < 0.15 && coastDetail > 0) {
         const coastNoise = detailNoise.fbm(nx * 16, ny * 16, 3, 2, 0.5, 'standard');
         elev += coastNoise * coastDetail * 0.05;
       }
+
+      elev = Math.max(-1, Math.min(1, elev));
       const r = Math.abs(noise.sample(nx * 12, ny * 12));
       ridge[idx] = r;
       ridgeMask[idx] = r > 0.6 ? 1 : 0;
@@ -63,7 +82,10 @@ export function generateElevation(
   return { elevation, slope, ridge, ridgeMask };
 }
 
-export function hydraulicErosion(width: number, height: number, elevation: Float32Array, iterations: number, strength: number): Float32Array {
+export function hydraulicErosion(
+  width: number, height: number, elevation: Float32Array,
+  iterations: number, strength: number, evaporationRate: number = 0.01
+): Float32Array {
   const elev = new Float32Array(elevation);
   const size = width * height;
   const water = new Float32Array(size);
@@ -72,7 +94,9 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
   const maxChangeThreshold = 1e-5;
 
   for (let iter = 0; iter < iterations; iter++) {
-    for (let i = 0; i < size; i++) water[i] += 0.01;
+    for (let i = 0; i < size; i++) {
+      if (elev[i] > 0) water[i] += 0.01;
+    }
     let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
       const rowBase = y * width;
@@ -87,7 +111,7 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
         }
         if (minDir >= 0) {
           const slp = e - minE;
-          const carryCapacity = slp * water[idx] * strength;
+          const carryCapacity = slp * water[idx] * strength * (1 + slp * 5);
           const sDiff = carryCapacity - sediment[idx];
           let amount = 0;
           if (sDiff > 0) {
@@ -112,7 +136,7 @@ export function hydraulicErosion(width: number, height: number, elevation: Float
         }
       }
     }
-    for (let i = 0; i < size; i++) water[i] *= 0.9;
+    for (let i = 0; i < size; i++) water[i] *= (1 - evaporationRate);
     if (totalChange < maxChangeThreshold) break;
   }
   return elev;

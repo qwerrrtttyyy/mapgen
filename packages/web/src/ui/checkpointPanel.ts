@@ -91,7 +91,6 @@ export class CheckpointPanel {
 
   async refresh(): Promise<void> {
     if (!this.mgr || !this.list) return;
-    await this.mgr.load();
 
     if (this.saveBtn) {
       this.saveBtn.style.display = state.mapData ? 'inline-block' : 'none';

@@ -28,12 +28,21 @@ export class Toolbar {
     this.unsub.push(
       bus.on('generating.started', () => {
         if (generate) (generate as HTMLButtonElement).disabled = true;
+        if (randomSeed) (randomSeed as HTMLButtonElement).disabled = true;
+        if (exportBtn) (exportBtn as HTMLButtonElement).disabled = true;
+        if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = true;
       }),
       bus.on('generating.completed', () => {
         if (generate) (generate as HTMLButtonElement).disabled = false;
+        if (randomSeed) (randomSeed as HTMLButtonElement).disabled = false;
+        if (exportBtn) (exportBtn as HTMLButtonElement).disabled = false;
+        if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = false;
       }),
       bus.on('generating.failed', () => {
         if (generate) (generate as HTMLButtonElement).disabled = false;
+        if (randomSeed) (randomSeed as HTMLButtonElement).disabled = false;
+        if (exportBtn) (exportBtn as HTMLButtonElement).disabled = false;
+        if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = false;
       }),
       bus.on('selection.changed', ({ plates }: { plates: number[] }) => {
         if (clearSelectionBtn) clearSelectionBtn.style.display = plates.length > 0 ? 'inline-block' : 'none';

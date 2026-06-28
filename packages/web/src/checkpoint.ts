@@ -67,10 +67,13 @@ export interface CheckpointData {
 
 function float32ToBase64(arr: Float32Array): string {
   const bytes = new Uint8Array(arr.buffer);
-  let binary = '';
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  // Batch approach: process in chunks to avoid call stack overflow
+  const chunkSize = 0x8000; // 32768
+  let binary = '';
+  for (let i = 0; i < len; i += chunkSize) {
+    const end = Math.min(i + chunkSize, len);
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, end) as unknown as number[]);
   }
   return btoa(binary);
 }

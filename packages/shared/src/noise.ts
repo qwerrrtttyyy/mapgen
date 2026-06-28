@@ -28,11 +28,14 @@ function grad(hash: number, x: number, y: number): number {
 export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
 
+const WORLEY_CACHE_MAX = 10000;
+
 export class NoiseEngine {
   seed: number;
   sample: (x: number, y: number) => number;
   private perm: Uint8Array;
   private worleyCache = new Map<string, { x: number; y: number }[]>();
+  private cacheInsertOrder: string[] = [];
 
   constructor(seed: number) {
     this.seed = seed;
@@ -116,10 +119,10 @@ export class NoiseEngine {
     ) * 2 - 1;
   }
 
-  worley2(x: number, y: number): number {
+  private _worleyDistances(x: number, y: number): { f1: number; f2: number } {
     const X = Math.floor(x);
     const Y = Math.floor(y);
-    let minDist = 9999;
+    let f1 = 9999, f2 = 9999;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const cx = X + dx;
@@ -133,21 +136,43 @@ export class NoiseEngine {
           const py = cy + (s / 2147483647);
           pts = [{ x: px, y: py }];
           this.worleyCache.set(key, pts);
+          this.cacheInsertOrder.push(key);
+          if (this.cacheInsertOrder.length > WORLEY_CACHE_MAX) {
+            const oldest = this.cacheInsertOrder.shift()!;
+            this.worleyCache.delete(oldest);
+          }
         }
         const { x: px, y: py } = pts[0];
         const dx_ = x - px;
         const dy_ = y - py;
         const d = Math.sqrt(dx_ * dx_ + dy_ * dy_);
-        if (d < minDist) minDist = d;
+        if (d < f1) { f2 = f1; f1 = d; }
+        else if (d < f2) { f2 = d; }
       }
     }
-    return 1 - Math.min(minDist * 2, 1);
+    return { f1, f2 };
+  }
+
+  worley2(x: number, y: number): number {
+    const { f1 } = this._worleyDistances(x, y);
+    return 1 - Math.min(f1 * 2, 1);
+  }
+
+  worleyF2F1(x: number, y: number): number {
+    const { f1, f2 } = this._worleyDistances(x, y);
+    return f2 - f1;
+  }
+
+  clearCache(): void {
+    this.worleyCache.clear();
+    this.cacheInsertOrder = [];
   }
 
   _hash(x: number, y: number): number {
     let h = this.seed + x * 374761393 + y * 668265263;
     h = (h ^ (h >> 13)) * 1274126177;
-    return Math.abs(h);
+    h = h ^ (h >> 16);
+    return Math.abs(h) % 2147483647;
   }
 
   fbm(x: number, y: number, octaves: number, lacunarity: number, persistence: number, type: FbmType = 'standard'): number {

@@ -1,11 +1,11 @@
 export { hashSeed, createNoise, NoiseEngine, type NoiseType, type FbmType } from './noise.js';
-export { generatePlates, assignPlates, computeBoundaries, type Plate } from './tectonic.js';
+export { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate, type BoundaryType } from './tectonic.js';
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
 export { analyzeRegions, computeClimate, type Region, type ClimateData } from './regions.js';
 
 import { hashSeed } from './noise.js';
-import { generatePlates, assignPlates, computeBoundaries, type Plate } from './tectonic.js';
+import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
 import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 import { generateRivers, type River } from './rivers.js';
 import { analyzeRegions, computeClimate, type Region } from './regions.js';
@@ -30,6 +30,7 @@ export interface MapParams {
   erosionIterations: number;
   erosionStrength: number;
   lakeDensity: number;
+  riverCount?: number;
   tempOffset: number;
   snowLine: number;
 }
@@ -80,6 +81,11 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const plates = generatePlates(seed, params.plateCount, width, height, params.landmass);
   const { plateId, plateDist } = assignPlates(width, height, plates);
   const boundary = computeBoundaries(width, height, plateId);
+  const { boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
+  // Merge boundary intensity into boundary mask
+  for (let i = 0; i < boundary.length; i++) {
+    if (boundary[i] > 0) boundary[i] = Math.min(1, boundary[i] + boundaryIntensity[i] * 0.5);
+  }
   const checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
 
   advance('elevation');
@@ -93,7 +99,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
 
   advance('erosion');
   if (params.erosionIterations > 0 && params.erosionStrength > 0) {
-    elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
+    elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength, 0.01);
   }
   const checkpointErosion = { elevation: new Float32Array(elevation) };
 
@@ -107,7 +113,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
 
   advance('rivers');
-  const riverCount = Math.floor(width * height * 0.0005);
+  const riverCount = params.riverCount ?? Math.floor(width * height * 0.0005);
   const { rivers, riverMask, riverWidth, riverDepth } = generateRivers(
     width, height, elevation, moisture, params.seaLevel, riverCount, seed
   );
@@ -131,7 +137,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
 
   const invPlateCount = 1 / params.plateCount;
   const inv4 = 0.25;
-  const inv8 = 1 / 8;
+  const inv13 = 1 / 15;
   const seaLevel = params.seaLevel;
   const snowLine = params.snowLine;
 
@@ -139,11 +145,28 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     if (elev <= seaLevel) return 0;
     if (temp < snowLine && elev > 0.6) return 1;
     if (elev > 0.7) return 2;
-    if (moist < 0.2 && temp > 0.5) return 3;
-    if (moist > 0.7 && temp > 0.4) return 4;
-    if (moist > 0.5 && temp > 0.3) return 5;
-    if (temp < 0.2) return 6;
-    return 7;
+
+    // Whittaker biome classification based on temperature and precipitation
+    if (temp < -0.3) return 3;                          // ice cap
+    if (temp < 0.1) {
+      if (moist > 0.3) return 4;                         // tundra
+      return 5;                                          // cold desert
+    }
+    if (temp < 0.35) {
+      if (moist > 0.5) return 6;                         // taiga
+      return 5;                                          // cold desert
+    }
+    if (temp < 0.55) {
+      if (moist > 0.7) return 7;                         // temperate rainforest
+      if (moist > 0.5) return 8;                         // temperate forest
+      if (moist > 0.3) return 9;                         // woodland/shrubland
+      return 10;                                         // temperate grassland
+    }
+    // temp >= 0.55
+    if (moist > 0.7) return 11;                          // tropical rainforest
+    if (moist > 0.45) return 12;                         // tropical seasonal forest
+    if (moist > 0.2) return 13;                          // savanna
+    return 14;                                           // hot desert
   }
 
   for (let i = 0; i < size; i++) {
@@ -174,7 +197,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     const biome = classifyBiome(elev, temp, moist);
     tempTex[i4 + 0] = temp;
     tempTex[i4 + 1] = tz;
-    tempTex[i4 + 2] = biome * inv8;
+    tempTex[i4 + 2] = biome * inv13;
     tempTex[i4 + 3] = 0;
   }
 

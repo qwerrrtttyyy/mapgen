@@ -129,7 +129,9 @@ export function analyzeRegions(
 
 export function computeClimate(
   width: number, height: number, elevation: Float32Array, seaLevel: number,
-  tempOffset: number, snowLine: number
+  tempOffset: number, snowLine: number,
+  windDirectionX: number = 1,
+  windDirectionY: number = 0
 ): ClimateData {
   const size = width * height;
   const temperature = new Float32Array(size);
@@ -138,16 +140,44 @@ export function computeClimate(
   const rainfall = new Float32Array(size);
 
   const invH = 1 / height;
+  const invW = 1 / width;
+
   for (let y = 0; y < height; y++) {
-    const lat = Math.abs(y * invH - 0.5) * 2;
-    const latMoist = 0.3 + (1 - lat) * 0.4;
-    const latSin = Math.sin(y * invH * Math.PI) * 0.2;
+    const lat = (y * invH - 0.5) * 2; // -1 (south pole) to 1 (north pole)
+    const absLat = Math.abs(lat);
+
+    // Hadley cell temperature bands
+    let hadleyTemp: number;
+    if (absLat < 0.2) {
+      hadleyTemp = 1.0; // equatorial hot
+    } else if (absLat < 0.4) {
+      hadleyTemp = 0.7; // subtropical
+    } else if (absLat < 0.6) {
+      hadleyTemp = 0.4; // temperate
+    } else if (absLat < 0.8) {
+      hadleyTemp = 0.1; // subpolar
+    } else {
+      hadleyTemp = -0.3; // polar
+    }
+
+    // Hadley cell moisture bands: equator wet, subtropics dry, mid-lat wet, poles dry
+    let hadleyMoist: number;
+    if (absLat < 0.15) {
+      hadleyMoist = 0.8; // ITCZ - wet
+    } else if (absLat < 0.35) {
+      hadleyMoist = 0.3; // subtropical high - dry
+    } else if (absLat < 0.55) {
+      hadleyMoist = 0.6; // mid-latitude - moderate
+    } else {
+      hadleyMoist = 0.3; // polar - dry
+    }
+
     const row = y * width;
     for (let x = 0; x < width; x++) {
       const idx = row + x;
       const elev = elevation[idx];
 
-      let temp = 1 - lat - elev * 0.5 + tempOffset;
+      let temp = hadleyTemp - elev * 0.5 + tempOffset;
       temp = temp < -1 ? -1 : temp > 1 ? 1 : temp;
       temperature[idx] = temp;
 
@@ -161,10 +191,55 @@ export function computeClimate(
       if (elev <= seaLevel) {
         moist = 0.9;
       } else {
-        moist = latMoist + latSin;
+        moist = hadleyMoist;
       }
       moisture[idx] = moist < 0 ? 0 : moist > 1 ? 1 : moist;
       rainfall[idx] = moisture[idx] * (temp + 0.5 > 0 ? temp + 0.5 : 0);
+    }
+  }
+
+  // Rain shadow effect: wind blows from west to east (windDirectionX=1, windDirectionY=0)
+  // Moisture drops as wind crosses mountain ridges
+  if (windDirectionX !== 0 || windDirectionY !== 0) {
+    const norm = Math.sqrt(windDirectionX * windDirectionX + windDirectionY * windDirectionY);
+    const wdx = windDirectionX / norm;
+    const wdy = windDirectionY / norm;
+
+    // Traverse in wind direction, accumulating moisture depletion
+    for (let pass = 0; pass < 2; pass++) {
+      // Determine traversal order based on wind direction
+      const xStart = wdx > 0 ? 0 : width - 1;
+      const xEnd = wdx > 0 ? width : -1;
+      const xStep = wdx > 0 ? 1 : -1;
+      const yStart = wdy > 0 ? 0 : height - 1;
+      const yEnd = wdy > 0 ? height : -1;
+      const yStep = wdy > 0 ? 1 : -1;
+
+      for (let y = yStart; y !== yEnd; y += yStep) {
+        let moistureShadow = 1.0;
+        for (let x = xStart; x !== xEnd; x += xStep) {
+          const idx = y * width + x;
+          if (elevation[idx] <= seaLevel) continue;
+
+          // Apply rain shadow: moisture decreases after crossing high terrain
+          // Also check diagonal upwind neighbors
+          const upwindX = x - Math.round(wdx);
+          const upwindY = y - Math.round(wdy);
+          if (upwindX >= 0 && upwindX < width && upwindY >= 0 && upwindY < height) {
+            const upwindIdx = upwindY * width + upwindX;
+            const elevDiff = elevation[idx] - elevation[upwindIdx];
+            if (elevDiff > 0.05) {
+              // Mountain ridge: moisture drops on leeward side
+              moistureShadow *= (1 - elevDiff * 0.5);
+            }
+          }
+
+          if (moistureShadow < 1.0) {
+            moisture[idx] = moisture[idx] * moistureShadow;
+            if (moisture[idx] < 0) moisture[idx] = 0;
+          }
+        }
+      }
     }
   }
 

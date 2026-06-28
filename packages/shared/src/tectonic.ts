@@ -18,6 +18,8 @@ export interface Plate {
   selected: boolean;
 }
 
+export type BoundaryType = 0 | 1 | 2 | 3; // 0=none, 1=convergent, 2=divergent, 3=transform
+
 export function generatePlates(seed: number, count: number, width: number, height: number, landmass: number): Plate[] {
   const plates: Plate[] = [];
   const noise = createNoise(seed, 'simplex');
@@ -94,4 +96,104 @@ export function computeBoundaries(width: number, height: number, plateId: Float3
     }
   }
   return boundary;
+}
+
+export function computeBoundaryTypes(
+  width: number, height: number, plateId: Float32Array, plates: Plate[]
+): { boundaryType: Uint8Array; boundaryIntensity: Float32Array } {
+  const size = width * height;
+  const boundaryType = new Uint8Array(size);
+  const boundaryIntensity = new Float32Array(size);
+
+  const plateVX = new Float32Array(plates.length);
+  const plateVY = new Float32Array(plates.length);
+  for (let i = 0; i < plates.length; i++) {
+    plateVX[i] = plates[i].vx;
+    plateVY[i] = plates[i].vy;
+  }
+
+  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const pid = plateId[idx] | 0;
+
+      // Find the most common neighbor plate (different from current)
+      const neighborCounts = new Map<number, number>();
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const nid = plateId[ny * width + nx] | 0;
+        if (nid !== pid) {
+          neighborCounts.set(nid, (neighborCounts.get(nid) || 0) + 1);
+        }
+      }
+
+      if (neighborCounts.size === 0) continue;
+
+      // Find the most common neighbor plate
+      let bestNid = -1;
+      let bestCount = 0;
+      for (const [nid, count] of neighborCounts) {
+        if (count > bestCount) { bestCount = count; bestNid = nid; }
+      }
+
+      if (bestNid < 0) continue;
+
+      // Compute relative velocity between the two plates
+      const vx1 = plateVX[pid];
+      const vy1 = plateVY[pid];
+      const vx2 = plateVX[bestNid];
+      const vy2 = plateVY[bestNid];
+
+      // Relative velocity of plate 2 relative to plate 1
+      const relVX = vx2 - vx1;
+      const relVY = vy2 - vy1;
+      const relSpeed = Math.sqrt(relVX * relVX + relVY * relVY);
+
+      if (relSpeed < 1e-6) {
+        boundaryType[idx] = 0;
+        boundaryIntensity[idx] = 0;
+        continue;
+      }
+
+      // Approximate boundary normal: direction from current plate center to neighbor
+      const cx1 = plates[pid].x;
+      const cy1 = plates[pid].y;
+      const cx2 = plates[bestNid].x;
+      const cy2 = plates[bestNid].y;
+      const nx_norm = cx2 - cx1;
+      const ny_norm = cy2 - cy1;
+      const normLen = Math.sqrt(nx_norm * nx_norm + ny_norm * ny_norm);
+
+      if (normLen < 1e-6) {
+        boundaryType[idx] = 3; // transform by default
+        boundaryIntensity[idx] = relSpeed;
+        continue;
+      }
+
+      // Dot product of relative velocity with boundary normal
+      // Positive = moving toward each other = convergent
+      // Negative = moving apart = divergent
+      const dot = (relVX * nx_norm + relVY * ny_norm) / normLen;
+
+      if (dot > 0.003) {
+        // Convergent boundary: plates moving toward each other → higher mountains
+        boundaryType[idx] = 1;
+        boundaryIntensity[idx] = dot * 10;
+      } else if (dot < -0.003) {
+        // Divergent boundary: plates moving apart → rifts/lower elevation
+        boundaryType[idx] = 2;
+        boundaryIntensity[idx] = -dot * 10;
+      } else {
+        // Transform boundary: plates sliding past → linear features
+        boundaryType[idx] = 3;
+        boundaryIntensity[idx] = relSpeed * 5;
+      }
+    }
+  }
+
+  return { boundaryType, boundaryIntensity };
 }

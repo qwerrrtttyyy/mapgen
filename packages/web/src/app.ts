@@ -1,11 +1,13 @@
 import type { MapData } from '@mapgen/core';
+import { hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers, computeClimate, analyzeRegions } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
+import { P5Renderer } from './renderer/p5renderer.js';
 import type { RenderParams } from './renderer/renderParams.js';
 import { CheckpointManager } from './checkpoint.js';
 import { Launcher } from './launcher/launcher.js';
 import { logger } from './core/logger.js';
-import { state, patchParams, type UIParams } from './core/appState.js';
+import { state, patchParams, toMapParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
 import { generate as generateMapAction, setParam, clearSelection } from './core/actions.js';
 import { ParamPanel } from './ui/paramPanel.js';
@@ -52,7 +54,7 @@ const RENDER_PARAM_MAP: Record<string, string> = {
   plateCount: 'u_plateTotal',
 };
 
-let renderer: WebGLRenderer | Canvas2DRenderer | null = null;
+let renderer: WebGLRenderer | Canvas2DRenderer | P5Renderer | null = null;
 let checkpointMgr: CheckpointManager | null = null;
 let renderTimeout: number | null = null;
 let mapInteraction: MapInteraction | null = null;
@@ -73,6 +75,8 @@ function render(): void {
   if (!renderer) return;
   if (renderer instanceof WebGLRenderer) {
     renderer.render(buildRenderParams());
+  } else if (renderer instanceof P5Renderer) {
+    renderer.render();
   } else {
     renderer.render();
   }
@@ -95,6 +99,264 @@ function handleResize(): void {
   render();
 }
 
+function partialRegenerate(phase: string): void {
+  const md = state.mapData;
+  if (!md) return;
+  const { width, height, plates } = md;
+  const params = state.params;
+  const size = width * height;
+  const seed = hashSeed(params.seedStr);
+
+  // Extract raw arrays from packed textures
+  const extractChannel = (tex: Float32Array, channel: number): Float32Array => {
+    const arr = new Float32Array(size);
+    for (let i = 0; i < size; i++) arr[i] = tex[i * 4 + channel];
+    return arr;
+  };
+
+  let elevation = extractChannel(md.elevTex, 0);
+  const slope = extractChannel(md.elevTex, 1);
+  const ridge = extractChannel(md.elevTex, 2);
+  const ridgeMask = extractChannel(md.elevTex, 3);
+  let moisture = extractChannel(md.moistTex, 0);
+
+  // Extract plateId from plateTex
+  const plateCount = params.plateCount;
+  const plateId = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    plateId[i] = Math.round(md.plateTex[i * 4] * plateCount);
+  }
+
+  if (phase === 'elevation') {
+    // Re-generate elevation from existing plates
+    const elevationResult = generateElevation(
+      width, height, seed, plateId, plates,
+      new Float32Array(size), // boundary - not stored, use zero
+      params.noiseType, params.fbmType, params.octaves,
+      params.lacunarity, params.persistence, params.seaLevel,
+      params.mountainFold, params.coastDetail
+    );
+    elevation = elevationResult.elevation;
+    // Fall through to erosion, climate, rivers — elevation regen requires all downstream
+    if (params.erosionIterations > 0 && params.erosionStrength > 0) {
+      elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
+    }
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine);
+    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+    const riverCount = Math.floor(width * height * 0.0005);
+    const riverResult = generateRivers(width, height, elevation, climateResult.moisture, params.seaLevel, riverCount, seed);
+    const regions = analyzeRegions(width, height, elevation, climateResult.moisture, climateResult.temperature, plateId, params.seaLevel, seed);
+
+    // Re-pack all textures
+    repackAllTextures(md, elevation, elevationResult.slope, elevationResult.ridge, elevationResult.ridgeMask,
+      climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
+      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes, plateId);
+    md.rivers = riverResult.rivers;
+    md.regions = regions;
+    md.seed = seed;
+  } else if (phase === 'erosion') {
+    if (params.erosionIterations > 0 && params.erosionStrength > 0) {
+      elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
+    }
+    // Re-pack elevTex
+    for (let i = 0; i < size; i++) {
+      const i4 = i * 4;
+      md.elevTex[i4] = elevation[i];
+      md.elevTex[i4 + 1] = slope[i];
+      md.elevTex[i4 + 2] = ridge[i];
+      md.elevTex[i4 + 3] = ridgeMask[i];
+    }
+    // Re-run downstream
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine);
+    moisture = climateResult.moisture;
+    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+    const riverCount = Math.floor(width * height * 0.0005);
+    const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
+    const regions = analyzeRegions(width, height, elevation, moisture, climateResult.temperature, plateId, params.seaLevel, seed);
+    repackMoistTempRiver(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone,
+      riverResult.riverMask, riverResult.riverWidth, riverResult.riverDepth, lakes);
+    md.rivers = riverResult.rivers;
+    md.regions = regions;
+    md.seed = seed;
+  } else if (phase === 'climate') {
+    const climateResult = computeClimate(width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine);
+    repackMoistTemp(md, climateResult.moisture, climateResult.rainfall, climateResult.temperature, climateResult.tempZone);
+  } else if (phase === 'rivers') {
+    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
+    const riverCount = Math.floor(width * height * 0.0005);
+    const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
+    const regions = analyzeRegions(width, height, elevation, moisture, extractChannel(md.moistTex, 2), plateId, params.seaLevel, seed);
+    for (let i = 0; i < size; i++) {
+      const i4 = i * 4;
+      md.riverTex[i4] = riverResult.riverMask[i];
+      md.riverTex[i4 + 1] = riverResult.riverWidth[i];
+      md.riverTex[i4 + 2] = riverResult.riverDepth[i];
+      md.riverTex[i4 + 3] = lakes[i];
+    }
+    md.rivers = riverResult.rivers;
+    md.regions = regions;
+    md.seed = seed;
+  }
+
+  bus.emit('generating.completed', { mapData: md });
+}
+
+function repackAllTextures(
+  md: MapData, elevation: Float32Array, slope: Float32Array, ridge: Float32Array, ridgeMask: Float32Array,
+  moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array,
+  riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array, lakes: Float32Array,
+  plateId: Float32Array
+): void {
+  const size = md.width * md.height;
+  const invPlateCount = 1 / state.params.plateCount;
+  const inv4 = 0.25;
+  const inv13 = 1 / 15;
+  const seaLevel = state.params.seaLevel;
+  const snowLine = state.params.snowLine;
+
+  function classifyBiome(elev: number, temp: number, moist: number): number {
+    if (elev <= seaLevel) return 0;
+    if (temp < snowLine && elev > 0.6) return 1;
+    if (elev > 0.7) return 2;
+    if (temp < -0.3) return 3;
+    if (temp < 0.1) return moist > 0.3 ? 4 : 5;
+    if (temp < 0.35) return moist > 0.5 ? 6 : 5;
+    if (temp < 0.55) {
+      if (moist > 0.7) return 7;
+      if (moist > 0.5) return 8;
+      if (moist > 0.3) return 9;
+      return 10;
+    }
+    if (moist > 0.7) return 11;
+    if (moist > 0.45) return 12;
+    if (moist > 0.2) return 13;
+    return 14;
+  }
+
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    const elev = elevation[i];
+    const temp = temperature[i];
+    const moist = moisture[i];
+    const tz = tempZone[i] * inv4;
+    const pid = plateId[i] | 0;
+
+    md.plateTex[i4 + 2] = 0; // boundary not regenerated
+    md.plateTex[i4 + 3] = 0; // plateDist not regenerated
+    md.elevTex[i4] = elev;
+    md.elevTex[i4 + 1] = slope[i];
+    md.elevTex[i4 + 2] = ridge[i];
+    md.elevTex[i4 + 3] = ridgeMask[i];
+    md.moistTex[i4] = moist;
+    md.moistTex[i4 + 1] = rainfall[i];
+    md.moistTex[i4 + 2] = temp;
+    md.moistTex[i4 + 3] = tz;
+    md.riverTex[i4] = riverMask[i];
+    md.riverTex[i4 + 1] = riverWidth[i];
+    md.riverTex[i4 + 2] = riverDepth[i];
+    md.riverTex[i4 + 3] = lakes[i];
+    md.tempTex[i4] = temp;
+    md.tempTex[i4 + 1] = tz;
+    md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
+    md.tempTex[i4 + 3] = 0;
+  }
+}
+
+function repackMoistTempRiver(
+  md: MapData, moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array,
+  riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array, lakes: Float32Array
+): void {
+  const size = md.width * md.height;
+  const inv4 = 0.25;
+  const inv13 = 1 / 15;
+  const seaLevel = state.params.seaLevel;
+  const snowLine = state.params.snowLine;
+
+  function classifyBiome(elev: number, temp: number, moist: number): number {
+    if (elev <= seaLevel) return 0;
+    if (temp < snowLine && elev > 0.6) return 1;
+    if (elev > 0.7) return 2;
+    if (temp < -0.3) return 3;
+    if (temp < 0.1) return moist > 0.3 ? 4 : 5;
+    if (temp < 0.35) return moist > 0.5 ? 6 : 5;
+    if (temp < 0.55) {
+      if (moist > 0.7) return 7;
+      if (moist > 0.5) return 8;
+      if (moist > 0.3) return 9;
+      return 10;
+    }
+    if (moist > 0.7) return 11;
+    if (moist > 0.45) return 12;
+    if (moist > 0.2) return 13;
+    return 14;
+  }
+
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    const elev = md.elevTex[i4];
+    const temp = temperature[i];
+    const moist = moisture[i];
+    const tz = tempZone[i] * inv4;
+    md.moistTex[i4] = moist;
+    md.moistTex[i4 + 1] = rainfall[i];
+    md.moistTex[i4 + 2] = temp;
+    md.moistTex[i4 + 3] = tz;
+    md.riverTex[i4] = riverMask[i];
+    md.riverTex[i4 + 1] = riverWidth[i];
+    md.riverTex[i4 + 2] = riverDepth[i];
+    md.riverTex[i4 + 3] = lakes[i];
+    md.tempTex[i4] = temp;
+    md.tempTex[i4 + 1] = tz;
+    md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
+    md.tempTex[i4 + 3] = 0;
+  }
+}
+
+function repackMoistTemp(
+  md: MapData, moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array
+): void {
+  const size = md.width * md.height;
+  const inv4 = 0.25;
+  const inv13 = 1 / 15;
+  const seaLevel = state.params.seaLevel;
+  const snowLine = state.params.snowLine;
+
+  function classifyBiome(elev: number, temp: number, moist: number): number {
+    if (elev <= seaLevel) return 0;
+    if (temp < snowLine && elev > 0.6) return 1;
+    if (elev > 0.7) return 2;
+    if (temp < -0.3) return 3;
+    if (temp < 0.1) return moist > 0.3 ? 4 : 5;
+    if (temp < 0.35) return moist > 0.5 ? 6 : 5;
+    if (temp < 0.55) {
+      if (moist > 0.7) return 7;
+      if (moist > 0.5) return 8;
+      if (moist > 0.3) return 9;
+      return 10;
+    }
+    if (moist > 0.7) return 11;
+    if (moist > 0.45) return 12;
+    if (moist > 0.2) return 13;
+    return 14;
+  }
+
+  for (let i = 0; i < size; i++) {
+    const i4 = i * 4;
+    const elev = md.elevTex[i4];
+    const temp = temperature[i];
+    const moist = moisture[i];
+    const tz = tempZone[i] * inv4;
+    md.moistTex[i4] = moist;
+    md.moistTex[i4 + 1] = rainfall[i];
+    md.moistTex[i4 + 2] = temp;
+    md.moistTex[i4 + 3] = tz;
+    md.tempTex[i4] = temp;
+    md.tempTex[i4 + 1] = tz;
+    md.tempTex[i4 + 2] = classifyBiome(elev, temp, moist) * inv13;
+    md.tempTex[i4 + 3] = 0;
+  }
+}
+
 function bindMobileDrawer(): void {
   const menuToggle = document.getElementById('menu-toggle');
   const drawer = document.getElementById('drawer');
@@ -112,11 +374,13 @@ function bindMobileDrawer(): void {
 
   let touchStartX = 0;
   document.addEventListener('touchstart', (e) => {
+    if (e.target && (e.target as HTMLElement).closest('canvas')) return;
     touchStartX = e.touches[0].clientX;
   }, { passive: true });
 
   document.addEventListener('touchend', (e) => {
     if (!drawer) return;
+    if (e.target && (e.target as HTMLElement).closest('canvas')) return;
     const touchEndX = e.changedTouches[0].clientX;
     const diffX = touchEndX - touchStartX;
     if (Math.abs(diffX) > 50) {
@@ -149,9 +413,7 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
     scheduleRender();
   });
   bus.on('regenerate.phase', (phase: string) => {
-    // 真正的 phase 局部重算尚未实现；当前退化为完整重算
-    logger.debug('Phase regeneration requested:', phase);
-    generateMapAction();
+    partialRegenerate(phase);
   });
   bus.on('selection.clear', () => clearSelection());
   bus.on('randomSeed.request', () => {
@@ -164,10 +426,15 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
   bus.on('export.request', () => {
     const c = document.getElementById('glCanvas') as HTMLCanvasElement | null;
     if (!c) return;
-    const a = document.createElement('a');
-    a.download = 'mapgen-' + Date.now() + '.png';
-    a.href = c.toDataURL('image/png');
-    a.click();
+    c.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.download = 'mapgen-' + Date.now() + '.png';
+      a.href = url;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
   });
 
   bus.on('checkpoint.save.request', async () => {
@@ -210,12 +477,20 @@ async function initRenderer(canvas: HTMLCanvasElement, launcher?: Launcher | nul
     const r = new WebGLRenderer(canvas);
     const res = await fetch('shaders/fs-map.frag');
     if (!res.ok) throw new Error('Shader fetch failed');
-    launcher?.setProgress(0.5, '编译着色器...');
+    launcher?.setProgress(0.4, '编译着色器...');
     await r.initShaders(await res.text());
     renderer = r;
   } catch (e) {
-    logger.warn('WebGL2 unavailable, using Canvas2D:', (e as Error).message);
-    renderer = new Canvas2DRenderer(canvas);
+    logger.warn('WebGL2 unavailable, trying p5.js:', (e as Error).message);
+    try {
+      const p5r = new P5Renderer(canvas);
+      await p5r.init();
+      renderer = p5r;
+      logger.info('p5.js renderer initialized');
+    } catch (e2) {
+      logger.warn('p5.js unavailable, using Canvas2D:', (e2 as Error).message);
+      renderer = new Canvas2DRenderer(canvas);
+    }
   }
 }
 
@@ -238,7 +513,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     await launcher.show();
     launchPromise = launcher.waitForLaunch();
-    launcher.setProgress(0.2, '加载渲染器...');
+    launcher.setProgress(0.1, '加载渲染器...');
   } else {
     launchPromise = Promise.resolve();
   }

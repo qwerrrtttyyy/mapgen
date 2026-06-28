@@ -3,18 +3,21 @@ import { bus } from '../core/eventBus.js';
 export class ContextMenu {
   private menu: HTMLElement | null = null;
   private unsub: (() => void)[] = [];
+  private clickHandler!: () => void;
+  private keyHandler!: (e: KeyboardEvent) => void;
 
   bind(): void {
     this.unsub.push(
       bus.on('map.contextmenu', ({ x, y }: { x: number; y: number }) => this.show(x, y))
     );
 
-    const close = () => this.hide();
-    document.addEventListener('click', close);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    this.clickHandler = () => this.hide();
+    this.keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') this.hide(); };
+    document.addEventListener('click', this.clickHandler);
+    document.addEventListener('keydown', this.keyHandler);
     this.unsub.push(
-      () => document.removeEventListener('click', close),
-      () => document.removeEventListener('keydown', close)
+      () => document.removeEventListener('click', this.clickHandler),
+      () => document.removeEventListener('keydown', this.keyHandler)
     );
   }
 
