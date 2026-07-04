@@ -6,8 +6,8 @@ export type GenMode = 'procedural' | 'blank';
 
 export interface UIParams {
   seedStr: string;
-  mapSize: number;
-  mapAspect: string;
+  mapWidth: number;
+  mapHeight: number;
   plateCount: number;
   landmass: number;
   noiseType: NoiseType;
@@ -56,7 +56,6 @@ export interface UIParams {
   cursorActive: boolean;
   cursorPos: number[];
   cursorSize: number;
-  // ── 世界式生成开关（默认全开，可单独关闭）──
   enableOceanCurrents: boolean;
   enableIceSheet: boolean;
   enableMonsoon: boolean;
@@ -73,13 +72,17 @@ export interface AppState {
   selectedRegions: Set<number>;
   hoveredIndex: number;
   error: string | null;
+  currentPreset: string;
+  zoom: number;
+  panX: number;
+  panY: number;
 }
 
 export function createDefaultParams(): UIParams {
   return {
     seedStr: String(Math.floor(Math.random() * 99999)),
-    mapSize: 256,
-    mapAspect: '1:1',
+    mapWidth: 512,
+    mapHeight: 512,
     plateCount: 8,
     landmass: 0.4,
     noiseType: 'perlin',
@@ -128,7 +131,6 @@ export function createDefaultParams(): UIParams {
     cursorActive: false,
     cursorPos: [0.5, 0.5],
     cursorSize: 12.0,
-    // 世界式生成开关（默认全开）
     enableOceanCurrents: true,
     enableIceSheet: true,
     enableMonsoon: true,
@@ -140,8 +142,8 @@ export function createDefaultParams(): UIParams {
 export function toMapParams(state: UIParams): MapParams {
   return {
     seedStr: state.seedStr,
-    mapAspect: state.mapAspect,
-    mapSize: state.mapSize,
+    mapWidth: state.mapWidth,
+    mapHeight: state.mapHeight,
     plateCount: state.plateCount,
     landmass: state.landmass,
     noiseType: state.noiseType,
@@ -180,6 +182,10 @@ export function createInitialState(): AppState {
     selectedRegions: new Set(),
     hoveredIndex: -1,
     error: null,
+    currentPreset: 'theme.default',
+    zoom: 1,
+    panX: 0,
+    panY: 0,
   };
 }
 

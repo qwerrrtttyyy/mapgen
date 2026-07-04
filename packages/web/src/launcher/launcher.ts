@@ -94,7 +94,7 @@ export class Launcher {
   }
 
   static shouldShow(): boolean {
-    return localStorage.getItem(SKIP_KEY) !== '1';
+    return false;
   }
 
   static setSkip(skip: boolean): void {
@@ -204,17 +204,16 @@ export class Launcher {
       if (v) patchParams({ seedStr: v });
     });
 
-    const mapSize = root.querySelector('#launcher-mapSize') as HTMLSelectElement;
-    mapSize.value = String(state.params.mapSize);
-    mapSize.addEventListener('change', () => {
-      patchParams({ mapSize: parseInt(mapSize.value, 10) });
-    });
+    // const mapSize = root.querySelector('#launcher-mapSize') as HTMLSelectElement;
+    // mapSize.value = String(state.params.mapWidth);
+    // mapSize.addEventListener('change', () => {
+    //   patchParams({ mapWidth: parseInt(mapSize.value, 10), mapHeight: parseInt(mapSize.value, 10) });
+    // });
 
-    const mapAspect = root.querySelector('#launcher-mapAspect') as HTMLSelectElement;
-    mapAspect.value = state.params.mapAspect;
-    mapAspect.addEventListener('change', () => {
-      patchParams({ mapAspect: mapAspect.value });
-    });
+    // const mapAspect = root.querySelector('#launcher-mapAspect') as HTMLSelectElement;
+    // mapAspect.value = '1:1';
+    // mapAspect.addEventListener('change', () => {
+    // });
 
     const randomBtn = root.querySelector('#launcher-random-seed') as HTMLButtonElement;
     randomBtn.addEventListener('click', () => {

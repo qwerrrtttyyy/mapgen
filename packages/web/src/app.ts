@@ -1,31 +1,15 @@
 import type { MapData } from '@mapgen/core';
-import {
-  hashSeed, generateElevation, hydraulicErosion, generateLakes, generateRivers,
-  analyzeRegions, recomputePlateGeometry, computeSlope, regenerateNames,
-  extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures, packElevTex,
-  packCurrentTex, packIceTex,
-  runDownstreamPipeline, applyDownstreamToMapData, type TexturePackParams,
-} from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
 import type { RenderParams } from './renderer/renderParams.js';
 import { CheckpointManager } from './checkpoint.js';
-import { Launcher } from './launcher/launcher.js';
 import { logger } from './core/logger.js';
-import { state, patchParams, toMapParams, type UIParams } from './core/appState.js';
+import { state, patchParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
-import { mediator, type ColleagueName } from './core/mediator.js';
-import { generate as generateMapAction, setParam, clearSelection } from './core/actions.js';
-import { ParamPanel } from './ui/paramPanel.js';
-import { ProgressView } from './ui/progressView.js';
-import { Toolbar } from './ui/toolbar.js';
-import { CheckpointPanel } from './ui/checkpointPanel.js';
-import { Shortcuts } from './ui/shortcuts.js';
-import { ContextMenu } from './ui/contextMenu.js';
+import { generate as generateMap, setParam, clearSelection } from './core/actions.js';
+import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
 import { MapInteraction } from './map/mapInteraction.js';
-import { EditorController, DEFAULT_TOOL_PARAMS, type BrushKind, type EditorMode } from './editor/EditorController.js';
-import { NameOverlay } from './editor/NameOverlay.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
   style: 'u_style',
@@ -67,8 +51,18 @@ let renderer: WebGLRenderer | Canvas2DRenderer | P5Renderer | null = null;
 let checkpointMgr: CheckpointManager | null = null;
 let renderTimeout: number | null = null;
 let mapInteraction: MapInteraction | null = null;
-let editor: EditorController | null = null;
-let nameOverlay: NameOverlay | null = null;
+let minimapCtx: CanvasRenderingContext2D | null = null;
+let isDraggingSize = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let dragStartW = 0;
+let dragStartH = 0;
+let currentTool = 'idle';
+let namesVisible = true;
+
+function $<T extends HTMLElement = HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
 
 function buildRenderParams(): RenderParams {
   const rp: RenderParams = {};
@@ -86,11 +80,10 @@ function render(): void {
   if (!renderer) return;
   if (renderer instanceof WebGLRenderer) {
     renderer.render(buildRenderParams());
-  } else if (renderer instanceof P5Renderer) {
-    renderer.render();
   } else {
     renderer.render();
   }
+  drawMinimap();
 }
 
 function scheduleRender(): void {
@@ -101,238 +94,413 @@ function scheduleRender(): void {
   });
 }
 
-function handleResize(): void {
-  const container = document.getElementById('canvas-container');
-  const canvas = document.getElementById('glCanvas') as HTMLCanvasElement | null;
-  if (!container || !canvas || !renderer) return;
-  const rect = container.getBoundingClientRect();
-  renderer.resize(Math.floor(rect.width), Math.floor(rect.height));
-  render();
-  nameOverlay?.draw();
+function formatNum(n: number): string {
+  return n.toLocaleString('zh-CN');
 }
 
-function partialRegenerate(phase: string): void {
+function updateSizeInfo(): void {
+  const w = state.params.mapWidth;
+  const h = state.params.mapHeight;
+  const info = $('size-info');
+  if (info) info.textContent = `${w}×${h} · ${formatNum(w * h)} 像素`;
+  const wiSize = $('wi-size');
+  if (wiSize) wiSize.textContent = `${w}×${h}`;
+}
+
+function setSliderVal(id: string, rawVal: number): void {
+  const el = $(id) as HTMLInputElement | null;
+  if (el) el.value = String(rawVal);
+}
+
+function setDispVal(id: string, text: string): void {
+  const el = $(id);
+  if (el) el.textContent = text;
+}
+
+function syncUIFromParams(): void {
+  const p = state.params;
+  const seedInput = $('seedStr') as HTMLInputElement | null;
+  if (seedInput) seedInput.value = p.seedStr;
+  const wInput = $('mapWidth') as HTMLInputElement | null;
+  const hInput = $('mapHeight') as HTMLInputElement | null;
+  if (wInput) wInput.value = String(p.mapWidth);
+  if (hInput) hInput.value = String(p.mapHeight);
+  updateSizeInfo();
+
+  const noiseSel = $('noiseType') as HTMLSelectElement | null;
+  if (noiseSel) noiseSel.value = p.noiseType;
+  const fbmSel = $('fbmType') as HTMLSelectElement | null;
+  if (fbmSel) fbmSel.value = p.fbmType;
+  const styleSel = $('style') as HTMLSelectElement | null;
+  if (styleSel) styleSel.value = String(p.style);
+
+  setSliderVal('octaves', p.octaves);
+  setDispVal('octaves-val', String(p.octaves));
+
+  setSliderVal('lacunarity', p.lacunarity);
+  setDispVal('lacunarity-val', p.lacunarity.toFixed(1));
+
+  setSliderVal('persistence', p.persistence);
+  setDispVal('persistence-val', p.persistence.toFixed(2));
+
+  setSliderVal('plateCount', p.plateCount);
+  setDispVal('plateCount-val', String(p.plateCount));
+
+  setSliderVal('landmass', Math.round(p.landmass * 100));
+  setDispVal('landmass-val', Math.round(p.landmass * 100) + '%');
+
+  setSliderVal('mountainFold', Math.round(p.mountainFold * 100));
+  setDispVal('mountainFold-val', p.mountainFold.toFixed(2));
+
+  setSliderVal('coastDetail', Math.round(p.coastDetail * 100));
+  setDispVal('coastDetail-val', p.coastDetail.toFixed(2));
+
+  const setCheck = (id: string, val: boolean) => {
+    const el = $(id) as HTMLInputElement | null;
+    if (el) el.checked = val;
+  };
+  setCheck('enableOceanCurrents', p.enableOceanCurrents);
+  setCheck('enableIceSheet', p.enableIceSheet);
+  setCheck('enableMonsoon', p.enableMonsoon);
+  setCheck('enableContinentality', p.enableContinentality);
+  setCheck('enableHadleyEnhancement', p.enableHadleyEnhancement);
+
+  setSliderVal('seaLevel', Math.round(p.seaLevel * 100));
+  setDispVal('seaLevel-val', p.seaLevel.toFixed(2));
+
+  setSliderVal('erosionStrength', Math.round(p.erosionStrength * 100));
+  setDispVal('erosionStrength-val', p.erosionStrength.toFixed(1));
+
+  setSliderVal('erosionIterations', p.erosionIterations);
+  setDispVal('erosionIterations-val', String(p.erosionIterations));
+
+  setSliderVal('lakeDensity', Math.round(p.lakeDensity * 1000));
+  setDispVal('lakeDensity-val', p.lakeDensity.toFixed(3));
+
+  setSliderVal('tempOffset', Math.round(p.tempOffset * 100));
+  setDispVal('tempOffset-val', p.tempOffset.toFixed(2));
+
+  setSliderVal('snowLine', Math.round(p.snowLine * 100));
+  setDispVal('snowLine-val', p.snowLine.toFixed(2));
+
+  setSliderVal('rainStrength', Math.round(p.rainStrength * 100));
+  setDispVal('rainStrength-val', p.rainStrength.toFixed(1));
+
+  setSliderVal('windDirX', Math.round(p.windDirX * 100));
+  setDispVal('windDirX-val', p.windDirX.toFixed(1));
+
+  setSliderVal('windDirY', Math.round(p.windDirY * 100));
+  setDispVal('windDirY-val', p.windDirY.toFixed(1));
+
+  updateWindArrow();
+
+  setSliderVal('riverCount', p.riverCount);
+  setDispVal('riverCount-val', String(p.riverCount));
+
+  setCheck('showBoundaries', p.showBoundaries);
+  setSliderVal('boundaryWidth', Math.round(p.boundaryWidth * 10));
+  setDispVal('boundaryWidth-val', p.boundaryWidth.toFixed(1));
+  setCheck('showRivers', p.showRivers);
+  setCheck('showContours', p.showContours);
+  setCheck('showTerrain', p.showTerrain);
+  setCheck('showSelection', p.showSelection);
+  setCheck('showClimate', p.showClimate);
+
+  setSliderVal('lightAngle', Math.round(p.lightAngle * 100));
+  setDispVal('lightAngle-val', p.lightAngle.toFixed(2));
+  setCheck('pointLightEnabled', p.pointLightEnabled);
+  setCheck('glowEnabled', p.glowEnabled);
+  setCheck('laserActive', p.laserActive);
+  setCheck('laserSelection', p.laserSelection);
+  setSliderVal('laserWidth', Math.round(p.laserWidth * 1000));
+  setDispVal('laserWidth-val', p.laserWidth.toFixed(3));
+  setCheck('cursorActive', p.cursorActive);
+  setCheck('trailEnabled', p.trailEnabled);
+
+  setSliderVal('brushRadius', 14);
+  setDispVal('brushRadius-val', '14');
+  setSliderVal('brushStrength', 30);
+  setDispVal('brushStrength-val', '0.3');
+
+  const wiSeed = $('wi-seed');
+  if (wiSeed) wiSeed.textContent = p.seedStr;
+
+  updateStyleDots();
+  updateUndoRedo();
+}
+
+function updateWindArrow(): void {
+  const arrow = $('wind-arrow');
+  if (!arrow) return;
+  const dx = state.params.windDirX;
+  const dy = state.params.windDirY;
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+  arrow.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+}
+
+function updateStyleDots(): void {
+  const container = $('style-dots');
+  if (!container) return;
+  container.innerHTML = '';
+  const styles = RENDER_STYLES.slice(0, 6);
+  styles.forEach((s) => {
+    const dot = document.createElement('button');
+    dot.className = 'sd' + (s.style === state.params.style ? ' active' : '');
+    dot.textContent = s.icon;
+    dot.title = s.name;
+    dot.addEventListener('click', () => {
+      setParam('style', s.style);
+      const sel = $('style') as HTMLSelectElement | null;
+      if (sel) sel.value = String(s.style);
+      updateStyleDots();
+      scheduleRender();
+    });
+    container.appendChild(dot);
+  });
+}
+
+function updateUndoRedo(): void {
+  const undoBtn = $('btn-undo') as HTMLButtonElement | null;
+  const redoBtn = $('btn-redo') as HTMLButtonElement | null;
+  if (undoBtn) undoBtn.disabled = true;
+  if (redoBtn) redoBtn.disabled = true;
+}
+
+function setGeneratingStatus(generating: boolean, error?: string): void {
+  const dot = $('status-dot');
+  const text = $('status-text');
+  const progOverlay = $('progress-overlay');
+  if (dot) {
+    dot.classList.remove('generating', 'error');
+    if (generating) dot.classList.add('generating');
+    else if (error) dot.classList.add('error');
+  }
+  if (text) {
+    if (error) text.textContent = '错误';
+    else if (generating) text.textContent = '生成中...';
+    else text.textContent = '就绪';
+  }
+  if (progOverlay) {
+    progOverlay.classList.toggle('show', generating);
+  }
+}
+
+function setProgress(fraction: number, phase: string): void {
+  const fill = $('prog-fill');
+  const pct = $('prog-pct');
+  const phaseEl = $('prog-phase');
+  if (fill) fill.style.width = `${Math.round(fraction * 100)}%`;
+  if (pct) pct.textContent = `${Math.round(fraction * 100)}%`;
+  if (phaseEl) phaseEl.textContent = phase;
+}
+
+function drawMinimap(): void {
+  if (!minimapCtx || !state.mapData) return;
   const md = state.mapData;
-  if (!md) return;
-  const { width, height, plates } = md;
-  const params = state.params;
-  const size = width * height;
-  const seed = hashSeed(params.seedStr);
+  const canvas = minimapCtx.canvas;
+  const w = canvas.width;
+  const h = canvas.height;
+  const imgData = minimapCtx.createImageData(w, h);
+  const data = imgData.data;
+  const elev = md.elevTex;
+  const seaLevel = state.params.seaLevel;
+  const snowLine = state.params.snowLine;
 
-  // 从打包纹理提取单通道场（共享 core 实现，避免本地 extractChannel 重复）
-  const elevation0 = extractChannel(md.elevTex, 0, size);
-  const ridge = extractChannel(md.elevTex, 2, size);
-  const ridgeMask = extractChannel(md.elevTex, 3, size);
-  const moisture0 = extractChannel(md.moistTex, 0, size);
-  const plateId = extractPlateId(md.plateTex, params.plateCount, size);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = Math.floor((x / w) * md.width);
+      const sy = Math.floor((y / h) * md.height);
+      const si = (sy * md.width + sx) * 4;
+      const e = elev[si];
+      const di = (y * w + x) * 4;
 
-  const tp: TexturePackParams = {
-    seaLevel: params.seaLevel,
-    snowLine: params.snowLine,
-    plateCount: params.plateCount,
-  };
-  const riverCount = params.riverCount && params.riverCount > 0
-    ? params.riverCount
-    : Math.floor(width * height * 0.0005);
-  // 下游管线共用入参（coast→currents→climate→ice→lakes→rivers→regions）
-  // 世界式开关从 params 读取（缺省=全开），与 generateMap 主流程一致
-  const downstreamInput = (elevation: Float32Array) => ({
-    width, height, elevation, plateId,
-    seaLevel: params.seaLevel,
-    tempOffset: params.tempOffset, snowLine: params.snowLine,
-    windDirX: params.windDirX, windDirY: params.windDirY, rainStrength: params.rainStrength,
-    lakeDensity: params.lakeDensity, riverCount, seed,
-    enableOceanCurrents: params.enableOceanCurrents,
-    enableIceSheet: params.enableIceSheet,
-    enableMonsoon: params.enableMonsoon,
-    enableContinentality: params.enableContinentality,
-    enableHadleyEnhancement: params.enableHadleyEnhancement,
-  });
+      let r: number, g: number, b: number;
+      if (e < seaLevel - 0.15) { r = 20; g = 50; b = 100; }
+      else if (e < seaLevel) { r = 40; g = 80; b = 140; }
+      else if (e < seaLevel + 0.05) { r = 194; g = 178; b = 128; }
+      else if (e < snowLine - 0.1) { r = 60; g = 120; b = 50; }
+      else if (e < snowLine) { r = 100; g = 90; b = 70; }
+      else { r = 240; g = 245; b = 255; }
 
-  // 下游产物中的洋流/冰盖纹理打包（所有跑完整 downstream 的分支共用）
-  const packWorldTex = (ds: ReturnType<typeof runDownstreamPipeline>) => {
-    packCurrentTex(md, ds.currents.vx, ds.currents.vy, ds.currents.tempDelta, ds.currents.speed);
-    packIceTex(md, ds.ice.landIce, ds.ice.seaIce, ds.ice.glacierVx, ds.ice.glacierVy);
-  };
-
-  if (phase === 'elevation') {
-    // 板块已变（plate-paint/拖拽）：重算 plateDist + plates.type，避免 generateElevation 用错配几何量
-    const geo = recomputePlateGeometry(width, height, plateId, plates, elevation0, params.seaLevel);
-    md.plates = geo.plates;
-    const elevResult = generateElevation(
-      width, height, seed, plateId, geo.plates, geo.plateDist,
-      new Float32Array(size), // tectonicForce 未持久化，零向量占位
-      params.noiseType, params.fbmType, params.octaves,
-      params.lacunarity, params.persistence, params.seaLevel,
-      params.mountainFold, params.coastDetail
-    );
-    let elevation = elevResult.elevation;
-    if (params.erosionIterations > 0 && params.erosionStrength > 0) {
-      elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
+      data[di] = r;
+      data[di + 1] = g;
+      data[di + 2] = b;
+      data[di + 3] = 255;
     }
-    const ds = runDownstreamPipeline(downstreamInput(elevation));
-    // 使用 elevationAfter/slopeAfter：冰川侵蚀可能改写过高程，slopeAfter 已重算
-    packAllTextures(md, ds.elevationAfter, ds.slopeAfter, elevResult.ridge, elevResult.ridgeMask,
-      ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
-      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
-    packWorldTex(ds);
-    applyDownstreamToMapData(md, ds, seed);
-  } else if (phase === 'editor-elevation') {
-    // 编辑器高程改动：以当前 elevTex 通道0 为准，跑下游（冰川侵蚀可能进一步改写）
-    const elevation = elevation0;
-    const ds = runDownstreamPipeline(downstreamInput(elevation));
-    packAllTextures(md, ds.elevationAfter, ds.slopeAfter, ridge, ridgeMask,
-      ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
-      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
-    packWorldTex(ds);
-    applyDownstreamToMapData(md, ds, seed);
-  } else if (phase === 'erosion') {
-    // 侵蚀改写了高程 → 下游冰川侵蚀可能再次改写 → 用 elevationAfter/slopeAfter 打包
-    let elevation = elevation0;
-    if (params.erosionIterations > 0 && params.erosionStrength > 0) {
-      elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength);
-    }
-    const ds = runDownstreamPipeline(downstreamInput(elevation));
-    packElevTex(md, ds.elevationAfter, ds.slopeAfter, ridge, ridgeMask);
-    packClimateRiverTextures(md, ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
-      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
-    packWorldTex(ds);
-    applyDownstreamToMapData(md, ds, seed);
-  } else if (phase === 'climate') {
-    // 气候变了 → 冰盖/冰川侵蚀随之变 → 高程可能变 → 用 elevationAfter/slopeAfter 刷新 elevTex
-    const elevation = elevation0;
-    const ds = runDownstreamPipeline(downstreamInput(elevation));
-    packElevTex(md, ds.elevationAfter, ds.slopeAfter, ridge, ridgeMask);
-    packClimateRiverTextures(md, ds.moisture, ds.rainfall, ds.temperature, ds.tempZone,
-      ds.riverMask, ds.riverWidth, ds.riverDepth, ds.lakes, tp);
-    packWorldTex(ds);
-    applyDownstreamToMapData(md, ds, seed);
-  } else if (phase === 'rivers') {
-    // 仅刷新湖泊+河流+区域（气候未变，跳过 computeClimate 节省开销）
-    const elevation = elevation0;
-    const moisture = moisture0;
-    const temperature = extractChannel(md.moistTex, 2, size);
-    const lakes = generateLakes(width, height, elevation, params.seaLevel, params.lakeDensity, seed);
-    const riverResult = generateRivers(width, height, elevation, moisture, params.seaLevel, riverCount, seed);
-    const regions = analyzeRegions(width, height, elevation, moisture, temperature, plateId, params.seaLevel, seed);
-    for (let i = 0; i < size; i++) {
-      const i4 = i * 4;
-      md.riverTex[i4] = riverResult.riverMask[i];
-      md.riverTex[i4 + 1] = riverResult.riverWidth[i];
-      md.riverTex[i4 + 2] = riverResult.riverDepth[i];
-      md.riverTex[i4 + 3] = lakes[i];
-    }
-    md.rivers = riverResult.rivers;
-    md.regions = regions;
-    md.seed = seed;
   }
-
-  bus.emit('generating.completed', { mapData: md });
+  minimapCtx.putImageData(imgData, 0, 0);
 }
 
-function bindLayerBar(): void {
-  const bar = document.getElementById('layer-bar');
-  if (!bar) return;
-  const styleSelect = document.getElementById('style') as HTMLSelectElement | null;
-
-  const updateActive = (styleVal: number) => {
-    bar.querySelectorAll<HTMLButtonElement>('.layer-btn').forEach(btn => {
-      btn.classList.toggle('active', Number(btn.dataset.style) === styleVal);
+function buildPresetGrid(): void {
+  const grid = $('preset-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const themeGroup = PRESET_GROUPS.find(g => g.category === 'theme');
+  if (!themeGroup) return;
+  themeGroup.presets.forEach((preset) => {
+    const card = document.createElement('button');
+    card.className = 'preset-card' + (state.currentPreset === preset.id ? ' active' : '');
+    card.innerHTML = `
+      <span class="preset-icon">${preset.icon}</span>
+      <span class="preset-name">${preset.name}</span>
+      <span class="preset-desc">${preset.description}</span>
+    `;
+    card.addEventListener('click', () => {
+      applyPreset(preset.id);
     });
-  };
-
-  bar.querySelectorAll<HTMLButtonElement>('.layer-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const styleVal = Number(btn.dataset.style);
-      setParam('style', styleVal);
-      if (styleSelect) styleSelect.value = String(styleVal);
-      updateActive(styleVal);
-      bus.emit('render.request');
-    });
+    grid.appendChild(card);
   });
-
-  // Sync layer-bar active state when style select changes
-  if (styleSelect) {
-    styleSelect.addEventListener('change', () => updateActive(Number(styleSelect.value)));
-  }
 }
 
-function bindMobileDrawer(): void {
-  const menuToggle = document.getElementById('menu-toggle');
-  const drawer = document.getElementById('drawer');
-  const backdrop = document.getElementById('drawer-backdrop');
-
-  function toggleDrawer(open?: boolean) {
-    if (!drawer || !backdrop) return;
-    const shouldOpen = open !== undefined ? open : !drawer.classList.contains('open');
-    drawer.classList.toggle('open', shouldOpen);
-    backdrop.classList.toggle('open', shouldOpen);
-  }
-
-  menuToggle?.addEventListener('click', () => toggleDrawer());
-  backdrop?.addEventListener('click', () => toggleDrawer(false));
-
-  let touchStartX = 0;
-  document.addEventListener('touchstart', (e) => {
-    if (e.target && (e.target as HTMLElement).closest('canvas')) return;
-    touchStartX = e.touches[0].clientX;
-  }, { passive: true });
-
-  document.addEventListener('touchend', (e) => {
-    if (!drawer) return;
-    if (e.target && (e.target as HTMLElement).closest('canvas')) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diffX = touchEndX - touchStartX;
-    if (Math.abs(diffX) > 50) {
-      if (diffX > 0 && touchStartX < 50) toggleDrawer(true);
-      else if (diffX < 0 && drawer.classList.contains('open')) toggleDrawer(false);
+function applyPreset(presetId: string): void {
+  const preset = findPreset(presetId);
+  if (!preset) return;
+  state.currentPreset = presetId;
+  const updates: Partial<UIParams> = {};
+  for (const [k, v] of Object.entries(preset.params)) {
+    if (k === 'noiseType' || k === 'fbmType') {
+      (updates as Record<string, unknown>)[k] = v;
+    } else if (typeof v === 'number') {
+      (updates as Record<string, number>)[k] = v;
+    } else if (typeof v === 'boolean') {
+      (updates as Record<string, boolean>)[k] = v;
     }
-  }, { passive: true });
+  }
+  patchParams(updates);
+  syncUIFromParams();
+  buildPresetGrid();
+  generateMap();
 }
 
-function bindGlobalEvents(canvas: HTMLCanvasElement): void {
+interface SliderBinding {
+  toParam: (raw: number) => number;
+  fromParam?: (val: number) => number;
+  toDisplay: (raw: number) => string;
+  autoGen?: boolean;
+}
+
+function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBinding): void {
+  const el = $(id) as HTMLInputElement | null;
+  const dispId = id + '-val';
+  if (!el) return;
+  el.addEventListener('input', () => {
+    const raw = parseFloat(el.value);
+    const val = binding.toParam(raw);
+    setParam(paramKey, val as never);
+    setDispVal(dispId, binding.toDisplay(raw));
+    if (paramKey === 'windDirX' || paramKey === 'windDirY') {
+      updateWindArrow();
+    }
+    const renderOnlyKeys = ['style', 'showBoundaries', 'boundaryWidth', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'lightAngle', 'pointLightEnabled', 'glowEnabled', 'cursorSize'];
+    if (renderOnlyKeys.includes(paramKey as string)) {
+      scheduleRender();
+    }
+  });
+  if (binding.autoGen) {
+    el.addEventListener('change', () => generateMap());
+  }
+}
+
+function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): void {
+  const el = $(id) as HTMLInputElement | null;
+  if (!el) return;
+  el.addEventListener('change', () => {
+    setParam(paramKey, el.checked as never);
+    const renderOnlyKeys = ['showBoundaries', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'pointLightEnabled', 'glowEnabled', 'laserActive', 'cursorActive', 'trailEnabled', 'laserSelection'];
+    if (renderOnlyKeys.includes(paramKey as string)) {
+      scheduleRender();
+    }
+    if (autoGen) generateMap();
+  });
+}
+
+function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void {
+  const el = $(id) as HTMLSelectElement | null;
+  if (!el) return;
+  el.addEventListener('change', () => {
+    setParam(paramKey, el.value as never);
+    if (paramKey === 'style') {
+      updateStyleDots();
+      scheduleRender();
+    }
+    if (autoGen) generateMap();
+  });
+}
+
+function bindSizeHandle(): void {
+  const handle = $('size-handle');
+  if (!handle) return;
+  handle.addEventListener('mousedown', (e) => {
+    isDraggingSize = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragStartW = state.params.mapWidth;
+    dragStartH = state.params.mapHeight;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!isDraggingSize) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    const newW = Math.max(64, Math.min(2048, dragStartW + Math.round(dx / 2) * 2));
+    const newH = Math.max(64, Math.min(2048, dragStartH + Math.round(dy / 2) * 2));
+    if (newW !== state.params.mapWidth || newH !== state.params.mapHeight) {
+      patchParams({ mapWidth: newW, mapHeight: newH });
+      const wInput = $('mapWidth') as HTMLInputElement | null;
+      const hInput = $('mapHeight') as HTMLInputElement | null;
+      if (wInput) wInput.value = String(newW);
+      if (hInput) hInput.value = String(newH);
+      updateSizeInfo();
+      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (isDraggingSize) {
+      isDraggingSize = false;
+      generateMap();
+    }
+  });
+}
+
+function bindEventBus(): void {
   bus.on('render.request', scheduleRender);
-  bus.on('generate.request', () => generateMapAction());
+  bus.on('generate.request', () => generateMap());
+  bus.on('generating.started', () => {
+    setGeneratingStatus(true);
+    setProgress(0, '初始化...');
+  });
+  bus.on('progress', ({ fraction, label }: { fraction: number; label: string }) => {
+    setProgress(fraction, label);
+  });
   bus.on('generating.completed', ({ mapData }: { mapData: MapData }) => {
+    setGeneratingStatus(false);
+    setProgress(1, '完成');
     renderer?.uploadMapData(mapData);
     mapInteraction?.setMapData(mapData);
     render();
-    // 触发重新入场动画：用 reflow 重新启动 CSS keyframe
-    canvas.classList.remove('map-fade-in');
-    void canvas.offsetWidth;
-    canvas.classList.add('map-fade-in');
-    checkpointMgr && bus.emit('checkpoint.updated');
+    const wiStats = $('wi-stats');
+    const wiStatsVal = $('wi-stats-val');
+    if (wiStats && wiStatsVal) {
+      wiStats.style.display = '';
+      let landCount = 0;
+      const elev = mapData.elevTex;
+      const total = mapData.width * mapData.height;
+      for (let i = 0; i < total; i++) {
+        if (elev[i * 4] >= state.params.seaLevel) landCount++;
+      }
+      wiStatsVal.textContent = `${Math.round(landCount / total * 100)}% 陆地`;
+    }
+  });
+  bus.on('generating.failed', (err: string) => {
+    setGeneratingStatus(false, err);
+    logger.error('Generation failed:', err);
   });
   bus.on('selection.changed', ({ plates }: { plates: number[]; regions: number[] }) => {
     if (renderer instanceof WebGLRenderer) renderer.updateSelectMask(plates);
-    // Canvas2D 无选择高亮，保持静默
     scheduleRender();
-  });
-  bus.on('trail.update', (data: { width: number; height: number; pixels: Uint8Array }) => {
-    if (renderer instanceof WebGLRenderer) renderer.updateTrailTex(data);
-    scheduleRender();
-  });
-  bus.on('regenerate.phase', (phase: string) => {
-    partialRegenerate(phase);
-  });
-  bus.on('editor.committed', ({ phase }: { phase: string }) => {
-    // 编辑器提交：局部重算（高程→气候/河流/区域 或 板块→高程全链）+ 刷新名称
-    const md = state.mapData;
-    if (!md) return;
-    partialRegenerate(phase);
-    regenerateNames(md, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
-    bus.emit('names.updated');
-  });
-  bus.on('selection.clear', () => clearSelection());
-  bus.on('randomSeed.request', () => {
-    const seed = String(Math.floor(Math.random() * 99999));
-    setParam('seedStr', seed);
-    const el = document.getElementById('seedStr') as HTMLInputElement | null;
-    if (el) el.value = seed;
-    generateMapAction();
   });
   bus.on('export.request', () => {
-    const c = document.getElementById('glCanvas') as HTMLCanvasElement | null;
+    const c = $('glCanvas') as HTMLCanvasElement | null;
     if (!c) return;
     c.toBlob((blob) => {
       if (!blob) return;
@@ -344,360 +512,326 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
       URL.revokeObjectURL(url);
     }, 'image/png');
   });
-
-  bus.on('checkpoint.save.request', async () => {
-    if (!checkpointMgr || !state.mapData) return;
-    const name = prompt('输入检查点名称:', '检查点 ' + new Date().toLocaleTimeString('zh-CN'));
-    if (!name) return;
-    await checkpointMgr.save(name, 'full', state.mapData, state.params);
-    bus.emit('checkpoint.updated');
-  });
-  bus.on('checkpoint.restore.request', async (id: number) => {
-    if (!checkpointMgr) return;
-    const ckpt = await checkpointMgr.restore(id);
-    if (!ckpt) return;
-    const restored = checkpointMgr.restoreMapData(ckpt);
-    if (!restored) {
-      bus.emit('generating.failed', '检查点格式不兼容');
-      return;
-    }
-    const params = ckpt.data.params as Record<string, unknown>;
-    Object.entries(params).forEach(([key, value]) => {
-      const k = key as keyof UIParams;
-      patchParams({ [k]: value } as Partial<UIParams>);
-      const el = document.getElementById(key) as HTMLInputElement | HTMLSelectElement | null;
-      if (el) {
-        if (el.type === 'checkbox') (el as HTMLInputElement).checked = Boolean(value);
-        else if (el.type === 'color' && Array.isArray(value)) {
-          const [r, g, b] = value as number[];
-          const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
-          el.value = '#' + toHex(r) + toHex(g) + toHex(b);
-        } else el.value = String(value);
-      }
-    });
-    state.mapData = restored;
-    regenerateNames(restored, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
-    bus.emit('names.updated');
-    bus.emit('generating.completed', { mapData: restored });
-  });
 }
 
-function bindMediatorCoordination(canvas: HTMLCanvasElement): void {
-  mediator.subscribe('app', 'render.request', () => scheduleRender());
-  mediator.subscribe('app', 'generate.request', () => generateMapAction());
-  mediator.subscribe('app', 'generating.completed', ({ mapData }: { mapData: MapData }) => {
-    renderer?.uploadMapData(mapData);
-    mapInteraction?.setMapData(mapData);
-    render();
-    canvas.classList.remove('map-fade-in');
-    void canvas.offsetWidth;
-    canvas.classList.add('map-fade-in');
-    if (checkpointMgr) mediator.send('app', 'checkpoint.updated');
-  });
-  mediator.subscribe('app', 'selection.changed', ({ plates }: { plates: number[]; regions: number[] }) => {
-    if (renderer instanceof WebGLRenderer) renderer.updateSelectMask(plates);
-    scheduleRender();
-  });
-  mediator.subscribe('app', 'trail.update', (data: { width: number; height: number; pixels: Uint8Array }) => {
-    if (renderer instanceof WebGLRenderer) renderer.updateTrailTex(data);
-    scheduleRender();
-  });
-  mediator.subscribe('app', 'regenerate.phase', (phase: string) => {
-    partialRegenerate(phase);
-  });
-  mediator.subscribe('app', 'editor.committed', ({ phase }: { phase: string }) => {
-    const md = state.mapData;
-    if (!md) return;
-    partialRegenerate(phase);
-    regenerateNames(md, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
-    mediator.send('app', 'names.updated');
-  });
-  mediator.subscribe('app', 'selection.clear', () => clearSelection());
-  mediator.subscribe('app', 'randomSeed.request', () => {
-    const seed = String(Math.floor(Math.random() * 99999));
-    setParam('seedStr', seed);
-    const el = document.getElementById('seedStr') as HTMLInputElement | null;
-    if (el) el.value = seed;
-    generateMapAction();
-  });
-  mediator.subscribe('app', 'export.request', () => {
-    const c = document.getElementById('glCanvas') as HTMLCanvasElement | null;
-    if (!c) return;
-    c.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.download = 'mapgen-' + Date.now() + '.png';
-      a.href = url;
-      a.click();
-      URL.revokeObjectURL(url);
-    }, 'image/png');
-  });
-  mediator.subscribe('app', 'checkpoint.save.request', async () => {
-    if (!checkpointMgr || !state.mapData) return;
-    const name = prompt('输入检查点名称:', '检查点 ' + new Date().toLocaleTimeString('zh-CN'));
-    if (!name) return;
-    await checkpointMgr.save(name, 'full', state.mapData, state.params);
-    mediator.send('app', 'checkpoint.updated');
-  });
-  mediator.subscribe('app', 'checkpoint.restore.request', async (id: number) => {
-    if (!checkpointMgr) return;
-    const ckpt = await checkpointMgr.restore(id);
-    if (!ckpt) return;
-    const restored = checkpointMgr.restoreMapData(ckpt);
-    if (!restored) {
-      mediator.send('app', 'generating.failed', '检查点格式不兼容');
-      return;
-    }
-    const params = ckpt.data.params as Record<string, unknown>;
-    Object.entries(params).forEach(([key, value]) => {
-      const k = key as keyof UIParams;
-      patchParams({ [k]: value } as Partial<UIParams>);
-      const el = document.getElementById(key) as HTMLInputElement | HTMLSelectElement | null;
-      if (el) {
-        if (el.type === 'checkbox') (el as HTMLInputElement).checked = Boolean(value);
-        else if (el.type === 'color' && Array.isArray(value)) {
-          const [r, g, b] = value as number[];
-          const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
-          el.value = '#' + toHex(r) + toHex(g) + toHex(b);
-        } else el.value = String(value);
-      }
-    });
-    state.mapData = restored;
-    regenerateNames(restored, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
-    mediator.send('app', 'names.updated');
-    mediator.send('app', 'generating.completed', { mapData: restored });
-  });
-}
-
-/** 绑定编辑器工具栏：工具切换、画笔/矢量参数、撤销重做、模式切换、快捷键 */
-function bindEditorBar(ed: EditorController): void {
-  const bar = document.getElementById('editor-bar');
-  if (!bar) return;
-
-  const brushParams = document.getElementById('brush-params') as HTMLElement | null;
-  const vectorParams = document.getElementById('vector-params') as HTMLElement | null;
-  const vtargetSel = document.getElementById('vectorTarget') as HTMLElement | null;
-  const vheightField = document.getElementById('vmtn-height-field') as HTMLElement | null;
-  const plateField = document.getElementById('brush-plate-field') as HTMLElement | null;
-
-  const toolBtns = bar.querySelectorAll<HTMLButtonElement>('.editor-btn[data-tool]');
-  const setActiveTool = (mode: EditorMode) => {
-    ed.setMode(mode);
-    toolBtns.forEach(b => b.classList.toggle('active', b.dataset.tool === mode));
-    if (brushParams) brushParams.style.display = mode === 'brush' ? '' : 'none';
-    const isVector = mode === 'vector-line' || mode === 'vector-poly';
-    if (vectorParams) vectorParams.style.display = isVector ? '' : 'none';
-    if (vtargetSel) vtargetSel.style.display = mode === 'vector-poly' ? '' : 'none';
-    if (vheightField) vheightField.style.display = mode === 'vector-line' ? '' : 'none';
-  };
-  toolBtns.forEach(btn => btn.addEventListener('click', () => setActiveTool(btn.dataset.tool as EditorMode)));
-
-  const bindRange = (id: string, valId: string, key: 'brushRadius' | 'brushStrength' | 'vectorWidth' | 'vectorMountainHeight') => {
-    const el = document.getElementById(id) as HTMLInputElement | null;
-    const val = document.getElementById(valId);
-    if (!el) return;
-    el.addEventListener('input', () => {
-      ed.setTool({ [key]: parseFloat(el.value) });
-      if (val) val.textContent = el.value;
-    });
-  };
-  bindRange('brushRadius', 'brushRadius-val', 'brushRadius');
-  bindRange('brushStrength', 'brushStrength-val', 'brushStrength');
-  bindRange('vectorWidth', 'vectorWidth-val', 'vectorWidth');
-  bindRange('vectorMountainHeight', 'vectorMountainHeight-val', 'vectorMountainHeight');
-
-  const brushKind = document.getElementById('brushKind') as HTMLSelectElement | null;
-  brushKind?.addEventListener('change', () => {
-    ed.setTool({ brushKind: brushKind.value as BrushKind });
-    if (plateField) plateField.style.display = brushKind.value === 'plate-paint' ? '' : 'none';
-  });
-
-  const brushTargetPlate = document.getElementById('brushTargetPlate') as HTMLInputElement | null;
-  brushTargetPlate?.addEventListener('change', () => {
-    ed.setTool({ brushTargetPlate: parseInt(brushTargetPlate.value, 10) || 0 });
-  });
-
-  const vectorTarget = document.getElementById('vectorTarget') as HTMLSelectElement | null;
-  vectorTarget?.addEventListener('change', () => {
-    ed.setTool({ vectorTarget: vectorTarget.value as 'land' | 'sea' | 'lake' });
-  });
-
-  const undoBtn = document.getElementById('btn-undo') as HTMLButtonElement | null;
-  const redoBtn = document.getElementById('btn-redo') as HTMLButtonElement | null;
-  const updateUndoRedo = () => {
-    if (undoBtn) undoBtn.disabled = !ed.canUndo;
-    if (redoBtn) redoBtn.disabled = !ed.canRedo;
-  };
-  undoBtn?.addEventListener('click', () => { ed.undo(); updateUndoRedo(); });
-  redoBtn?.addEventListener('click', () => { ed.redo(); updateUndoRedo(); });
-  bus.on('editor.committed', updateUndoRedo);
-  bus.on('editor.mode.changed', updateUndoRedo);
-
-  let namesVisible = true;
-  const namesBtn = document.getElementById('btn-toggle-names') as HTMLButtonElement | null;
-  namesBtn?.classList.add('active');
-  namesBtn?.addEventListener('click', () => {
-    namesVisible = !namesVisible;
-    bus.emit('overlay.toggle', namesVisible);
-    namesBtn.classList.toggle('active', namesVisible);
-  });
-
-  // 生成模式切换
-  document.querySelectorAll<HTMLInputElement>('input[name="genMode"]').forEach(r => {
-    r.addEventListener('change', () => {
-      if (r.checked) {
-        setParam('mode', r.value as 'procedural' | 'blank');
-        generateMapAction();
-      }
-    });
-  });
-
-  // 快捷键：Ctrl+Z 撤销 / Ctrl+Shift+Z|Ctrl+Y 重做 / B M P D A V 工具
-  const keyHandler = (e: KeyboardEvent) => {
-    const t = e.target as HTMLElement;
-    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
-    const k = e.key.toLowerCase();
-    if ((e.ctrlKey || e.metaKey) && k === 'z') {
-      e.preventDefault();
-      if (e.shiftKey) ed.redo(); else ed.undo();
-      updateUndoRedo();
-    } else if ((e.ctrlKey || e.metaKey) && k === 'y') {
-      e.preventDefault();
-      ed.redo();
-      updateUndoRedo();
-    } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      switch (k) {
-        case 'b': setActiveTool('brush'); break;
-        case 'm': setActiveTool('vector-line'); break;
-        case 'p': setActiveTool('vector-poly'); break;
-        case 'd': setActiveTool('drag-plate'); break;
-        case 'a': setActiveTool('annotate'); break;
-        case 'v': setActiveTool('idle'); break;
-      }
-    }
-  };
-  document.addEventListener('keydown', keyHandler);
-}
-
-async function initRenderer(canvas: HTMLCanvasElement, launcher?: Launcher | null): Promise<void> {
+async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
   try {
     const r = new WebGLRenderer(canvas);
     const res = await fetch('shaders/fs-map.frag');
     if (!res.ok) throw new Error('Shader fetch failed');
-    launcher?.setProgress(0.4, '编译着色器...');
     await r.initShaders(await res.text());
     renderer = r;
   } catch (e) {
-    logger.warn('WebGL2 unavailable, trying p5.js:', (e as Error).message);
+    logger.warn('WebGL2 unavailable, trying Canvas2D:', (e as Error).message);
     try {
       const p5r = new P5Renderer(canvas);
       await p5r.init();
       renderer = p5r;
-      logger.info('p5.js renderer initialized');
-    } catch (e2) {
-      logger.warn('p5.js unavailable, using Canvas2D:', (e2 as Error).message);
+    } catch {
       renderer = new Canvas2DRenderer(canvas);
     }
   }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const app = document.getElementById('app');
-  const canvas = document.getElementById('glCanvas') as HTMLCanvasElement | null;
-  if (!canvas || !app) {
-    logger.error('#app or #glCanvas not found');
+  const canvas = $('glCanvas') as HTMLCanvasElement | null;
+  const minimap = $('minimap') as HTMLCanvasElement | null;
+  if (!canvas) {
+    logger.error('#glCanvas not found');
     return;
   }
 
-  // 开发模式暴露内部状态,便于浏览器实测/调试（dogfood）
   if (import.meta.env.DEV) {
-    (window as unknown as { __mapgen: unknown }).__mapgen = { state, editor: () => editor, nameOverlay: () => nameOverlay };
+    (window as unknown as { __mapgen: unknown }).__mapgen = { state };
   }
 
-  const showLauncher = Launcher.shouldShow();
-  let launcher: Launcher | null = null;
-  let launchPromise: Promise<unknown> | null = null;
-
-  if (showLauncher) {
-    launcher = new Launcher(document.body, {
-      title: 'Material Map Generator',
-      version: 'v0.0.1 — Monorepo',
-    });
-    await launcher.show();
-    launchPromise = launcher.waitForLaunch();
-    launcher.setProgress(0.1, '加载渲染器...');
-  } else {
-    launchPromise = Promise.resolve();
+  if (minimap) {
+    minimapCtx = minimap.getContext('2d');
   }
 
-  await initRenderer(canvas, launcher);
+  await initRenderer(canvas);
 
-  launcher?.setProgress(0.7, '加载检查点...');
   checkpointMgr = new CheckpointManager();
   await checkpointMgr.load();
 
-  const paramPanel = new ParamPanel();
-  paramPanel.setMediator(mediator);
-  paramPanel.applyDefaults();
-  paramPanel.bind();
+  buildPresetGrid();
+  syncUIFromParams();
 
-  const progressView = new ProgressView();
-  progressView.setMediator(mediator);
-  progressView.bind();
+  bindEventBus();
+  bindSizeHandle();
 
-  const toolbar = new Toolbar();
-  toolbar.setMediator(mediator);
-  toolbar.bind();
+  const panel = $('panel');
+  $('btn-panel-toggle')?.addEventListener('click', () => {
+    panel?.classList.toggle('panel-open');
+    panel?.classList.toggle('panel-closed');
+  });
 
-  const shortcuts = new Shortcuts();
-  shortcuts.setMediator(mediator);
-  shortcuts.bind();
+  document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      if (!target) return;
+      document.querySelectorAll<HTMLElement>('.panel-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
+        s.classList.toggle('active', s.dataset.section === target);
+      });
+    });
+  });
 
-  const contextMenu = new ContextMenu();
-  contextMenu.setMediator(mediator);
-  contextMenu.bind();
+  $('btn-generate')?.addEventListener('click', () => generateMap());
+  $('btn-random')?.addEventListener('click', () => {
+    const seed = String(Math.floor(Math.random() * 99999));
+    setParam('seedStr', seed);
+    const seedInput = $('seedStr') as HTMLInputElement | null;
+    if (seedInput) seedInput.value = seed;
+    generateMap();
+  });
+  $('btn-random-seed')?.addEventListener('click', () => {
+    const seed = String(Math.floor(Math.random() * 99999));
+    setParam('seedStr', seed);
+    const seedInput = $('seedStr') as HTMLInputElement | null;
+    if (seedInput) seedInput.value = seed;
+    generateMap();
+  });
+  $('btn-undo')?.addEventListener('click', () => {});
+  $('btn-redo')?.addEventListener('click', () => {});
+  $('btn-export')?.addEventListener('click', () => bus.emit('export.request'));
+  $('btn-clear-selection')?.addEventListener('click', () => clearSelection());
+  $('btn-toggle-names')?.addEventListener('click', () => {
+    namesVisible = !namesVisible;
+    $('btn-toggle-names')?.classList.toggle('active', namesVisible);
+  });
 
-  const checkpointPanel = new CheckpointPanel();
-  checkpointPanel.setMediator(mediator);
-  checkpointPanel.bind(checkpointMgr);
+  $('seedStr')?.addEventListener('change', (e) => {
+    setParam('seedStr', (e.target as HTMLInputElement).value);
+  });
 
-  bindMobileDrawer();
-  bindLayerBar();
-  bindMediatorCoordination(canvas);
+  const wInput = $('mapWidth') as HTMLInputElement | null;
+  const hInput = $('mapHeight') as HTMLInputElement | null;
+  const onSizeChange = () => {
+    const w = parseInt(wInput?.value || '512', 10);
+    const h = parseInt(hInput?.value || '512', 10);
+    patchParams({ mapWidth: w, mapHeight: h });
+    document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
+    updateSizeInfo();
+  };
+  wInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
+  hInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
 
+  document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const w = parseInt(btn.dataset.w || '512', 10);
+      const h = parseInt(btn.dataset.h || '512', 10);
+      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      patchParams({ mapWidth: w, mapHeight: h });
+      if (wInput) wInput.value = String(w);
+      if (hInput) hInput.value = String(h);
+      updateSizeInfo();
+      generateMap();
+    });
+  });
+
+  bindSliderEx('octaves', 'octaves', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('lacunarity', 'lacunarity', {
+    toParam: raw => raw,
+    toDisplay: raw => raw.toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('persistence', 'persistence', {
+    toParam: raw => raw,
+    toDisplay: raw => raw.toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('plateCount', 'plateCount', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('landmass', 'landmass', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => raw + '%',
+    autoGen: true,
+  });
+  bindSliderEx('mountainFold', 'mountainFold', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('coastDetail', 'coastDetail', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+
+  bindCheckbox('enableOceanCurrents', 'enableOceanCurrents', true);
+  bindCheckbox('enableIceSheet', 'enableIceSheet', true);
+  bindCheckbox('enableMonsoon', 'enableMonsoon', true);
+  bindCheckbox('enableContinentality', 'enableContinentality', true);
+  bindCheckbox('enableHadleyEnhancement', 'enableHadleyEnhancement', true);
+
+  bindSliderEx('seaLevel', 'seaLevel', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('erosionStrength', 'erosionStrength', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('erosionIterations', 'erosionIterations', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('lakeDensity', 'lakeDensity', {
+    toParam: raw => raw / 1000,
+    toDisplay: raw => (raw / 1000).toFixed(3),
+    autoGen: true,
+  });
+
+  bindSliderEx('tempOffset', 'tempOffset', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('snowLine', 'snowLine', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('rainStrength', 'rainStrength', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('windDirX', 'windDirX', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('windDirY', 'windDirY', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+
+  bindSliderEx('riverCount', 'riverCount', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+
+  bindSelect('noiseType', 'noiseType', true);
+  bindSelect('fbmType', 'fbmType', true);
+  bindSelect('style', 'style');
+
+  bindCheckbox('showBoundaries', 'showBoundaries');
+  bindSliderEx('boundaryWidth', 'boundaryWidth', {
+    toParam: raw => raw / 10,
+    toDisplay: raw => (raw / 10).toFixed(1),
+  });
+  bindCheckbox('showRivers', 'showRivers');
+  bindCheckbox('showContours', 'showContours');
+  bindCheckbox('showTerrain', 'showTerrain');
+  bindCheckbox('showSelection', 'showSelection');
+  bindCheckbox('showClimate', 'showClimate');
+  bindSliderEx('lightAngle', 'lightAngle', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+  });
+  bindCheckbox('pointLightEnabled', 'pointLightEnabled');
+  bindCheckbox('glowEnabled', 'glowEnabled');
+  bindCheckbox('laserActive', 'laserActive');
+  bindCheckbox('laserSelection', 'laserSelection');
+  bindSliderEx('laserWidth', 'laserWidth', {
+    toParam: raw => raw / 1000,
+    toDisplay: raw => (raw / 1000).toFixed(3),
+  });
+  bindCheckbox('cursorActive', 'cursorActive');
+  bindCheckbox('trailEnabled', 'trailEnabled');
+
+  document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tool = btn.dataset.tool;
+      if (!tool) return;
+      currentTool = tool;
+      document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const brushCtrls = $('brush-ctrls');
+      if (brushCtrls) {
+        brushCtrls.style.display = tool === 'brush' ? '' : 'none';
+      }
+    });
+  });
+  const brushCtrlsEl = $('brush-ctrls') as HTMLElement | null;
+  if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
+
+  bindSliderEx('brushRadius', 'cursorSize', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+  });
+  $('brushStrength')?.addEventListener('input', (e) => {
+    const v = parseInt((e.target as HTMLInputElement).value, 10);
+    setDispVal('brushStrength-val', (v / 100).toFixed(1));
+  });
+
+  let zoom = 1;
+  const updateZoom = () => {
+    const zv = $('zoom-val');
+    if (zv) zv.textContent = `${Math.round(zoom * 100)}%`;
+  };
+  $('btn-zoom-in')?.addEventListener('click', () => { zoom = Math.min(4, zoom * 1.25); updateZoom(); });
+  $('btn-zoom-out')?.addEventListener('click', () => { zoom = Math.max(0.25, zoom / 1.25); updateZoom(); });
+  $('btn-zoom-reset')?.addEventListener('click', () => { zoom = 1; updateZoom(); });
+
+  mapInteraction = new MapInteraction(canvas);
+  mapInteraction.bindEvents();
+
+  const handleResize = () => {
+    if (!renderer) return;
+    renderer.resize(window.innerWidth, window.innerHeight);
+    render();
+  };
   handleResize();
   window.addEventListener('resize', handleResize);
 
-  mapInteraction = new MapInteraction(canvas);
-  mapInteraction.setMediator(mediator);
-  mapInteraction.bindEvents();
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      generateMap();
+    } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+      const seed = String(Math.floor(Math.random() * 99999));
+      setParam('seedStr', seed);
+      const seedInput = $('seedStr') as HTMLInputElement | null;
+      if (seedInput) seedInput.value = seed;
+      generateMap();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      panel?.classList.toggle('panel-open');
+      panel?.classList.toggle('panel-closed');
+    } else if (e.key === 'Escape') {
+      clearSelection();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+      e.preventDefault();
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      const toolMap: Record<string, string> = { v: 'idle', b: 'brush', m: 'vector-line', p: 'vector-poly', d: 'drag-plate', a: 'annotate' };
+      const tool = toolMap[e.key.toLowerCase()];
+      if (tool) {
+        const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);
+        btn?.click();
+      }
+    }
+  });
 
-  // 编辑器子系统（AC-5/6/7/9/10）：控制器 + 名称叠加层 + 工具栏
-  editor = new EditorController(canvas);
-  editor.setMediator(mediator);
-  const container = document.getElementById('canvas-container');
-  if (container) {
-    nameOverlay = new NameOverlay(container);
-    nameOverlay.setMediator(mediator);
-    nameOverlay.bindEvents();
-  }
-  bindEditorBar(editor);
-
-  launcher?.setProgress(0.9, '准备生成地图...');
-
-  if (launcher) {
-    app.classList.add('launcher-done');
-    await launchPromise;
-    await launcher.hide();
-    launcher.destroy();
-  } else {
-    await launchPromise;
-  }
-
-  checkpointPanel.refresh();
-  // 无论是否经过启动器，都需要首次生成地图
-  bus.emit('render.request');
-  mediator.send('app', 'render.request');
-  generateMapAction();
+  generateMap();
 });
