@@ -1,15 +1,23 @@
-import { generateMap } from '@mapgen/core';
 import { bus } from './eventBus.js';
 import { patchParams, state, toMapParams, type UIParams } from './appState.js';
+import { mapGenWorker } from './mapGenWorker.js';
 
 const phaseLabels: Record<string, string> = {
   tectonic: '板块构造',
   elevation: '高程生成',
   erosion: '侵蚀模拟',
+  coastline: '海岸线',
+  currents: '洋流',
   climate: '气候计算',
+  ice: '冰盖',
+  biomes: '生物群系',
+  watershed: '流域分析',
+  volcanism: '火山系统',
+  seasons: '季节',
   lakes: '湖泊生成',
   rivers: '河流生成',
   regions: '区域分析',
+  naming: '地名生成',
   packing: '纹理打包',
 };
 
@@ -55,21 +63,18 @@ export function generate(): void {
   state.error = null;
   bus.emit('generating.started');
 
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      try {
-        const result = generateMap(toMapParams(state.params), (progress, phaseName) => {
-          setProgress(progress, phaseName);
-        });
-        state.mapData = result.mapData;
-        state.checkpoints = result.checkpoints;
-        bus.emit('generating.completed', result);
-      } catch (err) {
-        state.error = (err as Error).message;
-        bus.emit('generating.failed', state.error);
-      } finally {
-        state.isGenerating = false;
-      }
-    }, 0);
+  const params = toMapParams(state.params);
+
+  mapGenWorker.generate(params, (progress, phaseName) => {
+    setProgress(progress, phaseName);
+  }).then((result) => {
+    state.mapData = result.mapData;
+    state.checkpoints = result.checkpoints;
+    bus.emit('generating.completed', result);
+  }).catch((err: string) => {
+    state.error = err;
+    bus.emit('generating.failed', err);
+  }).finally(() => {
+    state.isGenerating = false;
   });
 }
