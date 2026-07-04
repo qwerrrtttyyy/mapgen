@@ -650,15 +650,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   toolbar.setMediator(mediator);
   toolbar.bind();
 
-  new Shortcuts().bind();
-  new ContextMenu().bind();
+  const shortcuts = new Shortcuts();
+  shortcuts.setMediator(mediator);
+  shortcuts.bind();
+
+  const contextMenu = new ContextMenu();
+  contextMenu.setMediator(mediator);
+  contextMenu.bind();
+
   const checkpointPanel = new CheckpointPanel();
   checkpointPanel.setMediator(mediator);
   checkpointPanel.bind(checkpointMgr);
 
   bindMobileDrawer();
   bindLayerBar();
-  bindGlobalEvents(canvas);
   bindMediatorCoordination(canvas);
 
   handleResize();
@@ -672,7 +677,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   editor = new EditorController(canvas);
   editor.setMediator(mediator);
   const container = document.getElementById('canvas-container');
-  if (container) nameOverlay = new NameOverlay(container);
+  if (container) {
+    nameOverlay = new NameOverlay(container);
+    nameOverlay.setMediator(mediator);
+    nameOverlay.bindEvents();
+  }
   bindEditorBar(editor);
 
   launcher?.setProgress(0.9, '准备生成地图...');

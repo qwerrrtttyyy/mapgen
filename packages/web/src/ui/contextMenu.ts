@@ -1,15 +1,26 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 
-export class ContextMenu {
+export class ContextMenu extends Colleague {
   private menu: HTMLElement | null = null;
   private unsub: (() => void)[] = [];
   private clickHandler!: () => void;
   private keyHandler!: (e: KeyboardEvent) => void;
 
+  constructor() {
+    super('contextMenu');
+  }
+
   bind(): void {
-    this.unsub.push(
-      bus.on('map.contextmenu', ({ x, y }: { x: number; y: number }) => this.show(x, y))
-    );
+    if (this.mediator) {
+      this.unsub.push(
+        this.subscribe('map.contextmenu', ({ x, y }: { x: number; y: number }) => this.show(x, y))
+      );
+    } else {
+      this.unsub.push(
+        bus.on('map.contextmenu', ({ x, y }: { x: number; y: number }) => this.show(x, y))
+      );
+    }
 
     this.clickHandler = () => this.hide();
     this.keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') this.hide(); };
@@ -28,12 +39,20 @@ export class ContextMenu {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
 
+    const emit = (event: string, payload?: unknown) => {
+      if (this.mediator) {
+        this.send(event as never, payload as never);
+      } else {
+        bus.emit(event, payload);
+      }
+    };
+
     const items: [string, () => void][] = [
-      ['仅重算河流', () => bus.emit('regenerate.phase', 'rivers')],
-      ['仅重算气候', () => bus.emit('regenerate.phase', 'climate')],
-      ['仅重算侵蚀', () => bus.emit('regenerate.phase', 'erosion')],
-      ['保留板块重算高程', () => bus.emit('regenerate.phase', 'elevation')],
-      ['清空选择', () => bus.emit('selection.clear')],
+      ['仅重算河流', () => emit('regenerate.phase', 'rivers')],
+      ['仅重算气候', () => emit('regenerate.phase', 'climate')],
+      ['仅重算侵蚀', () => emit('regenerate.phase', 'erosion')],
+      ['保留板块重算高程', () => emit('regenerate.phase', 'elevation')],
+      ['清空选择', () => emit('selection.clear')],
     ];
 
     for (const [label, action] of items) {

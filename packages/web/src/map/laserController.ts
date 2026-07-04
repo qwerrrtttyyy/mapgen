@@ -1,3 +1,4 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { setParam, selectPlate } from '../core/actions.js';
 import { state } from '../core/appState.js';
@@ -28,7 +29,7 @@ function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement)
   return { nx, ny };
 }
 
-export class LaserController {
+export class LaserController extends Colleague {
   private canvas: HTMLCanvasElement;
   private mode: LaserMode = 'pointer';
   private dragging = false;
@@ -41,6 +42,7 @@ export class LaserController {
   private unsub: (() => void)[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
+    super('laserController');
     this.canvas = canvas;
     this.down = (e: MouseEvent) => this.handleDown(e);
     this.move = (e: MouseEvent) => this.handleMove(e);
@@ -49,10 +51,28 @@ export class LaserController {
     canvas.addEventListener('mousedown', this.down);
     canvas.addEventListener('mousemove', this.move);
     window.addEventListener('mouseup', this.up);
-    this.unsub.push(
-      bus.on('laser.toggle', () => this.toggle()),
-      bus.on('laser.mode.set', (m: LaserMode) => this.setMode(m))
-    );
+  }
+
+  bindEvents(): void {
+    if (this.mediator) {
+      this.unsub.push(
+        this.subscribe('laser.toggle', () => this.toggle()),
+        this.subscribe('laser.mode.set', (m: string) => this.setMode(m as LaserMode))
+      );
+    } else {
+      this.unsub.push(
+        bus.on('laser.toggle', () => this.toggle()),
+        bus.on('laser.mode.set', (m: LaserMode) => this.setMode(m))
+      );
+    }
+  }
+
+  private emit(event: string, payload?: unknown): void {
+    if (this.mediator) {
+      this.send(event as never, payload as never);
+    } else {
+      bus.emit(event, payload);
+    }
   }
 
   setMode(m: LaserMode): void {
@@ -60,7 +80,7 @@ export class LaserController {
     setParam('laserActive', true);
     const radio = document.querySelector<HTMLInputElement>(`input[name="laserMode"][value="${m}"]`);
     if (radio) radio.checked = true;
-    bus.emit('render.request');
+    this.emit('render.request');
   }
 
   toggle(): void {
@@ -69,7 +89,7 @@ export class LaserController {
     const el = document.getElementById('laserActive') as HTMLInputElement | null;
     if (el) el.checked = next;
     if (next) this.mode = state.params.laserSelection ? 'selection' : 'pointer';
-    bus.emit('render.request');
+    this.emit('render.request');
   }
 
   private updatePos(clientX: number, clientY: number): { nx: number; ny: number } | null {
@@ -113,7 +133,7 @@ export class LaserController {
   }
 
   private scheduleRender(): void {
-    bus.emit('render.request');
+    this.emit('render.request');
   }
 
   private commitSelection(): void {
@@ -143,8 +163,8 @@ export class LaserController {
     if (plates.size === 0) return;
     state.selectedPlates.clear();
     plates.forEach(p => state.selectedPlates.add(p));
-    bus.emit('selection.changed', { plates: Array.from(state.selectedPlates), regions: Array.from(state.selectedRegions) });
-    bus.emit('laser.selection.done', { plates: Array.from(plates) });
+    this.emit('selection.changed', { plates: Array.from(state.selectedPlates), regions: Array.from(state.selectedRegions) });
+    this.emit('laser.selection.done', { plates: Array.from(plates) });
   }
 
   destroy(): void {

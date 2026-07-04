@@ -1,9 +1,12 @@
 import type { MapData } from '@mapgen/core';
 import type { UIParams } from './appState.js';
 import { logger } from './logger.js';
+import { bus, setMediatorBridge } from './eventBus.js';
 
 export type ColleagueName =
   | 'app'
+  | 'actions'
+  | 'bus'
   | 'renderer'
   | 'paramPanel'
   | 'toolbar'
@@ -13,7 +16,11 @@ export type ColleagueName =
   | 'editor'
   | 'nameOverlay'
   | 'checkpointManager'
-  | 'launcher';
+  | 'launcher'
+  | 'shortcuts'
+  | 'contextMenu'
+  | 'laserController'
+  | 'p5renderer';
 
 export type MediatorEvent =
   | 'render.request'
@@ -41,13 +48,16 @@ export type MediatorEvent =
   | 'checkpoint.restore.request'
   | 'checkpoint.delete.request'
   | 'checkpoint.updated'
-  | 'laser.mode.set';
+  | 'laser.mode.set'
+  | 'laser.toggle'
+  | 'laser.selection.done'
+  | 'picker.update';
 
 export interface MediatorEventPayload {
   'render.request': void;
   'generate.request': void;
   'generating.started': void;
-  'generating.completed': { mapData: MapData };
+  'generating.completed': { mapData: MapData; checkpoints?: number[] };
   'generating.failed': string;
   'progress': { fraction: number; label: string };
   'params.changed': { key: keyof UIParams; value: UIParams[keyof UIParams] };
@@ -70,6 +80,9 @@ export interface MediatorEventPayload {
   'checkpoint.delete.request': number;
   'checkpoint.updated': void;
   'laser.mode.set': string;
+  'laser.toggle': void;
+  'laser.selection.done': { plates: number[] };
+  'picker.update': { px: number; py: number; plateId: number; elevation: number; temperature: number; moisture: number };
 }
 
 export interface Mediator {
@@ -101,30 +114,36 @@ export abstract class Colleague {
   }
 
   protected send<T extends MediatorEvent>(event: T, payload?: MediatorEventPayload[T]): void {
-    if (!this.mediator) {
-      logger.warn(`Colleague "${this.name}" sent "${event}" without a mediator`);
-      return;
+    if (this.mediator) {
+      this.mediator.send(this.name, event, payload);
+    } else {
+      bus.emit(event, payload);
     }
-    this.mediator.send(this.name, event, payload);
   }
 
   protected subscribe<T extends MediatorEvent>(
     event: T,
     handler: (payload: MediatorEventPayload[T]) => void
   ): () => void {
-    if (!this.mediator) {
-      logger.warn(`Colleague "${this.name}" subscribed to "${event}" without a mediator`);
-      return () => {};
+    if (this.mediator) {
+      return this.mediator.subscribe(this.name, event, handler);
     }
-    return this.mediator.subscribe(this.name, event, handler);
+    return bus.on(event, handler);
   }
 }
 
 type EventHandler = (payload: unknown) => void;
+type BusEmit = (event: string, payload?: unknown) => void;
 
 export class AppMediator implements Mediator {
   private colleagues = new Map<ColleagueName, Colleague>();
   private listeners = new Map<MediatorEvent, Map<ColleagueName, Set<EventHandler>>>();
+  private busEmit: BusEmit | null = null;
+  private bridging = false;
+
+  setBus(busEmit: BusEmit): void {
+    this.busEmit = busEmit;
+  }
 
   register(colleague: Colleague): void {
     if (this.colleagues.has(colleague.name)) {
@@ -149,18 +168,27 @@ export class AppMediator implements Mediator {
     payload?: MediatorEventPayload[T]
   ): void {
     const listenerMap = this.listeners.get(event);
-    if (!listenerMap) return;
-
-    logger.debug(`Mediator: "${sender}" -> "${event}"`);
-
-    for (const [, handlers] of listenerMap) {
-      for (const handler of handlers) {
-        try {
-          handler(payload);
-        } catch (err) {
-          logger.error(`Mediator error in "${event}":`, err);
+    if (listenerMap) {
+      logger.debug(`Mediator: "${sender}" -> "${event}"`);
+      for (const [, handlers] of listenerMap) {
+        for (const handler of handlers) {
+          try {
+            handler(payload);
+          } catch (err) {
+            logger.error(`Mediator error in "${event}" from "${sender}":`, err);
+          }
         }
       }
+    }
+
+    if (this.busEmit && !this.bridging) {
+      this.bridging = true;
+      try {
+        this.busEmit(event, payload);
+      } catch (err) {
+        logger.error(`Mediator->Bus bridge error for "${event}":`, err);
+      }
+      this.bridging = false;
     }
   }
 
@@ -194,6 +222,25 @@ export class AppMediator implements Mediator {
     };
   }
 
+  receiveFromBus(event: string, payload: unknown): void {
+    if (this.bridging) return;
+    const listenerMap = this.listeners.get(event as MediatorEvent);
+    if (!listenerMap) return;
+
+    logger.debug(`Mediator: "bus" -> "${event}"`);
+    this.bridging = true;
+    for (const [, handlers] of listenerMap) {
+      for (const handler of handlers) {
+        try {
+          handler(payload);
+        } catch (err) {
+          logger.error(`Mediator error in "${event}" from bus:`, err);
+        }
+      }
+    }
+    this.bridging = false;
+  }
+
   getColleague(name: ColleagueName): Colleague | undefined {
     return this.colleagues.get(name);
   }
@@ -204,3 +251,6 @@ export class AppMediator implements Mediator {
 }
 
 export const mediator = new AppMediator();
+
+mediator.setBus((event, payload) => bus.emit(event, payload));
+setMediatorBridge((event, payload) => mediator.receiveFromBus(event, payload));

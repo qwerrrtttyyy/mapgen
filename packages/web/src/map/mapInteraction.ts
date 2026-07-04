@@ -70,6 +70,12 @@ export class MapInteraction extends Colleague {
     this.picker = new MapPicker(data);
   }
 
+  override setMediator(mediator: import('../core/mediator.js').Mediator): void {
+    super.setMediator(mediator);
+    this.laser.setMediator(mediator);
+    this.laser.bindEvents();
+  }
+
   bindEvents(): void {
     if (this.mediator) {
       this.unsub.push(

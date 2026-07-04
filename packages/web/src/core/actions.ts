@@ -55,7 +55,6 @@ export function generate(): void {
   state.error = null;
   bus.emit('generating.started');
 
-  // Allow UI to render before heavy work
   requestAnimationFrame(() => {
     setTimeout(() => {
       try {

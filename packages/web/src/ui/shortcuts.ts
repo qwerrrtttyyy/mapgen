@@ -1,8 +1,13 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { clearSelection, setParam } from '../core/actions.js';
 
-export class Shortcuts {
+export class Shortcuts extends Colleague {
   private unsub: (() => void)[] = [];
+
+  constructor() {
+    super('shortcuts');
+  }
 
   bind(): void {
     const handler = (e: KeyboardEvent) => {
@@ -12,26 +17,26 @@ export class Shortcuts {
       switch (e.key.toLowerCase()) {
         case 'g':
           e.preventDefault();
-          bus.emit('generate.request');
+          this.emit('generate.request');
           break;
         case 'r':
           if (e.ctrlKey || e.metaKey) return;
           e.preventDefault();
-          bus.emit('randomSeed.request');
+          this.emit('randomSeed.request');
           break;
         case 's':
           if (e.ctrlKey || e.metaKey) return;
           e.preventDefault();
-          bus.emit('checkpoint.save.request');
+          this.emit('checkpoint.save.request');
           break;
         case 'e':
           if (e.ctrlKey || e.metaKey) return;
           e.preventDefault();
-          bus.emit('export.request');
+          this.emit('export.request');
           break;
         case 'l':
           e.preventDefault();
-          bus.emit('laser.toggle');
+          this.emit('laser.toggle');
           break;
         case 'escape':
           e.preventDefault();
@@ -45,12 +50,20 @@ export class Shortcuts {
         setParam('style', style);
         const el = document.getElementById('style') as HTMLSelectElement | null;
         if (el) el.value = String(style);
-        bus.emit('render.request');
+        this.emit('render.request');
       }
     };
 
     document.addEventListener('keydown', handler);
     this.unsub.push(() => document.removeEventListener('keydown', handler));
+  }
+
+  private emit(event: string, payload?: unknown): void {
+    if (this.mediator) {
+      this.send(event as never, payload as never);
+    } else {
+      bus.emit(event, payload);
+    }
   }
 
   private closeDrawer(): void {
