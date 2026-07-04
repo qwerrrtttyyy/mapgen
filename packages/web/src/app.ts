@@ -15,6 +15,7 @@ import { Launcher } from './launcher/launcher.js';
 import { logger } from './core/logger.js';
 import { state, patchParams, toMapParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
+import { mediator, type ColleagueName } from './core/mediator.js';
 import { generate as generateMapAction, setParam, clearSelection } from './core/actions.js';
 import { ParamPanel } from './ui/paramPanel.js';
 import { ProgressView } from './ui/progressView.js';
@@ -381,6 +382,94 @@ function bindGlobalEvents(canvas: HTMLCanvasElement): void {
   });
 }
 
+function bindMediatorCoordination(canvas: HTMLCanvasElement): void {
+  mediator.subscribe('app', 'render.request', () => scheduleRender());
+  mediator.subscribe('app', 'generate.request', () => generateMapAction());
+  mediator.subscribe('app', 'generating.completed', ({ mapData }: { mapData: MapData }) => {
+    renderer?.uploadMapData(mapData);
+    mapInteraction?.setMapData(mapData);
+    render();
+    canvas.classList.remove('map-fade-in');
+    void canvas.offsetWidth;
+    canvas.classList.add('map-fade-in');
+    if (checkpointMgr) mediator.send('app', 'checkpoint.updated');
+  });
+  mediator.subscribe('app', 'selection.changed', ({ plates }: { plates: number[]; regions: number[] }) => {
+    if (renderer instanceof WebGLRenderer) renderer.updateSelectMask(plates);
+    scheduleRender();
+  });
+  mediator.subscribe('app', 'trail.update', (data: { width: number; height: number; pixels: Uint8Array }) => {
+    if (renderer instanceof WebGLRenderer) renderer.updateTrailTex(data);
+    scheduleRender();
+  });
+  mediator.subscribe('app', 'regenerate.phase', (phase: string) => {
+    partialRegenerate(phase);
+  });
+  mediator.subscribe('app', 'editor.committed', ({ phase }: { phase: string }) => {
+    const md = state.mapData;
+    if (!md) return;
+    partialRegenerate(phase);
+    regenerateNames(md, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
+    mediator.send('app', 'names.updated');
+  });
+  mediator.subscribe('app', 'selection.clear', () => clearSelection());
+  mediator.subscribe('app', 'randomSeed.request', () => {
+    const seed = String(Math.floor(Math.random() * 99999));
+    setParam('seedStr', seed);
+    const el = document.getElementById('seedStr') as HTMLInputElement | null;
+    if (el) el.value = seed;
+    generateMapAction();
+  });
+  mediator.subscribe('app', 'export.request', () => {
+    const c = document.getElementById('glCanvas') as HTMLCanvasElement | null;
+    if (!c) return;
+    c.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.download = 'mapgen-' + Date.now() + '.png';
+      a.href = url;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  });
+  mediator.subscribe('app', 'checkpoint.save.request', async () => {
+    if (!checkpointMgr || !state.mapData) return;
+    const name = prompt('输入检查点名称:', '检查点 ' + new Date().toLocaleTimeString('zh-CN'));
+    if (!name) return;
+    await checkpointMgr.save(name, 'full', state.mapData, state.params);
+    mediator.send('app', 'checkpoint.updated');
+  });
+  mediator.subscribe('app', 'checkpoint.restore.request', async (id: number) => {
+    if (!checkpointMgr) return;
+    const ckpt = await checkpointMgr.restore(id);
+    if (!ckpt) return;
+    const restored = checkpointMgr.restoreMapData(ckpt);
+    if (!restored) {
+      mediator.send('app', 'generating.failed', '检查点格式不兼容');
+      return;
+    }
+    const params = ckpt.data.params as Record<string, unknown>;
+    Object.entries(params).forEach(([key, value]) => {
+      const k = key as keyof UIParams;
+      patchParams({ [k]: value } as Partial<UIParams>);
+      const el = document.getElementById(key) as HTMLInputElement | HTMLSelectElement | null;
+      if (el) {
+        if (el.type === 'checkbox') (el as HTMLInputElement).checked = Boolean(value);
+        else if (el.type === 'color' && Array.isArray(value)) {
+          const [r, g, b] = value as number[];
+          const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
+          el.value = '#' + toHex(r) + toHex(g) + toHex(b);
+        } else el.value = String(value);
+      }
+    });
+    state.mapData = restored;
+    regenerateNames(restored, state.params.seaLevel, state.params.snowLine, state.params.plateCount);
+    mediator.send('app', 'names.updated');
+    mediator.send('app', 'generating.completed', { mapData: restored });
+  });
+}
+
 /** 绑定编辑器工具栏：工具切换、画笔/矢量参数、撤销重做、模式切换、快捷键 */
 function bindEditorBar(ed: EditorController): void {
   const bar = document.getElementById('editor-bar');
@@ -549,27 +638,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkpointMgr.load();
 
   const paramPanel = new ParamPanel();
+  paramPanel.setMediator(mediator);
   paramPanel.applyDefaults();
   paramPanel.bind();
 
-  new ProgressView().bind();
-  new Toolbar().bind();
+  const progressView = new ProgressView();
+  progressView.setMediator(mediator);
+  progressView.bind();
+
+  const toolbar = new Toolbar();
+  toolbar.setMediator(mediator);
+  toolbar.bind();
+
   new Shortcuts().bind();
   new ContextMenu().bind();
   const checkpointPanel = new CheckpointPanel();
+  checkpointPanel.setMediator(mediator);
   checkpointPanel.bind(checkpointMgr);
 
   bindMobileDrawer();
   bindLayerBar();
   bindGlobalEvents(canvas);
+  bindMediatorCoordination(canvas);
 
   handleResize();
   window.addEventListener('resize', handleResize);
 
   mapInteraction = new MapInteraction(canvas);
+  mapInteraction.setMediator(mediator);
+  mapInteraction.bindEvents();
 
   // 编辑器子系统（AC-5/6/7/9/10）：控制器 + 名称叠加层 + 工具栏
   editor = new EditorController(canvas);
+  editor.setMediator(mediator);
   const container = document.getElementById('canvas-container');
   if (container) nameOverlay = new NameOverlay(container);
   bindEditorBar(editor);
@@ -588,5 +689,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkpointPanel.refresh();
   // 无论是否经过启动器，都需要首次生成地图
   bus.emit('render.request');
+  mediator.send('app', 'render.request');
   generateMapAction();
 });

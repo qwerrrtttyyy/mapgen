@@ -1,16 +1,18 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import type { CheckpointManager, CheckpointData } from '../checkpoint.js';
 
 const TRANSITION_DURATION = 300;
 
-export class CheckpointPanel {
+export class CheckpointPanel extends Colleague {
   private list: HTMLElement | null;
   private saveBtn: HTMLElement | null;
   private mgr: CheckpointManager | null = null;
   private unsub: (() => void)[] = [];
 
   constructor() {
+    super('checkpointPanel');
     this.list = document.getElementById('checkpoint-list');
     this.saveBtn = document.getElementById('btn-save-checkpoint');
   }
@@ -20,6 +22,22 @@ export class CheckpointPanel {
 
     this.list?.addEventListener('click', (e) => this.handleListClick(e));
 
+    if (this.mediator) {
+      this.bindWithMediator();
+    } else {
+      this.bindWithBus();
+    }
+  }
+
+  private bindWithMediator(): void {
+    this.unsub.push(
+      this.subscribe('generating.completed', () => this.refresh()),
+      this.subscribe('checkpoint.updated', () => this.refresh()),
+      this.subscribe('checkpoint.delete.request', (id: number) => this.handleDelete(id))
+    );
+  }
+
+  private bindWithBus(): void {
     this.unsub.push(
       bus.on('generating.completed', () => this.refresh()),
       bus.on('checkpoint.updated', () => this.refresh()),
@@ -40,9 +58,17 @@ export class CheckpointPanel {
     if (Number.isNaN(id)) return;
 
     if (target.closest('.ck-btn-restore')) {
-      bus.emit('checkpoint.restore.request', id);
+      if (this.mediator) {
+        this.send('checkpoint.restore.request', id);
+      } else {
+        bus.emit('checkpoint.restore.request', id);
+      }
     } else if (target.closest('.ck-btn-delete')) {
-      bus.emit('checkpoint.delete.request', id);
+      if (this.mediator) {
+        this.send('checkpoint.delete.request', id);
+      } else {
+        bus.emit('checkpoint.delete.request', id);
+      }
     } else if (target.closest('.ck-name')) {
       this.handleRename(id, item);
     }
@@ -78,7 +104,11 @@ export class CheckpointPanel {
   private async doDelete(id: number): Promise<void> {
     if (!this.mgr) return;
     await this.mgr.delete(id);
-    bus.emit('checkpoint.updated');
+    if (this.mediator) {
+      this.send('checkpoint.updated');
+    } else {
+      bus.emit('checkpoint.updated');
+    }
   }
 
   private formatSize(ckpt: CheckpointData): string {

@@ -1,6 +1,7 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 
-export class ProgressView {
+export class ProgressView extends Colleague {
   private container: HTMLElement | null;
   private bar: HTMLElement | null;
   private text: HTMLElement | null;
@@ -8,12 +9,43 @@ export class ProgressView {
   private errorTimer: number | null = null;
 
   constructor() {
+    super('progressView');
     this.container = document.getElementById('progress-container');
     this.bar = document.getElementById('progress-bar');
     this.text = document.getElementById('progress-text');
   }
 
   bind(): void {
+    if (this.mediator) {
+      this.bindWithMediator();
+    } else {
+      this.bindWithBus();
+    }
+  }
+
+  private bindWithMediator(): void {
+    this.unsub.push(
+      this.subscribe('generating.started', () => {
+        this.clearErrorTimer();
+        this.show('初始化...');
+      }),
+      this.subscribe('generating.completed', () => {
+        this.clearErrorTimer();
+        this.hide();
+      }),
+      this.subscribe('generating.failed', (msg: string) => {
+        this.show('生成失败: ' + msg);
+        this.clearErrorTimer();
+        this.errorTimer = window.setTimeout(() => this.hide(), 5000);
+      }),
+      this.subscribe('progress', ({ fraction, label }) => {
+        this.set(fraction, label);
+      }),
+      this.subscribe('generate.request', () => this.clearErrorTimer())
+    );
+  }
+
+  private bindWithBus(): void {
     this.unsub.push(
       bus.on('generating.started', () => {
         this.clearErrorTimer();

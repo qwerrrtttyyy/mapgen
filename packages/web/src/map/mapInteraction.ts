@@ -1,3 +1,4 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import { selectPlate, setHover, setParam } from '../core/actions.js';
@@ -27,7 +28,7 @@ function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement)
   return { nx, ny };
 }
 
-export class MapInteraction {
+export class MapInteraction extends Colleague {
   private canvas: HTMLCanvasElement;
   private tooltip: Tooltip;
   private picker: MapPicker | null = null;
@@ -41,6 +42,7 @@ export class MapInteraction {
   private trailFrameCounter = 0;
 
   constructor(canvas: HTMLCanvasElement) {
+    super('mapInteraction');
     this.canvas = canvas;
     this.tooltip = new Tooltip();
     this.laser = new LaserController(canvas);
@@ -60,13 +62,24 @@ export class MapInteraction {
       () => canvas.removeEventListener('click', click),
       () => canvas.removeEventListener('mouseleave', leave),
       () => canvas.removeEventListener('contextmenu', context),
-      bus.on('generating.completed', () => this.setMapData(state.mapData))
     );
   }
 
   setMapData(data: typeof state.mapData): void {
     if (!data) { this.picker = null; return; }
     this.picker = new MapPicker(data);
+  }
+
+  bindEvents(): void {
+    if (this.mediator) {
+      this.unsub.push(
+        this.subscribe('generating.completed', () => this.setMapData(state.mapData))
+      );
+    } else {
+      this.unsub.push(
+        bus.on('generating.completed', () => this.setMapData(state.mapData))
+      );
+    }
   }
 
   private scheduleMove(e: MouseEvent): void {
@@ -89,7 +102,11 @@ export class MapInteraction {
       const uv = clientToUv(clientX, clientY, this.canvas);
       if (uv) {
         setParam('cursorPos', [uv.nx, uv.ny]);
-        bus.emit('render.request');
+        if (this.mediator) {
+          this.send('render.request');
+        } else {
+          bus.emit('render.request');
+        }
       }
     }
 
@@ -145,7 +162,11 @@ export class MapInteraction {
   }
 
   private handleContext(e: MouseEvent): void {
-    bus.emit('map.contextmenu', { x: e.clientX, y: e.clientY });
+    if (this.mediator) {
+      this.send('map.contextmenu', { x: e.clientX, y: e.clientY });
+    } else {
+      bus.emit('map.contextmenu', { x: e.clientX, y: e.clientY });
+    }
   }
 
   private format(p: PickerResult, includePlate = false): string {
@@ -194,11 +215,11 @@ export class MapInteraction {
     this.trailFrameCounter++;
     if (this.trailFrameCounter % 2 === 0) {
       const pixels = this.trailCtx.getImageData(0, 0, this.trailCanvas.width, this.trailCanvas.height);
-      bus.emit('trail.update', {
-        width: this.trailCanvas.width,
-        height: this.trailCanvas.height,
-        pixels: new Uint8Array(pixels.data.buffer),
-      });
+      this.emitTrailUpdate(
+        this.trailCanvas.width,
+        this.trailCanvas.height,
+        new Uint8Array(pixels.data.buffer)
+      );
     }
 
     if (this.trailDecayTimer === null) {
@@ -218,14 +239,23 @@ export class MapInteraction {
       }
     }
     this.trailCtx.putImageData(img, 0, 0);
-    bus.emit('trail.update', {
-      width: this.trailCanvas.width,
-      height: this.trailCanvas.height,
-      pixels: new Uint8Array(d.buffer),
-    });
+    this.emitTrailUpdate(
+      this.trailCanvas.width,
+      this.trailCanvas.height,
+      new Uint8Array(d.buffer)
+    );
     if (!hasAlpha && this.trailDecayTimer !== null) {
       window.clearInterval(this.trailDecayTimer);
       this.trailDecayTimer = null;
+    }
+  }
+
+  private emitTrailUpdate(width: number, height: number, pixels: Uint8Array): void {
+    const payload = { width, height, pixels };
+    if (this.mediator) {
+      this.send('trail.update', payload);
+    } else {
+      bus.emit('trail.update', payload);
     }
   }
 

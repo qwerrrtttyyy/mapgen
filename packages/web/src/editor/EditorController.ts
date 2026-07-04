@@ -2,6 +2,7 @@
 // 监听 canvas 鼠标事件，按当前模式分发到画笔/矢量/拖拽工具；
 // 编辑后以 before/after 快照构造 Command 压栈，并 emit 'editor.committed' 触发局部重算。
 
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import {
@@ -35,7 +36,7 @@ export const DEFAULT_TOOL_PARAMS: EditorToolParams = {
 
 interface PixelCoord { x: number; y: number; }
 
-export class EditorController {
+export class EditorController extends Colleague {
   private canvas: HTMLCanvasElement;
   private stack = new CommandStack(50);
   mode: EditorMode = 'idle';
@@ -54,6 +55,7 @@ export class EditorController {
   private unsub: (() => void)[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
+    super('editor');
     this.canvas = canvas;
 
     // capture 阶段拦截，确保编辑器在 MapInteraction（bubble）之前处理
@@ -88,7 +90,7 @@ export class EditorController {
     if (this.mode === 'vector-line' || this.mode === 'vector-poly') this.cancelVector();
     this.mode = mode;
     if (mode === 'brush') this.showBrushCursor();
-    bus.emit('editor.mode.changed', { mode });
+    this.emit('editor.mode.changed', { mode });
   }
 
   setTool(patch: Partial<EditorToolParams>): void {
@@ -96,19 +98,27 @@ export class EditorController {
     if (this.mode === 'brush') this.showBrushCursor();
   }
 
+  private emit(event: string, payload?: unknown): void {
+    if (this.mediator) {
+      this.send(event as never, payload as never);
+    } else {
+      bus.emit(event, payload);
+    }
+  }
+
   get canUndo(): boolean { return this.stack.canUndo; }
   get canRedo(): boolean { return this.stack.canRedo; }
 
   undo(): void {
     if (!this.stack.undo()) return;
-    bus.emit('editor.committed', { phase: 'editor-elevation' });
-    bus.emit('render.request');
+    this.emit('editor.committed', { phase: 'editor-elevation' });
+    this.emit('render.request');
   }
 
   redo(): void {
     if (!this.stack.redo()) return;
-    bus.emit('editor.committed', { phase: 'editor-elevation' });
-    bus.emit('render.request');
+    this.emit('editor.committed', { phase: 'editor-elevation' });
+    this.emit('render.request');
   }
 
   // ── 坐标转换：客户端坐标 → 地图像素 ──
@@ -260,7 +270,7 @@ export class EditorController {
         const next = window.prompt('重命名地形区：', r.name);
         if (next != null && next.trim() !== '') {
           r.name = next.trim();
-          bus.emit('names.updated');
+          this.emit('names.updated');
         }
         return true;
       }
@@ -271,7 +281,7 @@ export class EditorController {
         const next = window.prompt('重命名板块：', p.name);
         if (next != null && next.trim() !== '') {
           p.name = next.trim();
-          bus.emit('names.updated');
+          this.emit('names.updated');
         }
         return true;
       }
@@ -343,7 +353,7 @@ export class EditorController {
         }
       }
     }
-    bus.emit('render.request');
+    this.emit('render.request');
   }
 
   private endBrushDrag(): void {
@@ -362,7 +372,7 @@ export class EditorController {
     });
     this.beforeSnapshot = null;
     const phase = channel === 0 ? 'editor-elevation' : 'elevation';
-    bus.emit('editor.committed', { phase });
+    this.emit('editor.committed', { phase });
   }
 
   // ═══════════ 矢量工具 ═══════════
@@ -373,7 +383,7 @@ export class EditorController {
       if (Math.hypot(last[0] - x, last[1] - y) < 3) { this.commitVector(); return; }
     }
     this.vectorPoints.push([x, y]);
-    bus.emit('editor.vector.update', { points: this.vectorPoints.map(p => [...p]), mode: this.mode });
+    this.emit('editor.vector.update', { points: this.vectorPoints.map(p => [...p]), mode: this.mode });
   }
 
   private commitVector(): void {
@@ -394,13 +404,13 @@ export class EditorController {
       undo: () => this.writeElev(before),
     });
     this.vectorPoints = [];
-    bus.emit('editor.vector.update', { points: [], mode: this.mode });
-    bus.emit('editor.committed', { phase: 'editor-elevation' });
+    this.emit('editor.vector.update', { points: [], mode: this.mode });
+    this.emit('editor.committed', { phase: 'editor-elevation' });
   }
 
   private cancelVector(): void {
     this.vectorPoints = [];
-    bus.emit('editor.vector.update', { points: [], mode: this.mode });
+    this.emit('editor.vector.update', { points: [], mode: this.mode });
   }
 
   // ═══════════ 板块拖拽 ═══════════
@@ -420,7 +430,7 @@ export class EditorController {
       redo: () => this.writePlateId(after),
       undo: () => this.writePlateId(before),
     });
-    bus.emit('editor.committed', { phase: 'elevation' });
+    this.emit('editor.committed', { phase: 'elevation' });
   }
 
   // ═══════════ 画笔光标预览 ═══════════

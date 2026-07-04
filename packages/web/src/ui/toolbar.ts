@@ -1,10 +1,69 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { clearSelection } from '../core/actions.js';
 
-export class Toolbar {
+export class Toolbar extends Colleague {
   private unsub: (() => void)[] = [];
 
+  constructor() {
+    super('toolbar');
+  }
+
   bind(): void {
+    if (this.mediator) {
+      this.bindWithMediator();
+    } else {
+      this.bindWithBus();
+    }
+  }
+
+  private bindWithMediator(): void {
+    const randomSeed = document.getElementById('btn-random-seed');
+    const generate = document.getElementById('btn-generate');
+    const exportBtn = document.getElementById('btn-export');
+    const saveCheckpoint = document.getElementById('btn-save-checkpoint');
+    const clearSelectionBtn = document.getElementById('btn-clear-selection');
+
+    const listeners: [HTMLElement | null, () => void][] = [
+      [randomSeed, () => this.send('randomSeed.request')],
+      [generate, () => this.send('generate.request')],
+      [exportBtn, () => this.send('export.request')],
+      [saveCheckpoint, () => this.send('checkpoint.save.request')],
+      [clearSelectionBtn, () => clearSelection()],
+    ];
+
+    for (const [el, handler] of listeners) {
+      if (!el) continue;
+      el.addEventListener('click', handler);
+      this.unsub.push(() => el.removeEventListener('click', handler));
+    }
+
+    this.unsub.push(
+      this.subscribe('generating.started', () => {
+        if (generate) (generate as HTMLButtonElement).disabled = true;
+        if (randomSeed) (randomSeed as HTMLButtonElement).disabled = true;
+        if (exportBtn) (exportBtn as HTMLButtonElement).disabled = true;
+        if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = true;
+      }),
+      this.subscribe('generating.completed', () => {
+        if (generate) (generate as HTMLButtonElement).disabled = false;
+        if (randomSeed) (randomSeed as HTMLButtonElement).disabled = false;
+        if (exportBtn) (exportBtn as HTMLButtonElement).disabled = false;
+        if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = false;
+      }),
+      this.subscribe('generating.failed', () => {
+        if (generate) (generate as HTMLButtonElement).disabled = false;
+        if (randomSeed) (randomSeed as HTMLButtonElement).disabled = false;
+        if (exportBtn) (exportBtn as HTMLButtonElement).disabled = false;
+        if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = false;
+      }),
+      this.subscribe('selection.changed', ({ plates }) => {
+        if (clearSelectionBtn) clearSelectionBtn.style.display = plates.length > 0 ? 'inline-block' : 'none';
+      })
+    );
+  }
+
+  private bindWithBus(): void {
     const randomSeed = document.getElementById('btn-random-seed');
     const generate = document.getElementById('btn-generate');
     const exportBtn = document.getElementById('btn-export');
