@@ -9,6 +9,7 @@ import { state, patchParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
 import { generate as generateMap, setParam, clearSelection } from './core/actions.js';
 import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
+import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
@@ -246,7 +247,7 @@ function updateStyleDots(): void {
   styles.forEach((s) => {
     const dot = document.createElement('button');
     dot.className = 'sd' + (s.style === state.params.style ? ' active' : '');
-    dot.textContent = s.icon;
+    dot.appendChild(createSvgIcon(s.icon, 16));
     dot.title = s.name;
     dot.addEventListener('click', () => {
       setParam('style', s.style);
@@ -340,11 +341,18 @@ function buildPresetGrid(): void {
   themeGroup.presets.forEach((preset) => {
     const card = document.createElement('button');
     card.className = 'preset-card' + (state.currentPreset === preset.id ? ' active' : '');
-    card.innerHTML = `
-      <span class="preset-icon">${preset.icon}</span>
-      <span class="preset-name">${preset.name}</span>
-      <span class="preset-desc">${preset.description}</span>
-    `;
+    const iconWrap = document.createElement('span');
+    iconWrap.className = 'preset-icon';
+    iconWrap.appendChild(createSvgIcon(preset.icon, 24));
+    const nameEl = document.createElement('span');
+    nameEl.className = 'preset-name';
+    nameEl.textContent = preset.name;
+    const descEl = document.createElement('span');
+    descEl.className = 'preset-desc';
+    descEl.textContent = preset.description;
+    card.appendChild(iconWrap);
+    card.appendChild(nameEl);
+    card.appendChild(descEl);
     card.addEventListener('click', () => {
       applyPreset(preset.id);
     });

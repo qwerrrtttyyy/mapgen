@@ -2,6 +2,7 @@ import type { UIParams } from '../core/appState.js';
 import { patchParams, state } from '../core/appState.js';
 import { bus } from '../core/eventBus.js';
 import { findPreset, defaultSelection, PRESET_GROUPS, type PresetCategory, type PresetId } from './presets.js';
+import { createSvgIcon } from '../core/svgIcon.js';
 
 const SKIP_KEY = 'mapgen:skipLauncher';
 const SELECTION_KEY = 'mapgen:launcherSelection';
@@ -38,7 +39,7 @@ export class Launcher {
       <div class="launcher-content launcher-interactive">
         <div class="launcher-header">
           <div class="launcher-logo">
-            <div class="launcher-icon">🗺️</div>
+            <div class="launcher-icon"></div>
             <h1 class="launcher-title">${options.title ?? 'Material Map Generator'}</h1>
             <div class="launcher-version">${options.version ?? ''}</div>
           </div>
@@ -81,6 +82,18 @@ export class Launcher {
     this.progressText = this.root.querySelector('.launcher-progress-text') as HTMLElement;
     this.skipBox = this.root.querySelector('#launcher-skip') as HTMLInputElement;
     this.startBtn = this.root.querySelector('#launcher-start') as HTMLButtonElement;
+
+    // 启动器 logo（SVG 矢量图标）
+    const logoIcon = this.root.querySelector('.launcher-icon') as HTMLElement | null;
+    if (logoIcon) {
+      // 山脉 + 地平线，扁平地图风格
+      const svg = createSvgIcon('M3 20l4-8 4 4 3-6 4 5 3-3', 36, 1.5);
+      const baseline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      baseline.setAttribute('d', 'M3 20h18');
+      baseline.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(baseline);
+      logoIcon.appendChild(svg);
+    }
 
     this.skipBox.addEventListener('change', () => {
       localStorage.setItem(SKIP_KEY, this.skipBox.checked ? '1' : '0');
@@ -146,11 +159,20 @@ export class Launcher {
         tile.dataset.category = preset.category;
         tile.title = preset.description;
         if (this.selection[preset.category] === preset.id) tile.classList.add('active');
-        tile.innerHTML = `
-          <div class="launcher-preset-icon">${preset.icon}</div>
-          <div class="launcher-preset-name">${preset.name}</div>
-          <div class="launcher-preset-desc">${preset.description}</div>
-        `;
+
+        const iconWrap = document.createElement('div');
+        iconWrap.className = 'launcher-preset-icon';
+        iconWrap.appendChild(createSvgIcon(preset.icon, 28));
+        const nameEl = document.createElement('div');
+        nameEl.className = 'launcher-preset-name';
+        nameEl.textContent = preset.name;
+        const descEl = document.createElement('div');
+        descEl.className = 'launcher-preset-desc';
+        descEl.textContent = preset.description;
+        tile.appendChild(iconWrap);
+        tile.appendChild(nameEl);
+        tile.appendChild(descEl);
+
         tile.addEventListener('click', () => {
           this.selection[preset.category] = preset.id;
           this.saveSelection();
