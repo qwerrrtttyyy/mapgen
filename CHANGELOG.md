@@ -2,6 +2,53 @@
 
 All notable changes to the Material Map Generator.
 
+## v0.0.3-pre (2026-07-05)
+
+### 重构与发布准备
+
+- **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
+- **代码质量验证**: 
+  - ✅ typecheck: 3/3 通过
+  - ✅ build: 2/2 通过（web 44 modules）
+  - ✅ tests: 72/72 通过
+
+### 项目结构概览
+
+| 指标 | 数值 |
+|------|------|
+| TypeScript 文件 | 49 个 (core 20 + web 29) |
+| 测试文件 | 11 个 |
+| 测试用例 | 72 个 |
+| 总代码行数 | ~7,878 行 (不含测试) |
+| 测试代码行数 | 1,337 行 |
+
+### 核心功能模块 (@mapgen/core)
+
+1. **噪声系统** (`noise.ts`): Perlin/Simplex/Value/Worley + FBM 变体
+2. **板块构造** (`tectonic.ts`): Voronoi 板块生成、边界计算、碰撞检测
+3. **侵蚀系统** (`erosion.ts`): 水力侵蚀、湖泊生成、河流网络
+4. **气候系统** (`regions.ts`): 温度、湿度、生物群落分带
+5. **洋流系统** (`oceanCurrents.ts`): 风驱动表面流 + Ekman 漂移 + 西边界强化
+6. **冰盖系统** (`ice.ts`): 动态冰盖扩张 + 冰川侵蚀
+7. **生物群系** (`biomes.ts`): Köppen-Geiger 32 类分类
+8. **流域分析** (`watershed.ts`): D8 流向 + 排水盆地 + Strahler 河序
+9. **火山系统** (`volcanism.ts`): 热点火山链 + 板缘火山弧
+10. **季节系统** (`seasons.ts`): 4 季温度/降水变化
+11. **编辑器** (`editor.ts`): 画笔/矢量工具/撤销重做
+12. **命名系统** (`naming.ts`): 自动地名生成
+13. **纹理打包** (`texturePack.ts`): 多纹理通道编码
+14. **下游管线** (`downstream.ts`): 统一编排 9 个子系统
+
+### 前端应用 (@mapgen/web)
+
+- **WebGL2 渲染器**: GPU 加速，支持 19 种渲染风格
+- **Material Design 3 UI**: 深色主题、响应式设计
+- **Web Worker**: 后台生成不阻塞 UI
+- **检查点系统**: localStorage 保存/恢复状态
+- **LOD 名称叠加层**: 4 层缩放级别渐进显示
+
+---
+
 ## v0.0.2 (2026-06-28)
 
 ### 新增：复杂世界式全局生成系统

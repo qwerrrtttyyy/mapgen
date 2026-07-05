@@ -1,6 +1,6 @@
 {
   "name": "@mapgen/core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Map Generator - Core Engine (TypeScript)",
   "type": "module",
   "main": "dist/index.js",
