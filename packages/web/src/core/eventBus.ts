@@ -2,6 +2,13 @@ import { logger } from './logger.js';
 
 export type EventHandler<T = unknown> = (payload: T) => void;
 
+let _bridgeToMediator: ((event: string, payload: unknown) => void) | null = null;
+let _bridging = false;
+
+export function setMediatorBridge(bridge: (event: string, payload: unknown) => void): void {
+  _bridgeToMediator = bridge;
+}
+
 export class EventBus {
   private listeners = new Map<string, Set<EventHandler>>();
 
@@ -22,13 +29,23 @@ export class EventBus {
 
   emit<T>(event: string, payload?: T): void {
     const set = this.listeners.get(event);
-    if (!set) return;
-    for (const handler of set) {
-      try {
-        handler(payload);
-      } catch (err) {
-        logger.error(`EventBus error in "${event}":`, err);
+    if (set) {
+      for (const handler of set) {
+        try {
+          handler(payload);
+        } catch (err) {
+          logger.error(`EventBus error in "${event}":`, err);
+        }
       }
+    }
+    if (_bridgeToMediator && !_bridging) {
+      _bridging = true;
+      try {
+        _bridgeToMediator(event, payload as unknown);
+      } catch {
+        // ignore
+      }
+      _bridging = false;
     }
   }
 

@@ -3,6 +3,7 @@
 
 import type { TerrainType } from './naming.js';
 import type { Plate } from './tectonic.js';
+import { labelComponents, computeComponentStats } from './connectedComponents.js';
 
 export interface DetectedRegion {
   key: string;
@@ -101,100 +102,95 @@ export function detectTerrainRegions(
     typeMap[i] = classifyTerrain(elevation[i], slope[i], moisture[i], seaLevel, snowLine, i, options);
   }
 
-  const visited = new Uint8Array(size);
-  const regions: DetectedRegion[] = [];
-  // 收集小碎片用于群岛检测（面积 < minArea 但 >= 5）
-  const smallFragments: DetectedRegion[] = [];
-  let regionCounter = 0;
-  const dirs = [-1, 1, -width, width];
+  const { labels, count } = labelComponents(
+    width, height,
+    (i) => typeMap[i] !== TYPE_IDS.ocean,
+    (i, j) => typeMap[i] === typeMap[j],
+  );
+
+  const stats = computeComponentStats(width, height, labels);
+
+  const oceanBorder = new Int32Array(count + 1);
+  const landBorder = new Int32Array(count + 1);
+  const sumElev = new Float64Array(count + 1);
+  const regionType = new Uint8Array(count + 1);
+
+  for (let i = 0; i < size; i++) {
+    const lbl = labels[i];
+    if (lbl === 0) continue;
+    if (regionType[lbl] === 0) regionType[lbl] = typeMap[i];
+    sumElev[lbl] += elevation[i];
+  }
 
   for (let y = 0; y < height; y++) {
+    const row = y * width;
     for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      if (visited[idx] || typeMap[idx] === TYPE_IDS.ocean) continue;
-      const t = typeMap[idx];
-
-      // 迭代 DFS（避免大区域递归爆栈）
-      const stack = [idx];
-      let sumX = 0, sumY = 0, count = 0;
-      // 用于火山/群岛后处理：记录边界是否邻海
-      let oceanBorderCount = 0;
-      let landBorderCount = 0;
-      const pixels: number[] = [];
-      while (stack.length > 0) {
-        const ci = stack.pop()!;
-        if (visited[ci]) continue;
-        visited[ci] = 1;
-        pixels.push(ci);
-        const cx = ci % width;
-        const cy = (ci / width) | 0;
-        sumX += cx; sumY += cy; count++;
-        for (const d of dirs) {
-          if (d === -1 && cx === 0) continue;
-          if (d === 1 && cx === width - 1) continue;
-          if (d === -width && cy === 0) continue;
-          if (d === width && cy === height - 1) continue;
-          const ni = ci + d;
-          if (ni < 0 || ni >= size) continue;
-          if (visited[ni]) continue;
-          if (typeMap[ni] === t) {
-            stack.push(ni);
-          } else if (typeMap[ni] === TYPE_IDS.ocean) {
-            oceanBorderCount++;
-          } else {
-            landBorderCount++;
-          }
-        }
+      const i = row + x;
+      const lbl = labels[i];
+      if (lbl === 0) continue;
+      if (x + 1 < width) {
+        const nl = labels[i + 1];
+        if (nl === 0) oceanBorder[lbl]++;
+        else if (nl !== lbl) landBorder[lbl]++;
       }
-
-      const centroid: [number, number] = [sumX / count, sumY / count];
-
-      // 后处理：火山——小面积山脉 + 高海拔 + 相对孤立（海/不同类型边界占比高）
-      if (t === TYPE_IDS.mountain && count < VOLCANO_MAX_AREA) {
-        let sumElev = 0;
-        for (const p of pixels) sumElev += elevation[p];
-        const avgElev = sumElev / count;
-        const totalBorder = oceanBorderCount + landBorderCount;
-        if (avgElev > VOLCANO_MIN_ELEV && (totalBorder === 0 || oceanBorderCount / totalBorder > 0.4)) {
-          regions.push({
-            key: `r${regionCounter++}`,
-            type: 'volcano' as TerrainType,
-            centroid, area: count,
-          });
-          continue;
-        }
-      }
-
-      // 后处理：群岛——小面积陆地 + 几乎完全被海包围
-      if (count < ARCHIPELAGO_MAX_AREA && count >= 5
-          && oceanBorderCount > 0
-          && (oceanBorderCount + landBorderCount === 0 || oceanBorderCount / (oceanBorderCount + landBorderCount) > 0.7)) {
-        smallFragments.push({
-          key: `r${regionCounter++}`,
-          type: 'archipelago' as TerrainType,
-          centroid, area: count,
-        });
-        continue;
-      }
-
-      if (count >= minArea) {
-        regions.push({
-          key: `r${regionCounter++}`,
-          type: TYPE_NAMES[t] as TerrainType,
-          centroid, area: count,
-        });
-      } else if (count >= 5) {
-        // 小碎片收集，供群岛聚类
-        smallFragments.push({
-          key: `r${regionCounter++}`,
-          type: TYPE_NAMES[t] as TerrainType,
-          centroid, area: count,
-        });
+      if (y + 1 < height) {
+        const nl = labels[i + width];
+        if (nl === 0) oceanBorder[lbl]++;
+        else if (nl !== lbl) landBorder[lbl]++;
       }
     }
   }
 
-  // 群岛聚类：邻近的小碎片（质心距离 < 30 像素）合并为一个群岛区域
+  const regions: DetectedRegion[] = [];
+  const smallFragments: DetectedRegion[] = [];
+  let regionCounter = 0;
+
+  for (const [lbl, s] of stats) {
+    const t = regionType[lbl];
+    const ob = oceanBorder[lbl];
+    const lb = landBorder[lbl];
+    const centroid: [number, number] = [s.sumX / s.area, s.sumY / s.area];
+    const count2 = s.area;
+
+    if (t === TYPE_IDS.mountain && count2 < VOLCANO_MAX_AREA) {
+      const avgE = sumElev[lbl] / count2;
+      const totalBorder = ob + lb;
+      if (avgE > VOLCANO_MIN_ELEV && (totalBorder === 0 || ob / totalBorder > 0.4)) {
+        regions.push({
+          key: `r${regionCounter++}`,
+          type: 'volcano' as TerrainType,
+          centroid, area: count2,
+        });
+        continue;
+      }
+    }
+
+    if (count2 < ARCHIPELAGO_MAX_AREA && count2 >= 5
+        && ob > 0
+        && (ob + lb === 0 || ob / (ob + lb) > 0.7)) {
+      smallFragments.push({
+        key: `r${regionCounter++}`,
+        type: 'archipelago' as TerrainType,
+        centroid, area: count2,
+      });
+      continue;
+    }
+
+    if (count2 >= minArea) {
+      regions.push({
+        key: `r${regionCounter++}`,
+        type: TYPE_NAMES[t] as TerrainType,
+        centroid, area: count2,
+      });
+    } else if (count2 >= 5) {
+      smallFragments.push({
+        key: `r${regionCounter++}`,
+        type: TYPE_NAMES[t] as TerrainType,
+        centroid, area: count2,
+      });
+    }
+  }
+
   if (smallFragments.length >= 3) {
     const CLUSTER_DIST = 30;
     const used = new Uint8Array(smallFragments.length);
@@ -212,7 +208,6 @@ export function detectTerrainRegions(
         }
       }
       if (cluster.length >= 3) {
-        // 合并为一个群岛
         let cx = 0, cy = 0, ca = 0;
         for (const ci of cluster) {
           cx += smallFragments[ci].centroid[0] * smallFragments[ci].area;

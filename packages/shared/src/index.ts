@@ -39,8 +39,10 @@ const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9,
 
 export interface MapParams {
   seedStr: string;
-  mapAspect: string;
-  mapSize: number;
+  mapAspect?: string;
+  mapSize?: number;
+  mapWidth?: number;
+  mapHeight?: number;
   plateCount: number;
   landmass: number;
   noiseType: NoiseType;
@@ -121,9 +123,15 @@ export type ProgressCallback = (progress: number, phaseName: string) => void;
 
 export function generateMap(params: MapParams, onProgress?: ProgressCallback): { mapData: MapData; checkpoints: Record<string, unknown> } {
   const seed = hashSeed(params.seedStr);
-  const aspect = ASPECT_MAP[params.mapAspect] || 1;
-  const width = params.mapSize;
-  const height = Math.round(params.mapSize / aspect);
+  let width: number, height: number;
+  if (params.mapWidth && params.mapHeight) {
+    width = params.mapWidth;
+    height = params.mapHeight;
+  } else {
+    const aspect = ASPECT_MAP[params.mapAspect || '1:1'] || 1;
+    width = params.mapSize || 512;
+    height = Math.round(width / aspect);
+  }
 
   const phases = [
     { name: 'tectonic', weight: 8 },

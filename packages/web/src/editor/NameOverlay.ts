@@ -1,30 +1,52 @@
-// 名称叠加层：Canvas2D 绘制板块/地形区名称 + 矢量工具进行中预览（纯视觉，不拦截鼠标）
-// 交互（双击改名）由 EditorController 在 glCanvas 上处理，通过 'names.updated' 事件触发重绘。
-
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import { computeDetailPatch, detectDetailPeaks, type DetailPeak } from '@mapgen/core';
 
 interface VectorPreview { points: number[][]; mode: string; }
 
-export class NameOverlay {
+export class NameOverlay extends Colleague {
   private host: HTMLElement;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private unsub: (() => void)[] = [];
   private vectorPreview: VectorPreview = { points: [], mode: '' };
   private visible = true;
-  // 惰性生成缓存：仅在视野显著变化时重算
   private cachedPeaks: DetailPeak[] = [];
   private cachedViewportKey = '';
 
   constructor(container: HTMLElement) {
+    super('nameOverlay');
     this.host = container;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'name-overlay';
     this.ctx = this.canvas.getContext('2d')!;
     container.appendChild(this.canvas);
+  }
 
+  bindEvents(): void {
+    if (this.mediator) {
+      this.bindWithMediator();
+    } else {
+      this.bindWithBus();
+    }
+  }
+
+  private bindWithMediator(): void {
+    this.unsub.push(
+      this.subscribe('generating.completed', () => this.draw()),
+      this.subscribe('editor.committed', () => this.draw()),
+      this.subscribe('render.request', () => requestAnimationFrame(() => this.draw())),
+      this.subscribe('names.updated', () => this.draw()),
+      this.subscribe('editor.vector.update', (v: VectorPreview) => {
+        this.vectorPreview = v;
+        this.draw();
+      }),
+      this.subscribe('overlay.toggle', (vis: boolean) => { this.visible = vis; this.draw(); }),
+    );
+  }
+
+  private bindWithBus(): void {
     this.unsub.push(
       bus.on('generating.completed', () => this.draw()),
       bus.on('editor.committed', () => this.draw()),
@@ -38,7 +60,6 @@ export class NameOverlay {
     );
   }
 
-  /** 同步画布尺寸到容器，返回地图绘制区在屏幕坐标下的几何 */
   private syncSize(): { scale: number; ox: number; oy: number } | null {
     const md = state.mapData;
     const rect = this.host.getBoundingClientRect();
@@ -67,23 +88,17 @@ export class NameOverlay {
     if (!md) return;
     const { scale, ox, oy } = geo;
 
-    // ── LOD 分级：缩放越大，显示越多细节 ──
-    // Tier 0 (scale < 1.5): 仅板块名
-    // Tier 1 (1.5-3): + 大地形区 (area > 200)
-    // Tier 2 (3-6):   + 中地形区 (area > 80)
-    // Tier 3 (> 6):   + 全部地形区 (area > 20) + 地形类型色标
     const showPlates = true;
     const regionMinArea = scale < 1.5 ? Infinity
       : scale < 3 ? 200
       : scale < 6 ? 80
       : 20;
-    const showTypeColor = scale >= 6; // 高缩放时按地形类型着色
+    const showTypeColor = scale >= 6;
 
     const names = md.names;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 板块名（较大、半透明底）
     if (showPlates) {
       ctx.font = `600 ${Math.max(11, Math.min(20, scale * 4))}px sans-serif`;
       for (const p of names.plates) {
@@ -92,7 +107,6 @@ export class NameOverlay {
       }
     }
 
-    // 地形区名（按 LOD 层级过滤，高缩放时按类型着色）
     if (regionMinArea < Infinity) {
       ctx.font = `500 ${Math.max(9, Math.min(14, scale * 3))}px sans-serif`;
       for (const r of names.regions) {
@@ -103,7 +117,6 @@ export class NameOverlay {
       }
     }
 
-    // 惰性生成：高缩放时对可见区域计算高分辨率细节，检测并标注小山峰
     if (scale >= 6) {
       this.drawDetailPeaks(scale, ox, oy);
     }
@@ -111,35 +124,26 @@ export class NameOverlay {
     this.drawVectorPreview(scale, ox, oy);
   }
 
-  /**
-   * 惰性生成高分辨率细节 + 山峰标注。
-   * 仅在视野显著变化时重算（缓存 viewportKey），避免每帧重复计算。
-   */
   private drawDetailPeaks(scale: number, ox: number, oy: number): void {
     const md = state.mapData;
     if (!md) return;
     const { width: mw, height: mh } = md;
-    // 可见区域在地图坐标中的范围（像素）
     const rect = this.host.getBoundingClientRect();
     const visW = rect.width / scale;
     const visH = rect.height / scale;
-    // 视野中心（地图坐标）
-    const cx = (mw - visW) / 2 + 0; // 简化：取地图中心附近（实际应从 pan 状态取）
+    const cx = (mw - visW) / 2 + 0;
     const cy = (mh - visH) / 2 + 0;
     const rx = Math.max(0, cx);
     const ry = Math.max(0, cy);
     const rw = Math.min(mw - rx, visW);
     const rh = Math.min(mh - ry, visH);
 
-    // 缓存键：视野位置量化到 16 像素格，移动超过 16px 才重算
     const key = `${Math.round(rx / 16)},${Math.round(ry / 16)},${Math.round(rw)},${Math.round(rh)}`;
     if (key !== this.cachedViewportKey) {
       this.cachedViewportKey = key;
-      // 提取基础高程
       const size = mw * mh;
       const baseElev = new Float32Array(size);
       for (let i = 0; i < size; i++) baseElev[i] = md.elevTex[i * 4];
-      // 限制输出网格大小以保证性能（最多 96×96）
       const outW = Math.min(96, Math.round(rw));
       const outH = Math.min(96, Math.round(rh));
       const patch = computeDetailPatch(
@@ -150,12 +154,10 @@ export class NameOverlay {
       this.cachedPeaks = detectDetailPeaks(patch, state.params.seaLevel, 0.025, 6);
     }
 
-    // 绘制山峰标记（▲ + 高程）
     const ctx = this.ctx;
     ctx.font = `600 ${Math.max(8, Math.min(11, scale * 2))}px sans-serif`;
     for (const p of this.cachedPeaks) {
       const [sx, sy] = this.mapToScreen(p.mapX, p.mapY, scale, ox, oy);
-      // 仅绘制可见区域内的峰
       if (sx < 0 || sy < 0 || sx > rect.width || sy > rect.height) continue;
       ctx.fillStyle = 'rgba(200,80,30,0.85)';
       ctx.beginPath();
@@ -169,7 +171,6 @@ export class NameOverlay {
     }
   }
 
-  /** 按地形类型返回标签配色（高缩放时区分冰川/火山/三角洲等） */
   private typeColors(type: string): { bg: string; fg: string } {
     switch (type) {
       case 'glacier':     return { bg: 'rgba(180,210,240,0.6)', fg: '#0a1a30' };

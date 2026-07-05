@@ -34,27 +34,48 @@ const REGION_COLORS: Record<string, number[]> = {
   basin: [0.45, 0.55, 0.65],
 };
 
+const TYPE_MOUNTAIN = 0;
+const TYPE_PLATEAU = 1;
+const TYPE_HILL = 2;
+const TYPE_TUNDRA = 3;
+const TYPE_DESERT = 4;
+const TYPE_WETLAND = 5;
+const TYPE_FOREST = 6;
+const TYPE_PLAIN = 7;
+const TYPE_BASIN = 8;
+const NUM_TYPES = 9;
+
+function classifyRegionTypeId(elev: number, moist: number, temp: number): number {
+  if (elev > 0.7) return TYPE_MOUNTAIN;
+  if (elev > 0.5) return TYPE_PLATEAU;
+  if (elev > 0.3) return TYPE_HILL;
+  if (temp < 0.2) return TYPE_TUNDRA;
+  if (moist < 0.2 && temp > 0.5) return TYPE_DESERT;
+  if (moist > 0.7 && temp > 0.4) return TYPE_WETLAND;
+  if (moist > 0.5 && temp > 0.3) return TYPE_FOREST;
+  return TYPE_PLAIN;
+}
+
+const TYPE_NAMES: string[] = ['mountain', 'plateau', 'hill', 'tundra', 'desert', 'wetland', 'forest', 'plain', 'basin'];
+
 function classifyRegionType(elev: number, moist: number, temp: number): string {
-  if (elev > 0.7) return 'mountain';
-  if (elev > 0.5) return 'plateau';
-  if (elev > 0.3) return 'hill';
-  if (temp < 0.2) return 'tundra';
-  if (moist < 0.2 && temp > 0.5) return 'desert';
-  if (moist > 0.7 && temp > 0.4) return 'wetland';
-  if (moist > 0.5 && temp > 0.3) return 'forest';
-  return 'plain';
+  return TYPE_NAMES[classifyRegionTypeId(elev, moist, temp)];
 }
 
 export function analyzeRegions(
   width: number, height: number, elevation: Float32Array, moisture: Float32Array,
-  temperature: Float32Array, plateId: Float32Array, seaLevel: number, seed: number
+  temperature: Float32Array, plateId: Float32Array, seaLevel: number, _seed: number
 ): Region[] {
   const size = width * height;
   const visited = new Uint8Array(size);
+  const typeMap = new Uint8Array(size);
+  for (let i = 0; i < size; i++) {
+    typeMap[i] = elevation[i] > seaLevel ? classifyRegionTypeId(elevation[i], moisture[i], temperature[i]) : 255;
+  }
+
   const regions: Region[] = [];
   let regionId = 0;
-
-  const dirs = [-1, 1, -width, width];
+  const stack = new Int32Array(size);
 
   for (let y = 0; y < height; y++) {
     const row = y * width;
@@ -62,21 +83,22 @@ export function analyzeRegions(
       const idx = row + x;
       if (visited[idx] || elevation[idx] <= seaLevel) continue;
 
-      const elev = elevation[idx];
-      const moist = moisture[idx];
-      const temp = temperature[idx];
-      const type = classifyRegionType(elev, moist, temp);
-
-      const stack: number[] = [idx];
-      const pixels: number[] = [];
-      let sumElev = 0, sumMoist = 0, sumTemp = 0, sumX = 0, sumY = 0;
+      const seedType = typeMap[idx];
+      const seedElev = elevation[idx];
       const pid = plateId[idx];
+      const seedMoist = moisture[idx];
 
-      while (stack.length > 0) {
-        const ci = stack.pop()!;
+      let sumElev = 0, sumMoist = 0, sumTemp = 0, sumX = 0, sumY = 0;
+      let area = 0;
+
+      let top = 0;
+      stack[top++] = idx;
+
+      while (top > 0) {
+        const ci = stack[--top];
         if (visited[ci]) continue;
         visited[ci] = 1;
-        pixels.push(ci);
+        area++;
 
         const cx = ci % width;
         const cy = (ci / width) | 0;
@@ -86,37 +108,63 @@ export function analyzeRegions(
         sumX += cx;
         sumY += cy;
 
-        for (const d of dirs) {
-          const ni = ci + d;
-          const nx = ni % width;
-          const ny = (ni / width) | 0;
-          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-          if (visited[ni]) continue;
-          if (elevation[ni] <= seaLevel) continue;
-          if (plateId[ni] !== pid) continue;
-
-          const ne = elevation[ni];
-          const nt = classifyRegionType(ne, moisture[ni], temperature[ni]);
-          if (nt !== type && Math.abs(ne - elev) > 0.2) continue;
-          stack.push(ni);
+        let nx = cx - 1, ny = cy;
+        if (nx >= 0) {
+          const ni = ci - 1;
+          if (!visited[ni] && elevation[ni] > seaLevel && plateId[ni] === pid) {
+            const nt = typeMap[ni];
+            if (nt === seedType || Math.abs(elevation[ni] - seedElev) <= 0.2) {
+              stack[top++] = ni;
+            }
+          }
+        }
+        nx = cx + 1;
+        if (nx < width) {
+          const ni = ci + 1;
+          if (!visited[ni] && elevation[ni] > seaLevel && plateId[ni] === pid) {
+            const nt = typeMap[ni];
+            if (nt === seedType || Math.abs(elevation[ni] - seedElev) <= 0.2) {
+              stack[top++] = ni;
+            }
+          }
+        }
+        ny = cy - 1;
+        if (ny >= 0) {
+          const ni = ci - width;
+          if (!visited[ni] && elevation[ni] > seaLevel && plateId[ni] === pid) {
+            const nt = typeMap[ni];
+            if (nt === seedType || Math.abs(elevation[ni] - seedElev) <= 0.2) {
+              stack[top++] = ni;
+            }
+          }
+        }
+        ny = cy + 1;
+        if (ny < height) {
+          const ni = ci + width;
+          if (!visited[ni] && elevation[ni] > seaLevel && plateId[ni] === pid) {
+            const nt = typeMap[ni];
+            if (nt === seedType || Math.abs(elevation[ni] - seedElev) <= 0.2) {
+              stack[top++] = ni;
+            }
+          }
         }
       }
 
-      if (pixels.length > 50) {
-        const len = pixels.length;
+      if (area > 50) {
+        const typeName = TYPE_NAMES[seedType] || 'plain';
         regions.push({
           id: regionId,
-          name: `${type}_${regionId}`,
-          type,
-          area: len,
-          population: Math.floor(len * (moisture[idx] + 0.1) * 100),
-          centerX: sumX / len,
-          centerY: sumY / len,
-          avgElevation: sumElev / len,
-          avgMoisture: sumMoist / len,
-          avgTemperature: sumTemp / len,
+          name: `${typeName}_${regionId}`,
+          type: typeName,
+          area,
+          population: Math.floor(area * (seedMoist + 0.1) * 100),
+          centerX: sumX / area,
+          centerY: sumY / area,
+          avgElevation: sumElev / area,
+          avgMoisture: sumMoist / area,
+          avgTemperature: sumTemp / area,
           plateId: pid,
-          color: REGION_COLORS[type] || [0.5, 0.5, 0.5],
+          color: REGION_COLORS[typeName] || [0.5, 0.5, 0.5],
           selected: false,
         });
         regionId++;

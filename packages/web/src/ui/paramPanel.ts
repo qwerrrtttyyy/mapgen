@@ -1,3 +1,4 @@
+import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state, type UIParams, patchParams } from '../core/appState.js';
 import { commitParams, setParam } from '../core/actions.js';
@@ -24,34 +25,54 @@ const RENDER_ONLY_PARAMS = new Set<string>([
   'laserSelection', 'laserColor',
 ]);
 
-// Range params that affect generation — trigger regen on change (mouse release)
 const GENERATION_TRIGGER_PARAMS = new Set<string>([
   'riverCount', 'rainStrength', 'windDirX', 'windDirY',
 ]);
 
-// Checkbox params that affect generation — trigger regen on toggle
 const GENERATION_TRIGGER_CHECKBOXES = new Set<string>([
   'enableOceanCurrents', 'enableIceSheet', 'enableMonsoon',
   'enableContinentality', 'enableHadleyEnhancement',
 ]);
 
-// 抽出强类型 setter，调用方无需再做 unknown 断言
 function setTypedParam<K extends keyof UIParams>(key: K, value: UIParams[K]): void {
   setParam(key, value);
 }
 
-export class ParamPanel {
+export class ParamPanel extends Colleague {
   private unsub: (() => void)[] = [];
 
+  constructor() {
+    super('paramPanel');
+  }
+
   bind(): void {
-    this.bindRanges();
-    this.bindSelects();
-    this.bindCheckboxes();
-    this.bindColors();
+    if (this.mediator) {
+      this.bindWithMediator();
+    } else {
+      this.bindWithBus();
+    }
+  }
+
+  private bindWithMediator(): void {
+    this.bindRanges(true);
+    this.bindSelects(true);
+    this.bindCheckboxes(true);
+    this.bindColors(true);
     this.bindSeed();
     this.bindCollapsibleCards();
-    this.bindLaserMode();
-    this.bindLaserActiveVisibility();
+    this.bindLaserMode(true);
+    this.bindLaserActiveVisibility(true);
+  }
+
+  private bindWithBus(): void {
+    this.bindRanges(false);
+    this.bindSelects(false);
+    this.bindCheckboxes(false);
+    this.bindColors(false);
+    this.bindSeed();
+    this.bindCollapsibleCards();
+    this.bindLaserMode(false);
+    this.bindLaserActiveVisibility(false);
   }
 
   destroy(): void {
@@ -102,7 +123,7 @@ export class ParamPanel {
     return document.getElementById('drawer') ?? document;
   }
 
-  private bindRanges(): void {
+  private bindRanges(useMediator: boolean): void {
     this.drawerScope().querySelectorAll<HTMLInputElement>('input[type="range"]').forEach(input => {
       const handler = () => {
         this.updateRangeDisplay(input);
@@ -114,16 +135,23 @@ export class ParamPanel {
           const key = input.id as keyof UIParams;
           setTypedParam(key, parseFloat(input.value));
         }
-        bus.emit('render.request');
+        if (useMediator) {
+          this.send('render.request');
+        } else {
+          bus.emit('render.request');
+        }
       };
       input.addEventListener('input', handler);
       this.unsub.push(() => input.removeEventListener('input', handler));
 
-      // Generation-affecting params: regenerate on release (change event)
       if (GENERATION_TRIGGER_PARAMS.has(input.id)) {
         const changeHandler = () => {
           commitParams();
-          bus.emit('generate.request');
+          if (useMediator) {
+            this.send('generate.request');
+          } else {
+            bus.emit('generate.request');
+          }
         };
         input.addEventListener('change', changeHandler);
         this.unsub.push(() => input.removeEventListener('change', changeHandler));
@@ -131,7 +159,7 @@ export class ParamPanel {
     });
   }
 
-  private bindSelects(): void {
+  private bindSelects(useMediator: boolean): void {
     this.drawerScope().querySelectorAll<HTMLSelectElement>('select').forEach(select => {
       const handler = () => {
         const key = select.id as keyof UIParams;
@@ -140,9 +168,17 @@ export class ParamPanel {
         setTypedParam(key, val);
         commitParams();
         if (RENDER_ONLY_PARAMS.has(select.id)) {
-          bus.emit('render.request');
+          if (useMediator) {
+            this.send('render.request');
+          } else {
+            bus.emit('render.request');
+          }
         } else {
-          bus.emit('generate.request');
+          if (useMediator) {
+            this.send('generate.request');
+          } else {
+            bus.emit('generate.request');
+          }
         }
       };
       select.addEventListener('change', handler);
@@ -150,16 +186,24 @@ export class ParamPanel {
     });
   }
 
-  private bindCheckboxes(): void {
+  private bindCheckboxes(useMediator: boolean): void {
     this.drawerScope().querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach(input => {
       const handler = () => {
         const key = input.id as keyof UIParams;
         setTypedParam(key, input.checked);
         if (GENERATION_TRIGGER_CHECKBOXES.has(input.id)) {
           commitParams();
-          bus.emit('generate.request');
+          if (useMediator) {
+            this.send('generate.request');
+          } else {
+            bus.emit('generate.request');
+          }
         } else {
-          bus.emit('render.request');
+          if (useMediator) {
+            this.send('render.request');
+          } else {
+            bus.emit('render.request');
+          }
         }
       };
       input.addEventListener('change', handler);
@@ -167,12 +211,16 @@ export class ParamPanel {
     });
   }
 
-  private bindColors(): void {
+  private bindColors(useMediator: boolean): void {
     this.drawerScope().querySelectorAll<HTMLInputElement>('input[type="color"]').forEach(input => {
       const handler = () => {
         const key = input.id as keyof UIParams;
         setTypedParam(key, hexToRgb(input.value));
-        bus.emit('render.request');
+        if (useMediator) {
+          this.send('render.request');
+        } else {
+          bus.emit('render.request');
+        }
       };
       input.addEventListener('input', handler);
       this.unsub.push(() => input.removeEventListener('input', handler));
@@ -195,22 +243,32 @@ export class ParamPanel {
     });
   }
 
-  private bindLaserMode(): void {
+  private bindLaserMode(useMediator: boolean): void {
     this.drawerScope().querySelectorAll<HTMLInputElement>('input[name="laserMode"]').forEach(input => {
       const handler = () => {
-        if (input.checked) bus.emit('laser.mode.set', input.value);
+        if (input.checked) {
+          if (useMediator) {
+            this.send('laser.mode.set', input.value);
+          } else {
+            bus.emit('laser.mode.set', input.value);
+          }
+        }
       };
       input.addEventListener('change', handler);
       this.unsub.push(() => input.removeEventListener('change', handler));
     });
   }
 
-  private bindLaserActiveVisibility(): void {
+  private bindLaserActiveVisibility(useMediator: boolean): void {
     const update = () => {
       const group = byId('laser-mode-group') as HTMLElement | null;
       if (group) group.style.display = state.params.laserActive ? '' : 'none';
     };
     update();
-    this.unsub.push(bus.on('params.changed', update));
+    if (useMediator) {
+      this.unsub.push(this.subscribe('params.changed', update));
+    } else {
+      this.unsub.push(bus.on('params.changed', update));
+    }
   }
 }
