@@ -1,5 +1,6 @@
 import { createNoise } from './noise.js';
 import { computeSlope } from './slope.js';
+import { BOUNDARY_SMOOTH, } from './constants.js';
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 export function generateElevation(width, height, seed, plateId, plates, plateDist, tectonicForce, noiseType, fbmType, octaves, lacunarity, persistence, seaLevel, mountainFold, coastDetail) {
     const size = width * height;
@@ -68,9 +69,8 @@ export function generateElevation(width, height, seed, plateId, plates, plateDis
             elevation[idx] = elev < -1 ? -1 : elev > 1 ? 1 : elev;
         }
     }
-    // （构造力在边界平滑后叠加，避免被平滑稀释）
-    // ── 板块边界过渡带平滑（AC-4.1）──
-    // 标记边界带：plateId 变化像素的半径 2 邻域，对整个带做 2 pass 邻域平均，过渡 ≥3px 单调
+    // ── Plate boundary transition smoothing (AC-4.1) ──
+    // Mark boundary band: radius-BAND_RADIUS neighborhood around plateId changes, apply 2-pass neighborhood averaging
     const boundaryBand = new Uint8Array(size);
     for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
@@ -78,8 +78,8 @@ export function generateElevation(width, height, seed, plateId, plates, plateDis
             const pid = plateId[idx];
             if (plateId[idx - 1] !== pid || plateId[idx + 1] !== pid ||
                 plateId[idx - width] !== pid || plateId[idx + width] !== pid) {
-                for (let dy = -2; dy <= 2; dy++) {
-                    for (let dx = -2; dx <= 2; dx++) {
+                for (let dy = -BOUNDARY_SMOOTH.BAND_RADIUS; dy <= BOUNDARY_SMOOTH.BAND_RADIUS; dy++) {
+                    for (let dx = -BOUNDARY_SMOOTH.BAND_RADIUS; dx <= BOUNDARY_SMOOTH.BAND_RADIUS; dx++) {
                         const ny = y + dy, nx = x + dx;
                         if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
                             boundaryBand[ny * width + nx] = 1;
@@ -90,7 +90,7 @@ export function generateElevation(width, height, seed, plateId, plates, plateDis
         }
     }
     const smoothed = new Float32Array(elevation);
-    for (let pass = 0; pass < 2; pass++) {
+    for (let pass = 0; pass < BOUNDARY_SMOOTH.PASSES; pass++) {
         const src = pass === 0 ? elevation : smoothed;
         const dst = pass === 0 ? smoothed : elevation;
         for (let y = 1; y < height - 1; y++) {
@@ -103,8 +103,8 @@ export function generateElevation(width, height, seed, plateId, plates, plateDis
                 }
                 let sum = src[idx];
                 let cnt = 1;
-                for (let dy = -2; dy <= 2; dy++) {
-                    for (let dx = -2; dx <= 2; dx++) {
+                for (let dy = -BOUNDARY_SMOOTH.BAND_RADIUS; dy <= BOUNDARY_SMOOTH.BAND_RADIUS; dy++) {
+                    for (let dx = -BOUNDARY_SMOOTH.BAND_RADIUS; dx <= BOUNDARY_SMOOTH.BAND_RADIUS; dx++) {
                         if (dx === 0 && dy === 0)
                             continue;
                         const ni = (y + dy) * width + (x + dx);
@@ -116,7 +116,7 @@ export function generateElevation(width, height, seed, plateId, plates, plateDis
             }
         }
     }
-    // ── 边界构造力叠加（AC-4.2，平滑后施加避免被稀释）──
+    // ── Boundary tectonic force overlay (AC-4.2, applied after smoothing to avoid dilution) ──
     // 汇聚→山脉（ridhed 噪声增强走向），离散→裂谷
     for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {

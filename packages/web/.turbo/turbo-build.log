@@ -1,0 +1,21 @@
+
+> @mapgen/web@0.0.3-pre build
+> tsc && vite build
+
+vite v5.4.21 building for production...
+
+style.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+transforming...
+✓ 47 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           21.54 kB │ gzip:   4.75 kB
+dist/assets/mapgen.worker-CidTTsOA.js     42.67 kB
+dist/assets/index-Bv8RKCd_.js            103.62 kB │ gzip:  36.88 kB
+dist/assets/p5.min-BA4tDsA4.js         1,065.79 kB │ gzip: 269.51 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 18.96s

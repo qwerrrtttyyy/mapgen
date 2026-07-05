@@ -1,0 +1,4 @@
+
+> @mapgen/web@0.0.3-pre typecheck
+> tsc --noEmit
+

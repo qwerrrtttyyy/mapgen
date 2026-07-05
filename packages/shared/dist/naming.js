@@ -1,5 +1,5 @@
-// 命名系统：自动为板块与地形区生成叙事化名称
-// AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4（种子驱动确定性）
+// Naming system: automatic narrative names for plates and terrain regions
+// AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4 (seed-driven determinism)
 import { detectTerrainRegions } from './editor.js';
 // ── 词库（BR-5：默认中文）──
 const DIRECTION_8 = ['东', '东南', '南', '西南', '西', '西北', '北', '东北'];

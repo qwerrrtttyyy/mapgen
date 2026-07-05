@@ -1,7 +1,8 @@
-// 命名系统：自动为板块与地形区生成叙事化名称
-// AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4（种子驱动确定性）
+// Naming system: automatic narrative names for plates and terrain regions
+// AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4 (seed-driven determinism)
 
 import { detectTerrainRegions } from './editor.js';
+import { NAMING_BOUNDS } from './constants.js';
 
 export type PlateKind = 'continent' | 'ocean';
 export type TerrainType = 'mountain' | 'plain' | 'plateau' | 'basin' | 'desert' | 'forest' | 'glacier' | 'delta' | 'volcano' | 'archipelago';

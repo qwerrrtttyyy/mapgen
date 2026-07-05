@@ -4,6 +4,7 @@
 import type { TerrainType } from './naming.js';
 import type { Plate } from './tectonic.js';
 import { labelComponents, computeComponentStats } from './connectedComponents.js';
+import { EROSION_THRESHOLDS, NAMING_BOUNDS, CLIMATE_THRESHOLDS } from './constants.js';
 
 export interface DetectedRegion {
   key: string;
@@ -48,9 +49,17 @@ const VOLCANO_PROB_THRESHOLD = 0.35; // v2: 火山概率阈值
 const ARCHIPELAGO_MAX_AREA = 50;     // 群岛：小岛最大面积
 
 /**
- * 单像素地形分类。
- * 优先级：海洋 → 冰川 → 三角洲 → 火山 → 山脉 → 高原 → 盆地 → 沙漠 → 森林 → 平原
- * 冰川/三角洲/火山需要 options 中的 world-gen 数据，缺省时跳过。
+ * Single-pixel terrain classification.
+ * Priority: ocean → glacier → delta → volcano → mountain → plateau → basin → desert → forest → plain
+ * Glacier/delta/volcano require world-gen data from options; skipped if unavailable.
+ * @param elev - Elevation value [−1, 1]
+ * @param slope - Slope magnitude [0, 1]
+ * @param moist - Moisture value [0, 1]
+ * @param seaLevel - Sea level threshold
+ * @param snowLine - Snow line elevation
+ * @param idx - Pixel index for accessing option arrays
+ * @param opts - Optional world-gen data (landIce/coastDist/riverMask/volcanoProb)
+ * @returns Terrain type ID number
  */
 function classifyTerrain(
   elev: number, slope: number, moist: number,
@@ -58,9 +67,9 @@ function classifyTerrain(
   idx: number, opts?: TerrainDetectOptions
 ): number {
   if (elev <= seaLevel) return TYPE_IDS.ocean;
-  // 冰川：陆地 + 冰厚充足
+  // Glacier: land + sufficient ice thickness
   if (opts?.landIce && opts.landIce[idx] > GLACIER_ICE_THRESHOLD) return TYPE_IDS.glacier;
-  // 三角洲：近海岸 + 河流出海 + 低坡度 + 低海拔
+  // Delta: near coast + river mouth + low slope + low elevation
   if (opts?.coastDist && opts?.riverMask) {
     const cd = opts.coastDist[idx];
     if (cd > 0 && cd < DELTA_COAST_RANGE && opts.riverMask[idx] > DELTA_RIVER_THRESHOLD
@@ -68,16 +77,16 @@ function classifyTerrain(
       return TYPE_IDS.delta;
     }
   }
-  // v2: 火山——高海拔 + 火山概率高 + 陡坡
+  // v2: Volcano—high elevation + high volcano probability + steep slope
   if (opts?.volcanoProb && opts.volcanoProb[idx] > VOLCANO_PROB_THRESHOLD
       && elev > seaLevel + 0.3 && slope > SLOPE_MOUNTAIN * 0.7) {
     return TYPE_IDS.volcano;
   }
   if (elev > snowLine * 0.7 && slope > SLOPE_MOUNTAIN) return TYPE_IDS.mountain;
   if (elev > snowLine * 0.7 && slope < SLOPE_FLAT) return TYPE_IDS.plateau;
-  // 盆地：低洼且平坦的谷底
-  if (elev < seaLevel + 0.12 && slope < 0.02) return TYPE_IDS.basin;
-  if (moist < 0.3) return TYPE_IDS.desert;
+  // Basin: low-lying flat valley floor
+  if (elev < seaLevel + EROSION_THRESHOLDS.BASIN_ELEVATION && slope < EROSION_THRESHOLDS.BASIN_SLOPE) return TYPE_IDS.basin;
+  if (moist < CLIMATE_THRESHOLDS.ARID_BASE * 3) return TYPE_IDS.desert;
   if (moist > 0.6) return TYPE_IDS.forest;
   return TYPE_IDS.plain;
 }

@@ -1,0 +1,62 @@
+
+> @mapgen/core@0.0.3-pre test
+> vitest run
+
+
+ RUN  v1.6.1 /workspace/packages/shared
+
+ ✓ src/__tests__/biomes-extra.test.ts  (36 tests) 343ms
+ ✓ src/__tests__/noise-comprehensive.test.ts  (39 tests) 134ms
+ ✓ src/__tests__/lazyGen.test.ts  (17 tests) 237ms
+ ✓ src/__tests__/editor.test.ts  (18 tests) 117ms
+ ✓ src/__tests__/biomes-comprehensive.test.ts  (30 tests) 236ms
+ ✓ src/__tests__/watershed-comprehensive.test.ts  (19 tests) 428ms
+ ✓ src/__tests__/noise-edge-cases.test.ts  (33 tests) 64ms
+ ✓ src/__tests__/oceanCurrents.test.ts  (12 tests) 240ms
+ ❯ src/__tests__/ice.test.ts  (11 tests | 1 failed) 325ms
+   ❯ src/__tests__/ice.test.ts > computeIceSheet > should generate sea ice in polar ocean regions
+     → expected false to be true // Object.is equality
+ ✓ src/__tests__/noise.test.ts  (7 tests) 197ms
+ ✓ src/__tests__/volcanism.test.ts  (6 tests) 664ms
+ ✓ src/__tests__/seasons.test.ts  (7 tests) 462ms
+ ✓ src/__tests__/naming.test.ts  (6 tests) 19ms
+ ✓ src/__tests__/biomes.test.ts  (9 tests) 122ms
+ ✓ src/__tests__/watershed.test.ts  (6 tests) 117ms
+ ✓ src/__tests__/erosion.test.ts  (2 tests) 219ms
+ ✓ src/__tests__/rivers.test.ts  (4 tests) 100ms
+ ✓ src/__tests__/tectonic.test.ts  (3 tests) 35ms
+ ✓ src/__tests__/regions.test.ts  (4 tests) 84ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/ice.test.ts > computeIceSheet > should generate sea ice in polar ocean regions
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/ice.test.ts:85:23
+     83|       }
+     84|     }
+     85|     expect(hasSeaIce).toBe(true);
+       |                       ^
+     86|   });
+     87| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 18 passed (19)
+      Tests  1 failed | 268 passed (269)
+   Start at  23:46:20
+   Duration  21.46s (transform 2.32s, setup 2ms, collect 3.12s, tests 4.14s, environment 35ms, prepare 6.25s)
+
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path /workspace/packages/shared
+npm error workspace @mapgen/core@0.0.3-pre
+npm error location /workspace/packages/shared
+npm error command failed
+npm error command sh -c vitest run
