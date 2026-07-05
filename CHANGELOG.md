@@ -4,12 +4,23 @@ All notable changes to the Material Map Generator.
 
 ## v0.0.3-pre (2026-07-05)
 
-### 重构与发布准备
+### 性能优化与图形实现精简
 
 - **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
+- **底层优化**: 
+  - 使用 TypedArray 替代普通数组，减少内存分配
+  - 优化循环算法，减少对象创建
+  - 预计算常用值，避免重复计算
+  - 使用位运算替代除法运算
+- **图形实现修剪**:
+  - 移除冗余注释，代码更简洁
+  - 移除 AI 生成痕迹的过度注释
+  - 新增 `PerformanceMonitor` 类进行帧率检测
+  - WebGLRenderer / P5Renderer 集成性能监控
+  - FPS 统计通过 eventBus 实时上报
 - **代码质量验证**: 
   - ✅ typecheck: 3/3 通过
-  - ✅ build: 2/2 通过（web 44 modules）
+  - ✅ build: 2/2 通过（web 46 modules）
   - ✅ tests: 72/72 通过
 
 ### 项目结构概览
