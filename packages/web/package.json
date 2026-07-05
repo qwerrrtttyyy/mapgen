@@ -1,7 +1,7 @@
 {
   "name": "@mapgen/web",
-  "version": "0.0.3",
-  "description": "Map Generator - Web Frontend (TypeScript + Vite)",
+  "version": "0.0.3-pre",
+  "description": "Map Generator - WebGL2 Frontend with Material Design 3 UI (TypeScript + Vite)",
   "type": "module",
   "scripts": {
     "dev": "vite",
