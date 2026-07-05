@@ -1,9 +1,16 @@
+import { lerp, clamp } from './utils.js';
+
 const GRAD3: number[][] = [
   [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
   [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
   [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
 ];
 
+/**
+ * 生成种子排列数组（用于噪声哈希）
+ * @param seed - 随机种子
+ * @returns 512 长度的排列数组
+ */
 function seedPermutation(seed: number): Uint8Array {
   const p = new Uint8Array(256);
   for (let i = 0; i < 256; i++) p[i] = i;
@@ -18,14 +25,32 @@ function seedPermutation(seed: number): Uint8Array {
   return perm;
 }
 
+/**
+ * 平滑阶跃函数 - 用于噪声插值
+ * @param t - 输入值 [0, 1]
+ * @returns 平滑后的值
+ */
 function fade(t: number): number { return t * t * t * (t * (t * 6 - 15) + 10); }
-function lerp(a: number, b: number, t: number): number { return a + t * (b - a); }
+
+/**
+ * 根据哈希值计算梯度点积
+ * @param hash - 哈希值
+ * @param x - X 坐标
+ * @param y - Y 坐标
+ * @returns 梯度点积结果
+ */
 function grad(hash: number, x: number, y: number): number {
   const g = GRAD3[hash & 11];
   return g[0] * x + g[1] * y;
 }
 
+/**
+ * 噪声类型枚举
+ */
 export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
+/**
+ * FBM（分形布朗运动）类型枚举
+ */
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
 
 const WORLEY_CACHE_MAX = 10000;
