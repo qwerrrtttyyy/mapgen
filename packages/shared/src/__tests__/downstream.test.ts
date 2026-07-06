@@ -1,59 +1,49 @@
 import { describe, it, expect } from 'vitest';
 import { runDownstreamPipeline, applyDownstreamToMapData } from '../downstream.js';
-import type { DownstreamInput } from '../downstream.js';
+import type { DownstreamInput, DownstreamResult } from '../downstream.js';
+import type { MapData } from '../index.js';
 
 describe('Downstream 下游管线', () => {
   const W = 32, H = 32;
   const size = W * H;
 
+  function makeBaseInput(): DownstreamInput {
+    return {
+      width: W,
+      height: H,
+      elevation: new Float32Array(size).fill(0.5),
+      plateId: new Float32Array(size).fill(0),
+      seaLevel: 0.45,
+      tempOffset: 0,
+      snowLine: 0.5,
+      windDirX: 0,
+      windDirY: -1,
+      rainStrength: 0.5,
+      lakeDensity: 0.1,
+      riverCount: 10,
+      seed: 42,
+    };
+  }
+
   describe('runDownstreamPipeline 管线执行', () => {
     it('默认全部启用', () => {
-      const input: DownstreamInput = {
-        width: W,
-        height: H,
-        elevation: new Float32Array(size).fill(0.5),
-        seaLevel: 0.45,
-        temperature: new Float32Array(size).fill(0.5),
-        rainfall: new Float32Array(size).fill(0.5),
-        moisture: new Float32Array(size).fill(0.5),
-        coastDist: new Float32Array(size).fill(10),
-        riverMask: new Float32Array(size).fill(0),
-        lakeMask: new Float32Array(size).fill(0),
-        landIce: new Float32Array(size).fill(0),
-        seaIce: new Float32Array(size).fill(0),
-        seed: 42,
-      };
-
+      const input = makeBaseInput();
       const result = runDownstreamPipeline(input);
 
-      // 检查所有产物存在
       expect(result.coastDist).toBeDefined();
-      expect(result.currentVx).toBeDefined();
-      expect(result.currentVy).toBeDefined();
-      expect(result.biomeId).toBeDefined();
-      expect(result.basinId).toBeDefined();
-      expect(result.volcanoProb).toBeDefined();
-      expect(result.seasonTex).toBeDefined();
+      expect(result.currents.vx).toBeDefined();
+      expect(result.currents.vy).toBeDefined();
+      expect(result.biomes).toBeDefined();
+      expect(result.watershed).toBeDefined();
+      expect(result.seasons).toBeDefined();
     });
 
     it('独立关闭子系统', () => {
       const input: DownstreamInput = {
-        width: W,
-        height: H,
-        elevation: new Float32Array(size).fill(0.5),
-        seaLevel: 0.45,
-        temperature: new Float32Array(size).fill(0.5),
-        rainfall: new Float32Array(size).fill(0.5),
-        moisture: new Float32Array(size).fill(0.5),
-        coastDist: new Float32Array(size).fill(10),
-        riverMask: new Float32Array(size).fill(0),
-        lakeMask: new Float32Array(size).fill(0),
-        landIce: new Float32Array(size).fill(0),
-        seaIce: new Float32Array(size).fill(0),
-        seed: 42,
+        ...makeBaseInput(),
         enableOceanCurrents: false,
         enableIceSheet: false,
-        enableBiomes: false,
+        enableAdvancedBiomes: false,
         enableWatershed: false,
         enableVolcanism: false,
         enableSeasons: false,
@@ -61,76 +51,73 @@ describe('Downstream 下游管线', () => {
 
       const result = runDownstreamPipeline(input);
 
-      // 关闭的子系统应返回零数组
-      expect(result.currentVx.every(v => v === 0)).toBe(true);
-      expect(result.landIce.every(v => v === 0)).toBe(true);
-      expect(result.biomeId.every(v => v === 0)).toBe(true);
+      expect(result.currents.vx.every(v => v === 0)).toBe(true);
+      expect(result.ice.landIce.every(v => v === 0)).toBe(true);
+      expect(result.biomes).toBeUndefined();
     });
 
     it('产物尺寸正确', () => {
-      const input: DownstreamInput = {
-        width: W,
-        height: H,
-        elevation: new Float32Array(size).fill(0.5),
-        seaLevel: 0.45,
-        temperature: new Float32Array(size).fill(0.5),
-        rainfall: new Float32Array(size).fill(0.5),
-        moisture: new Float32Array(size).fill(0.5),
-        coastDist: new Float32Array(size).fill(10),
-        riverMask: new Float32Array(size).fill(0),
-        lakeMask: new Float32Array(size).fill(0),
-        landIce: new Float32Array(size).fill(0),
-        seaIce: new Float32Array(size).fill(0),
-        seed: 42,
-      };
-
+      const input = makeBaseInput();
       const result = runDownstreamPipeline(input);
 
       expect(result.coastDist.length).toBe(size);
-      expect(result.currentVx.length).toBe(size);
-      expect(result.currentVy.length).toBe(size);
-      expect(result.biomeId.length).toBe(size);
-      expect(result.volcanoProb.length).toBe(size);
+      expect(result.currents.vx.length).toBe(size);
+      expect(result.currents.vy.length).toBe(size);
+      expect(result.biomes!.biomeId.length).toBe(size);
     });
   });
 
   describe('applyDownstreamToMapData 应用到地图数据', () => {
-    it('纹理打包正确', () => {
-      const downstreamResult = {
+    it('字段写入正确', () => {
+      const result: DownstreamResult = {
+        moisture: new Float32Array(size),
+        rainfall: new Float32Array(size),
+        temperature: new Float32Array(size),
+        tempZone: new Float32Array(size),
+        riverMask: new Float32Array(size),
+        riverWidth: new Float32Array(size),
+        riverDepth: new Float32Array(size),
+        lakes: new Float32Array(size),
+        rivers: [],
+        regions: [],
         coastDist: new Float32Array(size).fill(10),
-        currentVx: new Float32Array(size).fill(0.5),
-        currentVy: new Float32Array(size).fill(0),
-        currentTempDelta: new Float32Array(size).fill(0),
-        currentSpeed: new Float32Array(size).fill(1),
-        landIce: new Float32Array(size).fill(0.3),
-        seaIce: new Float32Array(size).fill(0),
-        glacierVx: new Float32Array(size).fill(0),
-        glacierVy: new Float32Array(size).fill(0),
-        biomeId: new Uint8Array(size).fill(5),
-        biomeNormalized: new Float32Array(size).fill(0.5),
-        basinId: new Int32Array(size).fill(1),
-        isDivide: new Uint8Array(size).fill(0),
-        streamOrder: new Uint8Array(size).fill(2),
-        volcanoProb: new Float32Array(size).fill(0.1),
-        calderaMask: new Uint8Array(size).fill(0),
-        volcanoSites: [],
-        hotspots: [],
-        seasonTex: new Float32Array(size * 4).fill(0),
+        currents: {
+          vx: new Float32Array(size),
+          vy: new Float32Array(size),
+          tempDelta: new Float32Array(size),
+          speed: new Float32Array(size),
+        },
+        ice: {
+          landIce: new Float32Array(size),
+          seaIce: new Float32Array(size),
+          glacierVx: new Float32Array(size),
+          glacierVy: new Float32Array(size),
+        },
+        elevationAfter: new Float32Array(size),
+        slopeAfter: new Float32Array(size),
       };
 
-      const result = applyDownstreamToMapData(W, H, downstreamResult, {
-        enableAdvancedBiomes: true,
-        enableWatershed: true,
-        enableVolcanism: true,
-        enableSeasons: true,
-        seaLevel: 0.45,
-        snowLine: 0.5,
-      });
+      const md = {
+        width: W,
+        height: H,
+        plateTex: new Float32Array(size),
+        elevTex: new Float32Array(size),
+        moistTex: new Float32Array(size),
+        riverTex: new Float32Array(size),
+        tempTex: new Float32Array(size),
+        plates: [],
+        regions: [],
+        rivers: [],
+        names: { plates: [], regions: [] },
+        seed: 0,
+      } as unknown as MapData;
 
-      expect(result.currentTex.length).toBe(size * 4);
-      expect(result.iceTex.length).toBe(size * 4);
-      expect(result.biomeTex.length).toBe(size * 4);
-      expect(result.volcanismTex.length).toBe(size * 4);
+      applyDownstreamToMapData(md, result, 42);
+
+      expect(md.rivers).toEqual([]);
+      expect(md.regions).toEqual([]);
+      expect(md.seed).toBe(42);
+      expect(md.coastDist).toBeDefined();
     });
   });
 });

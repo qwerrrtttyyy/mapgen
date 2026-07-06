@@ -24,9 +24,15 @@ describe('Coastline 海岸距离场', () => {
     });
 
     it('海洋区域距离为负', () => {
-      const elevation = new Float32Array(W * H).fill(0.3);
+      const elevation = new Float32Array(W * H);
+      // 左半陆地，右半海洋 - 确保存在海岸线
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          elevation[y * W + x] = x < W / 2 ? 0.6 : 0.3;
+        }
+      }
       const coastDist = computeCoastDistance(W, H, elevation, seaLevel);
-      expect(coastDist[0]).toBeLessThan(0);
+      expect(coastDist[W - 1]).toBeLessThan(0);
       expect(coastDist[W * H - 1]).toBeLessThan(0);
     });
 
@@ -73,22 +79,24 @@ describe('Coastline 海岸距离场', () => {
     it('内陆大陆度高', () => {
       const coastDist = new Float32Array(W * H);
       coastDist.fill(50);
-      const factor = continentalityFactor(coastDist, W, H, Math.floor(H / 2) * W + Math.floor(W / 2));
-      expect(factor).toBeGreaterThan(0.5);
+      const factor = continentalityFactor(coastDist, 50);
+      const idx = Math.floor(H / 2) * W + Math.floor(W / 2);
+      expect(factor[idx]).toBeGreaterThan(0.5);
     });
 
     it('沿海大陆度低', () => {
       const coastDist = new Float32Array(W * H);
       coastDist.fill(5);
-      const factor = continentalityFactor(coastDist, W, H, Math.floor(H / 2) * W + Math.floor(W / 2));
-      expect(factor).toBeLessThan(0.3);
+      const factor = continentalityFactor(coastDist, 50);
+      const idx = Math.floor(H / 2) * W + Math.floor(W / 2);
+      expect(factor[idx]).toBeLessThan(0.3);
     });
 
     it('海洋大陆度为零', () => {
       const coastDist = new Float32Array(W * H);
       coastDist.fill(-20);
-      const factor = continentalityFactor(coastDist, W, H, 0);
-      expect(factor).toBe(0);
+      const factor = continentalityFactor(coastDist, 50);
+      expect(factor[0]).toBe(0);
     });
   });
 });

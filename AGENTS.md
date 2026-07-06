@@ -8,6 +8,7 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 - **Changelog:** CHANGELOG.md
 - **Language:** zh-CN primary
 - **Runtime:** Browser (pure frontend, no server required); optional Bun reference backend
+- **Package manager:** npm (bun lockfile also available for bun users)
 - **Build / test / lint:** Turborepo tasks
 - **GitHub:** https://github.com/qwerrrtttyyy/mapgen
 
@@ -15,33 +16,33 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 
 ```bash
 # Install dependencies
-bun install
+npm install
 
 # Development mode (frontend only)
-bun run dev
+npm run dev
 
 # Development mode (frontend + backend)
-bun run dev:all
+npm run dev:all
 
 # Backend only
-bun run dev:server
+npm run dev:server
 
 # Build all packages
-bun run build
+npm run build
 
 # Build backend only
-bun run build:server
+npm run build:server
 
 # Type check all packages
-bun run typecheck
+npm run typecheck
 
 # Run all tests
-bun test
+npm test
 
 # Build specific package
-bunx turbo run build --filter=@mapgen/core
-bunx turbo run build --filter=@mapgen/web
-bunx turbo run build --filter=@mapgen/server
+npx turbo run build --filter=@mapgen/core
+npx turbo run build --filter=@mapgen/web
+npx turbo run build --filter=@mapgen/server
 ```
 
 Development server runs at `http://127.0.0.1:3000` by default.
@@ -132,13 +133,13 @@ mapgen/
 ## Commands
 
 ```bash
-bun run dev          # Start frontend in dev mode
-bun run dev:server   # Start backend in dev mode
-bun run dev:all      # Start frontend + backend in dev mode
-bun run build        # Build all packages
-bun run build:server # Build backend only
-bun run typecheck    # Type check all packages
-bun test             # Run all tests
+npm run dev          # Start frontend in dev mode
+npm run dev:server   # Start backend in dev mode
+npm run dev:all      # Start frontend + backend in dev mode
+npm run build        # Build all packages
+npm run build:server # Build backend only
+npm run typecheck    # Type check all packages
+npm test             # Run all tests
 ```
 
 ## Features

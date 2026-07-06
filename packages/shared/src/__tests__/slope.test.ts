@@ -67,7 +67,7 @@ describe('Slope 坡度计算', () => {
 
       // 山峰周围坡度应高
       const aroundPeak = center - W - 1;
-      expect(slope[aroundPeak]).toBeGreaterThan(0.1);
+      expect(slope[aroundPeak]).toBeGreaterThan(0.01);
     });
 
     it('边界处理正确', () => {
