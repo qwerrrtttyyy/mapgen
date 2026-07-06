@@ -127,25 +127,25 @@
 
 ### 开发模式
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ### 构建生产版本
 ```bash
-npm run build
+bun run build
 # 输出至 packages/web/dist/
 ```
 
 ### 运行测试
 ```bash
-npm run test
+bun run test
 # 72 个测试用例全部通过
 ```
 
 ### 类型检查
 ```bash
-npm run typecheck
+bun run typecheck
 ```
 
 ## 📄 许可证

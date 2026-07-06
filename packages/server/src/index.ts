@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { serve } from '@hono/node-server';
 import { loadConfig } from './config.js';
 import { createDatabase } from './db/index.js';
 import { jobQueue } from './services/jobQueue.js';
@@ -29,8 +28,8 @@ app.route('/api/v1', createPresetsRoute(db));
 
 export default app;
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (typeof Bun !== 'undefined' && import.meta.url === `file://${Bun.main}`) {
   const port = config.port;
-  serve({ fetch: app.fetch, port });
+  Bun.serve({ fetch: app.fetch, port });
   console.log(`MapGen server listening on http://localhost:${port}`);
 }

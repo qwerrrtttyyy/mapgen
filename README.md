@@ -23,14 +23,14 @@
 ## 快速开始
 
 ```bash
-npm install
-npm run dev        # 前端开发模式 → http://localhost:3000
-npm run dev:server # 后端开发模式 → http://localhost:8787
-npm run dev:all    # 同时启动前端 + 后端
-npm run build      # 生产构建
-npm run build:server # 仅构建后端
-npm run typecheck  # 类型检查
-npm test           # 运行全部测试
+bun install
+bun run dev        # 前端开发模式 → http://localhost:3000
+bun run dev:server # 后端开发模式 → http://localhost:8787
+bun run dev:all    # 同时启动前端 + 后端
+bun run build      # 生产构建
+bun run build:server # 仅构建后端
+bun run typecheck  # 类型检查
+bun test           # 运行全部测试
 ```
 
 ## 功能

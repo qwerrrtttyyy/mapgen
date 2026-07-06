@@ -7,7 +7,7 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 - **Latest:** `v0.0.3-pre` (Monorepo: Turborepo + npm workspaces)
 - **Changelog:** CHANGELOG.md
 - **Language:** zh-CN primary
-- **Runtime:** Browser (pure frontend, no server required); optional Node.js reference backend
+- **Runtime:** Browser (pure frontend, no server required); optional Bun reference backend
 - **Build / test / lint:** Turborepo tasks
 - **GitHub:** https://github.com/qwerrrtttyyy/mapgen
 
@@ -15,33 +15,33 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development mode (frontend only)
-npm run dev
+bun run dev
 
 # Development mode (frontend + backend)
-npm run dev:all
+bun run dev:all
 
 # Backend only
-npm run dev:server
+bun run dev:server
 
 # Build all packages
-npm run build
+bun run build
 
 # Build backend only
-npm run build:server
+bun run build:server
 
 # Type check all packages
-npm run typecheck
+bun run typecheck
 
 # Run all tests
-npm test
+bun test
 
 # Build specific package
-npm run build --workspace=@mapgen/core
-npm run build --workspace=@mapgen/web
-npm run build --workspace=@mapgen/server
+bunx turbo run build --filter=@mapgen/core
+bunx turbo run build --filter=@mapgen/web
+bunx turbo run build --filter=@mapgen/server
 ```
 
 Development server runs at `http://127.0.0.1:3000` by default.
@@ -132,13 +132,13 @@ mapgen/
 ## Commands
 
 ```bash
-npm run dev          # Start frontend in dev mode
-npm run dev:server   # Start backend in dev mode
-npm run dev:all      # Start frontend + backend in dev mode
-npm run build        # Build all packages
-npm run build:server # Build backend only
-npm run typecheck    # Type check all packages
-npm test             # Run all tests
+bun run dev          # Start frontend in dev mode
+bun run dev:server   # Start backend in dev mode
+bun run dev:all      # Start frontend + backend in dev mode
+bun run build        # Build all packages
+bun run build:server # Build backend only
+bun run typecheck    # Type check all packages
+bun test             # Run all tests
 ```
 
 ## Features
