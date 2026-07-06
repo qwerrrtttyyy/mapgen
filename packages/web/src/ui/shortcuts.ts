@@ -38,6 +38,10 @@ export class Shortcuts extends Colleague {
           e.preventDefault();
           this.emit('laser.toggle');
           break;
+        case 'f3':
+          e.preventDefault();
+          this.emit('debug.toggle');
+          break;
         case 'escape':
           e.preventDefault();
           clearSelection();
