@@ -15,20 +15,20 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development mode (all packages)
-npm run dev
+bun run dev
 
 # Build all packages
-npm run build
+bun run build
 
 # Type check all packages
-npm run typecheck
+bun run typecheck
 
 # Build specific package
-npm run build --workspace=@mapgen/core
-npm run build --workspace=@mapgen/web
+bun run build --filter=@mapgen/core
+bun run build --filter=@mapgen/web
 ```
 
 Development server runs at `http://127.0.0.1:3000` by default.
@@ -91,9 +91,9 @@ mapgen/
 ## Commands
 
 ```bash
-npm run dev        # Start all packages in dev mode
-npm run build      # Build all packages
-npm run typecheck  # Type check all packages
+bun run dev        # Start all packages in dev mode
+bun run build      # Build all packages
+bun run typecheck  # Type check all packages
 ```
 
 ## Features

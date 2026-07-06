@@ -21,7 +21,7 @@ export class Toolbar extends Colleague {
     const randomSeed = document.getElementById('btn-random-seed');
     const generate = document.getElementById('btn-generate');
     const exportBtn = document.getElementById('btn-export');
-    const saveCheckpoint = document.getElementById('btn-save-checkpoint');
+    const saveCheckpoint = document.getElementById('btn-save-cp');
     const clearSelectionBtn = document.getElementById('btn-clear-selection');
 
     const listeners: [HTMLElement | null, () => void][] = [
@@ -67,7 +67,7 @@ export class Toolbar extends Colleague {
     const randomSeed = document.getElementById('btn-random-seed');
     const generate = document.getElementById('btn-generate');
     const exportBtn = document.getElementById('btn-export');
-    const saveCheckpoint = document.getElementById('btn-save-checkpoint');
+    const saveCheckpoint = document.getElementById('btn-save-cp');
     const clearSelectionBtn = document.getElementById('btn-clear-selection');
 
     const listeners: [HTMLElement | null, () => void][] = [

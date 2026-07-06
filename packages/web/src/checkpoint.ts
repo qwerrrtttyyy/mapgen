@@ -108,18 +108,46 @@ function generateThumbnail(mapData: MapData): string {
   const ctx = c.getContext('2d');
   if (!ctx) return '';
   const img = ctx.createImageData(size, size);
-  const { width, height, elevTex } = mapData;
+  const { width, height, elevTex, moistTex } = mapData;
+  const seaLevel = 0.45;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const sx = Math.floor((x / size) * width);
       const sy = Math.floor((y / size) * height);
       const i = (sy * width + sx) * 4;
       const h = elevTex[i];
-      const v = Math.floor(Math.max(0, Math.min(255, h * 255)));
+      const moisture = moistTex[i];
+      const temperature = moistTex[i + 2];
       const idx = (y * size + x) * 4;
-      img.data[idx] = v;
-      img.data[idx + 1] = v;
-      img.data[idx + 2] = v;
+      let r = 0, g = 0, b = 0;
+      if (h <= seaLevel) {
+        const depth = (seaLevel - h) / (seaLevel + 0.5);
+        const shallow = 1 - Math.min(1, depth * 3);
+        r = 20 + shallow * 40;
+        g = 60 + shallow * 80;
+        b = 120 + shallow * 60 + depth * 40;
+      } else {
+        const land = (h - seaLevel) / (1 - seaLevel);
+        const slope = elevTex[i + 1];
+        const sl = Math.min(1, slope * 3);
+        const shade = 1 - sl * 0.3;
+        if (temperature < 0.25 && h > 0.6) {
+          r = 230 * shade; g = 235 * shade; b = 245 * shade;
+        } else if (h > 0.7) {
+          r = 130 * shade; g = 120 * shade; b = 110 * shade;
+        } else if (moisture < 0.15 && temperature > 0.4) {
+          r = 200 * shade; g = 175 * shade; b = 110 * shade;
+        } else if (moisture > 0.55) {
+          r = 40 * shade; g = 100 * shade; b = 40 * shade;
+        } else if (moisture > 0.3) {
+          r = 110 * shade; g = 150 * shade; b = 50 * shade;
+        } else {
+          r = 140 * shade; g = 130 * shade; b = 70 * shade;
+        }
+      }
+      img.data[idx] = Math.max(0, Math.min(255, Math.round(r)));
+      img.data[idx + 1] = Math.max(0, Math.min(255, Math.round(g)));
+      img.data[idx + 2] = Math.max(0, Math.min(255, Math.round(b)));
       img.data[idx + 3] = 255;
     }
   }

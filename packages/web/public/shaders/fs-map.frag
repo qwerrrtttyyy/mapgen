@@ -20,6 +20,8 @@ uniform float u_seaLevel;
 uniform float u_lightAngle;
 uniform vec2 u_resolution;
 uniform float u_time;
+uniform float u_zoom;
+uniform vec2 u_pan;
 uniform float u_showBoundaries;
 uniform float u_boundaryWidth;
 uniform vec3 u_boundaryColor;
@@ -142,7 +144,7 @@ vec3 parchmentColor(float h, float sea, float boundary, float plateType) {
     col *= mix(0.6, 1.0, smoothstep(0.0, 0.7, 1.0 - length((v_uv - 0.5) * 1.3))); return col;
 }
 float hillshade(vec2 uv, float lightAng) {
-    vec2 tx = 1.0 / u_resolution;
+    vec2 tx = 1.0 / (u_resolution * u_zoom);
     float hTL = texture(u_elevTex, uv + vec2(-tx.x,  tx.y)).r;
     float hTC = texture(u_elevTex, uv + vec2( 0.0,   tx.y)).r;
     float hTR = texture(u_elevTex, uv + vec2( tx.x,  tx.y)).r;
@@ -234,7 +236,7 @@ vec3 contourColor(float h, float sea, float shade) {
 vec3 reliefColor(float h, float sea, float shade) {
     vec3 col = terrainColor(h, sea, 0.5);
     float enhanced = pow(shade, 0.7);
-    vec2 tx = 1.0 / u_resolution;
+    vec2 tx = 1.0 / (u_resolution * u_zoom);
     float hC = texture(u_elevTex, v_uv).r;
     float ao = 0.0;
     for (int dy = -2; dy <= 2; dy++) {
@@ -268,12 +270,12 @@ vec3 layerElevation(float h, float sea) {
     if (t < 0.75) return mix(c3, c4, (t - 0.5) / 0.25);
     return mix(c4, c5, (t - 0.75) / 0.25);
 }
-vec3 layerSlope(float h, float sea) {
-    vec2 tx = 1.0 / u_resolution;
-    float hL = texture(u_elevTex, v_uv - vec2(tx.x, 0.0)).r;
-    float hR = texture(u_elevTex, v_uv + vec2(tx.x, 0.0)).r;
-    float hD = texture(u_elevTex, v_uv - vec2(0.0, tx.y)).r;
-    float hU = texture(u_elevTex, v_uv + vec2(0.0, tx.y)).r;
+vec3 layerSlope(vec2 uv, float h, float sea) {
+    vec2 tx = 1.0 / (u_resolution * u_zoom);
+    float hL = texture(u_elevTex, uv - vec2(tx.x, 0.0)).r;
+    float hR = texture(u_elevTex, uv + vec2(tx.x, 0.0)).r;
+    float hD = texture(u_elevTex, uv - vec2(0.0, tx.y)).r;
+    float hU = texture(u_elevTex, uv + vec2(0.0, tx.y)).r;
     float s = sqrt(pow(hR - hL, 2.0) + pow(hU - hD, 2.0)) * 10.0;
     s = clamp(s, 0.0, 1.0);
     return mix(vec3(0.05, 0.05, 0.1), vec3(1.0, 0.9, 0.2), s);
@@ -399,7 +401,7 @@ vec3 layerIce(vec4 iceData, float h, float sea, float temp, vec2 uv) {
     }
     return base;
 }
-vec3 azgaarColor(float h, float sea, float moisture, float temp, float river, float shade, float boundary) {
+vec3 azgaarColor(vec2 uv, float h, float sea, float moisture, float temp, float river, float shade, float boundary) {
     vec3 col;
     if (h < sea - 0.15) {
         float t = clamp((h - (sea - 0.6)) / 0.45, 0.0, 1.0);
@@ -456,11 +458,11 @@ vec3 azgaarColor(float h, float sea, float moisture, float temp, float river, fl
     col = mix(col, col * vec3(1.04, 1.01, 0.96), 0.3);
     col *= shade;
     if (h >= sea && h < sea + 0.06) {
-        vec2 tx2 = 1.0 / u_resolution;
-        float hL = texture(u_elevTex, v_uv + vec2(-tx2.x, 0.0)).r;
-        float hR = texture(u_elevTex, v_uv + vec2( tx2.x, 0.0)).r;
-        float hU = texture(u_elevTex, v_uv + vec2(0.0,  tx2.y)).r;
-        float hD = texture(u_elevTex, v_uv + vec2(0.0, -tx2.y)).r;
+        vec2 tx2 = 1.0 / (u_resolution * u_zoom);
+        float hL = texture(u_elevTex, uv + vec2(-tx2.x, 0.0)).r;
+        float hR = texture(u_elevTex, uv + vec2( tx2.x, 0.0)).r;
+        float hU = texture(u_elevTex, uv + vec2(0.0,  tx2.y)).r;
+        float hD = texture(u_elevTex, uv + vec2(0.0, -tx2.y)).r;
         bool nearSea = (hL < sea || hR < sea || hU < sea || hD < sea);
         if (nearSea) {
             col = mix(col, vec3(0.22, 0.20, 0.16), 0.65);
@@ -489,12 +491,13 @@ bool isSelected(float plateIdNorm) {
 }
 void main() {
     vec2 uv = v_uv;
+    vec2 mapUV = clamp((v_uv - 0.5) / u_zoom + 0.5 - u_pan, 0.0, 1.0);
     float sea = u_seaLevel;
     vec3 col;
     float plateId = 0.0, boundary = 0.0, elev = 0.0, moisture = 0.0;
     if (u_style == 4) {
         float grid = u_resolution.x / 8.0;
-        vec2 scaled = uv * grid;
+        vec2 scaled = mapUV * grid;
         vec2 ip = floor(scaled);
         vec2 fp = fract(scaled);
         float tri = step(fp.x, fp.y);
@@ -523,14 +526,14 @@ void main() {
         vec3 edgeCol = elev < sea ? vec3(0.05, 0.12, 0.28) : vec3(0.22, 0.18, 0.15);
         col = mix(edgeCol, col, smoothstep(0.0, 0.06, edgeDist));
     } else {
-        vec4 plateData = texture(u_plateTex, uv);
-        elev = texture(u_elevTex, uv).r; moisture = texture(u_moistureTex, uv).r;
-        float temp = texture(u_tempTex, uv).r;
-        float river = texture(u_riverTex, uv).r;
+        vec4 plateData = texture(u_plateTex, mapUV);
+        elev = texture(u_elevTex, mapUV).r; moisture = texture(u_moistureTex, mapUV).r;
+        float temp = texture(u_tempTex, mapUV).r;
+        float river = texture(u_riverTex, mapUV).r;
         moisture = clamp(moisture + u_detailRainfallOffset * 0.01, 0.0, 1.0);
         temp = clamp(temp + (u_detailTempGradient - 1.0) * 0.2, 0.0, 1.0);
         plateId = plateData.r; boundary = plateData.b;
-        float shade = hillshade(uv, u_lightAngle);
+        float shade = hillshade(mapUV, u_lightAngle);
         if (u_fbmOctaves > 0) {
             float detail = 0.0; vec2 p = uv * 12.0; float amp = 0.5; float freq = 1.0;
             for (int i = 0; i < 8; i++) {
@@ -554,27 +557,27 @@ void main() {
         else if (u_style == 6) col = biomeColor(temp, moisture, elev, sea, shade);
         else if (u_style == 7) col = contourColor(elev, sea, shade);
         else if (u_style == 8) col = reliefColor(elev, sea, shade);
-        else if (u_style == 9) col = azgaarColor(elev, sea, moisture, temp, river, shade, boundary);
+        else if (u_style == 9) col = azgaarColor(mapUV, elev, sea, moisture, temp, river, shade, boundary);
         else if (u_style == 10) col = layerElevation(elev, sea);
-        else if (u_style == 11) col = layerSlope(elev, sea);
+        else if (u_style == 11) col = layerSlope(mapUV, elev, sea);
         else if (u_style == 12) col = layerMoisture(moisture, elev, sea);
         else if (u_style == 13) col = layerTemperature(temp, elev, sea);
         else if (u_style == 14) col = layerPlates(plateId, boundary, elev, sea);
         else if (u_style == 15) {
-            float biome = texture(u_tempTex, uv).b;
+            float biome = texture(u_tempTex, mapUV).b;
             col = layerBiome(biome, elev, sea);
         }
         else if (u_style == 16) {
-            vec4 elevData = texture(u_elevTex, uv);
+            vec4 elevData = texture(u_elevTex, mapUV);
             col = layerRidge(elevData.b, elevData.a, elev, sea);
         }
         else if (u_style == 17) {
-            vec4 curData = texture(u_currentTex, uv);
-            col = layerCurrents(curData, elev, sea, uv);
+            vec4 curData = texture(u_currentTex, mapUV);
+            col = layerCurrents(curData, elev, sea, mapUV);
         }
         else if (u_style == 18) {
-            vec4 iceData = texture(u_iceTex, uv);
-            col = layerIce(iceData, elev, sea, temp, uv);
+            vec4 iceData = texture(u_iceTex, mapUV);
+            col = layerIce(iceData, elev, sea, temp, mapUV);
         }
     }
     if (u_showBoundaries > 0.5 && u_style != 2 && u_style != 4 && u_style != 9) {
@@ -589,7 +592,7 @@ void main() {
         col = vec3(0.08, 0.08, 0.12);
     }
     if (u_pointLightEnabled > 0.5) {
-        vec2 delta = uv - u_pointLightPos; delta.x *= u_resolution.x / u_resolution.y;
+        vec2 delta = mapUV - u_pointLightPos; delta.x *= u_resolution.x / u_resolution.y;
         float dist = length(delta);
         float falloff = 1.0 / (1.0 + dist * 3.0 + dist * dist * 4.0);
         col += u_pointLightColor * falloff * u_pointLightIntensity * 0.25;
@@ -600,7 +603,7 @@ void main() {
     }
     if (u_laserActive > 0.5) {
         vec2 asp = vec2(u_resolution.x / u_resolution.y, 1.0);
-        float dist = distToSegment(uv * asp, u_laserStart * asp, u_laserEnd * asp) * u_resolution.y;
+        float dist = distToSegment(mapUV * asp, u_laserStart * asp, u_laserEnd * asp) * u_resolution.y;
         float pulse = 0.85 + 0.15 * sin(u_time * 5.0);
         float glow = smoothstep(u_laserWidth * 8.0, 0.0, dist) * 0.35 * pulse;
         float mid = smoothstep(u_laserWidth * 3.0, 0.0, dist) * 0.55 * pulse;
@@ -611,8 +614,8 @@ void main() {
         col = mix(col, glowCol, glow);
         col = mix(col, midCol, mid);
         col = mix(col, coreCol, core);
-        float dStart = length((uv - u_laserStart) * asp) * u_resolution.y;
-        float dEnd = length((uv - u_laserEnd) * asp) * u_resolution.y;
+        float dStart = length((mapUV - u_laserStart) * asp) * u_resolution.y;
+        float dEnd = length((mapUV - u_laserEnd) * asp) * u_resolution.y;
         float endGlow1 = smoothstep(u_laserWidth * 12.0, 0.0, dStart) * 0.3 * pulse;
         float endGlow2 = smoothstep(u_laserWidth * 12.0, 0.0, dEnd) * 0.3 * pulse;
         col += u_laserColor * endGlow1;
@@ -620,7 +623,7 @@ void main() {
         if (u_laserSelection > 0.5) {
             vec2 a = u_laserStart * asp;
             vec2 b = u_laserEnd * asp;
-            vec2 p = uv * asp;
+            vec2 p = mapUV * asp;
             float area = abs((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
             if (dist <= u_laserWidth * 1.5) {
                 col = mix(col, u_laserColor, 0.18 * pulse);
@@ -632,7 +635,7 @@ void main() {
     }
     if (u_cursorActive > 0.5) {
         vec2 asp = vec2(u_resolution.x / u_resolution.y, 1.0);
-        float d = length((uv - u_cursorPos) * asp) * u_resolution.y;
+        float d = length((mapUV - u_cursorPos) * asp) * u_resolution.y;
         float ring = abs(d - u_cursorSize);
         float ringGlow = smoothstep(3.0, 0.0, ring) * 0.6;
         float innerGlow = smoothstep(u_cursorSize, u_cursorSize * 0.3, d) * 0.08;
@@ -642,12 +645,12 @@ void main() {
         col = mix(col, cursorCol, ringGlow * pulse2);
         col += cursorCol * innerGlow * pulse2;
         col += cursorCol * outerGlow * pulse2;
-        float crossH = smoothstep(1.5, 0.0, abs(uv.y - u_cursorPos.y) * u_resolution.y) *
+        float crossH = smoothstep(1.5, 0.0, abs(mapUV.y - u_cursorPos.y) * u_resolution.y) *
                        smoothstep(u_cursorSize * 3.0, u_cursorSize * 1.5, d) * 0.3;
-        float crossV = smoothstep(1.5, 0.0, abs(uv.x - u_cursorPos.x) * u_resolution.y) *
+        float crossV = smoothstep(1.5, 0.0, abs(mapUV.x - u_cursorPos.x) * u_resolution.y) *
                        smoothstep(u_cursorSize * 3.0, u_cursorSize * 1.5, d) * 0.3;
         col = mix(col, cursorCol, crossH + crossV);
     }
-    if (u_hasTrail > 0.5) { vec4 trail = texture(u_trailTex, v_uv); col = mix(col, trail.rgb, trail.a); }
+    if (u_hasTrail > 0.5) { vec4 trail = texture(u_trailTex, mapUV); col = mix(col, trail.rgb, trail.a); }
     fragColor = vec4(pow(col, vec3(0.95)), 1.0);
 }

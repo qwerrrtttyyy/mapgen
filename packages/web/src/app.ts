@@ -11,6 +11,11 @@ import { generate as generateMap, setParam, clearSelection } from './core/action
 import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
 import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';
+import { EditorController, type EditorMode, type EditorToolParams } from './editor/EditorController.js';
+import { NameOverlay } from './editor/NameOverlay.js';
+import { Toolbar } from './ui/toolbar.js';
+import { CheckpointPanel } from './ui/checkpointPanel.js';
+import { Launcher } from './launcher/launcher.js';
 import { DebugPanel } from './ui/debugPanel.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
@@ -54,6 +59,11 @@ let checkpointMgr: CheckpointManager | null = null;
 let renderTimeout: number | null = null;
 let mapInteraction: MapInteraction | null = null;
 let minimapCtx: CanvasRenderingContext2D | null = null;
+let editorController: EditorController | null = null;
+let toolbar: Toolbar | null = null;
+let checkpointPanel: CheckpointPanel | null = null;
+let nameOverlay: NameOverlay | null = null;
+let launcher: Launcher | null = null;
 let isDraggingSize = false;
 let dragStartX = 0;
 let dragStartY = 0;
@@ -76,6 +86,8 @@ function buildRenderParams(): RenderParams {
       (rp as Record<string, number | boolean | number[]>)[uname] = val;
     }
   }
+  rp.u_zoom = state.zoom;
+  rp.u_pan = [state.panX, state.panY];
   return rp;
 }
 
@@ -265,8 +277,12 @@ function updateStyleDots(): void {
 function updateUndoRedo(): void {
   const undoBtn = $('btn-undo') as HTMLButtonElement | null;
   const redoBtn = $('btn-redo') as HTMLButtonElement | null;
-  if (undoBtn) undoBtn.disabled = true;
-  if (redoBtn) redoBtn.disabled = true;
+  if (undoBtn) undoBtn.disabled = !(editorController?.canUndo ?? false);
+  if (redoBtn) redoBtn.disabled = !(editorController?.canRedo ?? false);
+}
+
+function applyZoom(): void {
+  scheduleRender();
 }
 
 function setGeneratingStatus(generating: boolean, error?: string): void {
@@ -389,15 +405,25 @@ interface SliderBinding {
   autoGen?: boolean;
 }
 
+function updateSliderFill(el: HTMLInputElement): void {
+  const min = parseFloat(el.min) || 0;
+  const max = parseFloat(el.max) || 100;
+  const val = parseFloat(el.value) || 0;
+  const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+  el.style.setProperty('--value', `${pct}%`);
+}
+
 function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBinding): void {
   const el = $(id) as HTMLInputElement | null;
   const dispId = id + '-val';
   if (!el) return;
+  updateSliderFill(el);
   el.addEventListener('input', () => {
     const raw = parseFloat(el.value);
     const val = binding.toParam(raw);
     setParam(paramKey, val as never);
     setDispVal(dispId, binding.toDisplay(raw));
+    updateSliderFill(el);
     if (paramKey === 'windDirX' || paramKey === 'windDirY') {
       updateWindArrow();
     }
@@ -509,6 +535,36 @@ function bindEventBus(): void {
     if (renderer instanceof WebGLRenderer) renderer.updateSelectMask(plates);
     scheduleRender();
   });
+  bus.on('checkpoint.save.request', async () => {
+    if (!checkpointMgr || !state.mapData) return;
+    const ckpt = await checkpointMgr.save(
+      `检查点 ${checkpointMgr.checkpoints.length + 1}`,
+      'manual',
+      state.mapData,
+      state.params
+    );
+    if (ckpt) {
+      bus.emit('checkpoint.updated');
+    }
+  });
+  bus.on('checkpoint.restore.request', async (id: number) => {
+    if (!checkpointMgr) return;
+    const ckpt = await checkpointMgr.restore(id);
+    if (!ckpt) return;
+    const restored = checkpointMgr.restoreMapData(ckpt);
+    if (!restored) return;
+    patchParams(ckpt.data.params as Partial<UIParams>);
+    syncUIFromParams();
+    state.mapData = restored;
+    renderer?.uploadMapData(restored);
+    mapInteraction?.setMapData(restored);
+    render();
+    bus.emit('generating.completed', { mapData: restored });
+  });
+  bus.on('editor.committed', () => {
+    updateUndoRedo();
+    scheduleRender();
+  });
   bus.on('export.request', () => {
     const c = $('glCanvas') as HTMLCanvasElement | null;
     if (!c) return;
@@ -564,6 +620,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkpointMgr = new CheckpointManager();
   await checkpointMgr.load();
 
+  editorController = new EditorController(canvas);
+  nameOverlay = new NameOverlay(document.body);
+  nameOverlay.bindEvents();
+  toolbar = new Toolbar();
+  toolbar.bind();
+  checkpointPanel = new CheckpointPanel();
+  checkpointPanel.bind(checkpointMgr);
   debugPanel = new DebugPanel();
   debugPanel.bind();
 
@@ -573,10 +636,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindEventBus();
   bindSizeHandle();
 
+  try {
+    const savedTheme = localStorage.getItem('mapgen:theme');
+    if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+  } catch { /* ignore */ }
+
+  let launched = false;
+  if (Launcher.shouldShow()) {
+    launcher = new Launcher(document.body);
+    const result = await launcher.waitForLaunch();
+    launched = true;
+    result.start();
+    await launcher.hide();
+    launcher.destroy();
+    launcher = null;
+  }
+
+  buildPresetGrid();
+  syncUIFromParams();
+
   const panel = $('panel');
+  const checkpointPopover = $('checkpoint-popover');
   $('btn-panel-toggle')?.addEventListener('click', () => {
     panel?.classList.toggle('panel-open');
-    panel?.classList.toggle('panel-closed');
+  });
+  $('btn-checkpoint')?.addEventListener('click', () => {
+    checkpointPopover?.classList.toggle('show');
+  });
+  $('btn-theme')?.addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.dataset.theme || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    root.classList.add('theme-transition');
+    root.dataset.theme = next;
+    window.setTimeout(() => root.classList.remove('theme-transition'), 400);
+    try {
+      localStorage.setItem('mapgen:theme', next);
+    } catch { /* ignore */ }
   });
 
   document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
@@ -591,7 +687,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  $('btn-generate')?.addEventListener('click', () => generateMap());
   $('btn-random')?.addEventListener('click', () => {
     const seed = String(Math.floor(Math.random() * 99999));
     setParam('seedStr', seed);
@@ -599,21 +694,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (seedInput) seedInput.value = seed;
     generateMap();
   });
-  $('btn-random-seed')?.addEventListener('click', () => {
-    const seed = String(Math.floor(Math.random() * 99999));
-    setParam('seedStr', seed);
-    const seedInput = $('seedStr') as HTMLInputElement | null;
-    if (seedInput) seedInput.value = seed;
-    generateMap();
+  $('btn-undo')?.addEventListener('click', () => {
+    editorController?.undo();
+    updateUndoRedo();
   });
-  $('btn-undo')?.addEventListener('click', () => {});
-  $('btn-redo')?.addEventListener('click', () => {});
-  $('btn-export')?.addEventListener('click', () => bus.emit('export.request'));
-  $('btn-clear-selection')?.addEventListener('click', () => clearSelection());
-  $('btn-toggle-names')?.addEventListener('click', () => {
-    namesVisible = !namesVisible;
-    $('btn-toggle-names')?.classList.toggle('active', namesVisible);
+  $('btn-redo')?.addEventListener('click', () => {
+    editorController?.redo();
+    updateUndoRedo();
   });
+  const toggleNamesBtn = $('btn-toggle-names');
+  if (toggleNamesBtn) {
+    toggleNamesBtn.classList.toggle('active', namesVisible);
+    toggleNamesBtn.addEventListener('click', () => {
+      namesVisible = !namesVisible;
+      toggleNamesBtn.classList.toggle('active', namesVisible);
+      bus.emit('overlay.toggle', namesVisible);
+    });
+  }
+  bus.emit('overlay.toggle', namesVisible);
 
   $('seedStr')?.addEventListener('change', (e) => {
     setParam('seedStr', (e.target as HTMLInputElement).value);
@@ -780,6 +878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (brushCtrls) {
         brushCtrls.style.display = tool === 'brush' ? '' : 'none';
       }
+      editorController?.setMode(tool as EditorMode);
     });
   });
   const brushCtrlsEl = $('brush-ctrls') as HTMLElement | null;
@@ -789,19 +888,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     toParam: raw => raw,
     toDisplay: raw => String(raw),
   });
-  $('brushStrength')?.addEventListener('input', (e) => {
-    const v = parseInt((e.target as HTMLInputElement).value, 10);
-    setDispVal('brushStrength-val', (v / 100).toFixed(1));
+  const brushRadiusEl = $('brushRadius') as HTMLInputElement | null;
+  const brushStrengthEl = $('brushStrength') as HTMLInputElement | null;
+  if (brushRadiusEl) updateSliderFill(brushRadiusEl);
+  if (brushStrengthEl) updateSliderFill(brushStrengthEl);
+  brushRadiusEl?.addEventListener('input', () => {
+    const v = parseInt(brushRadiusEl.value, 10);
+    editorController?.setTool({ brushRadius: v });
+    updateSliderFill(brushRadiusEl);
+  });
+  brushStrengthEl?.addEventListener('input', () => {
+    const v = parseInt(brushStrengthEl.value, 10);
+    const strength = v / 100;
+    setDispVal('brushStrength-val', strength.toFixed(1));
+    editorController?.setTool({ brushStrength: strength });
+    updateSliderFill(brushStrengthEl);
   });
 
-  let zoom = 1;
   const updateZoom = () => {
     const zv = $('zoom-val');
-    if (zv) zv.textContent = `${Math.round(zoom * 100)}%`;
+    if (zv) zv.textContent = `${Math.round(state.zoom * 100)}%`;
+    applyZoom();
+    scheduleRender();
   };
-  $('btn-zoom-in')?.addEventListener('click', () => { zoom = Math.min(4, zoom * 1.25); updateZoom(); });
-  $('btn-zoom-out')?.addEventListener('click', () => { zoom = Math.max(0.25, zoom / 1.25); updateZoom(); });
-  $('btn-zoom-reset')?.addEventListener('click', () => { zoom = 1; updateZoom(); });
+  $('btn-zoom-in')?.addEventListener('click', () => { state.zoom = Math.min(4, state.zoom * 1.25); updateZoom(); });
+  $('btn-zoom-out')?.addEventListener('click', () => { state.zoom = Math.max(0.25, state.zoom / 1.25); updateZoom(); });
+  $('btn-zoom-reset')?.addEventListener('click', () => { state.zoom = 1; updateZoom(); });
 
   mapInteraction = new MapInteraction(canvas);
   mapInteraction.bindEvents();
@@ -834,8 +946,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearSelection();
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault();
+      if (e.shiftKey) {
+        editorController?.redo();
+      } else {
+        editorController?.undo();
+      }
+      updateUndoRedo();
     } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
       e.preventDefault();
+      editorController?.redo();
+      updateUndoRedo();
     } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
       const toolMap: Record<string, string> = { v: 'idle', b: 'brush', m: 'vector-line', p: 'vector-poly', d: 'drag-plate', a: 'annotate' };
       const tool = toolMap[e.key.toLowerCase()];
@@ -846,5 +966,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  generateMap();
+  updateUndoRedo();
+
+  if (!launched) {
+    generateMap();
+  }
 });

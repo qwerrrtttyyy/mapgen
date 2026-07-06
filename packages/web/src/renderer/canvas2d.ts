@@ -71,20 +71,21 @@ export class Canvas2DRenderer {
 
   render(): void {
     if (!this.imageData || !this.mapData) return;
-    
+
     const canvas = this.ctx.canvas;
-    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     const mapW = this.mapData.width;
     const mapH = this.mapData.height;
     const cW = canvas.width;
     const cH = canvas.height;
-    const scale = Math.min(cW / mapW, cH / mapH);
-    const dW = mapW * scale;
-    const dH = mapH * scale;
-    const ox = (cW - dW) / 2;
-    const oy = (cH - dH) / 2;
-    
+    const baseScale = Math.min(cW / mapW, cH / mapH);
+    const dW = mapW * baseScale;
+    const dH = mapH * baseScale;
+    const centerX = cW / 2;
+    const centerY = cH / 2;
+
     if (!this.tmpCanvas || this.tmpCanvas.width !== mapW || this.tmpCanvas.height !== mapH) {
       this.tmpCanvas = document.createElement('canvas');
       this.tmpCanvas.width = mapW;
@@ -94,8 +95,13 @@ export class Canvas2DRenderer {
     if (!this.tmpCtx) return;
 
     this.tmpCtx.putImageData(this.imageData, 0, 0);
-    this.ctx.imageSmoothingEnabled = true;
-    this.ctx.drawImage(this.tmpCanvas, ox, oy, dW, dH);
+    ctx.imageSmoothingEnabled = true;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.scale(state.zoom * baseScale, state.zoom * baseScale);
+    ctx.translate(-mapW * (0.5 - state.panX), -mapH * (0.5 - state.panY));
+    ctx.drawImage(this.tmpCanvas, 0, 0);
+    ctx.restore();
   }
 
   resize(w: number, h: number): void {

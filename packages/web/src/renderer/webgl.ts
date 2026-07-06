@@ -148,6 +148,7 @@ export class WebGLRenderer {
       }
     }
 
+    // 世界式生成纹理（可选，缺省零纹理避免采样未定义数据）
     const empty = new Float32Array(data.width * data.height * 4);
     const currentData = data.currentTex ?? empty;
     const iceData = data.iceTex ?? empty;
@@ -193,6 +194,7 @@ export class WebGLRenderer {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.pixels);
   }
 
+  // shader 中声明为 int 的 uniform（其余 number 均为 float，开关为 float 非 bool）
   private static readonly INT_UNIFORMS = new Set([
     'u_style', 'u_fbmOctaves', 'u_selectedCount', 'u_plateTotal',
   ]);
@@ -202,6 +204,7 @@ export class WebGLRenderer {
     const loc = this.uniformLoc[name];
     if (loc === undefined) return;
 
+    // shader 开关声明为 float，必须用 uniform1f 而非 uniform1i
     if (typeof value === 'boolean') {
       gl.uniform1f(loc, value ? 1.0 : 0.0);
     } else if (typeof value === 'number') {
@@ -215,8 +218,6 @@ export class WebGLRenderer {
   }
 
   render(params: RenderParams): void {
-    perfMonitor.beginFrame();
-    
     const gl = this.gl;
     const w = this.canvas.width;
     const h = this.canvas.height;

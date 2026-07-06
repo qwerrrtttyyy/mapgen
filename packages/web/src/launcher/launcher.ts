@@ -107,7 +107,11 @@ export class Launcher {
   }
 
   static shouldShow(): boolean {
-    return false;
+    try {
+      return localStorage.getItem(SKIP_KEY) !== '1';
+    } catch {
+      return true;
+    }
   }
 
   static setSkip(skip: boolean): void {
