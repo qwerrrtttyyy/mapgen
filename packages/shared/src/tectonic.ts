@@ -1,4 +1,10 @@
 import { createNoise } from './noise.js';
+import {
+  PLATE_ANGLE_JITTER, PLATE_DIST_MIN, PLATE_DIST_MAX,
+  PLATE_VELOCITY_SCALE, BOUNDARY_TYPE_THRESHOLD,
+  CONVERGENT_INTENSITY_SCALE, DIVERGENT_INTENSITY_SCALE, TRANSFORM_INTENSITY_SCALE,
+  BOUNDARY_VIS_BASE, BOUNDARY_VIS_SCALE,
+} from './constants.js';
 
 export interface Plate {
   id: number;
@@ -25,12 +31,12 @@ export function generatePlates(seed: number, count: number, width: number, heigh
   const noise = createNoise(seed, 'simplex');
 
   for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2 + noise.perlin2(i * 0.5, 0) * 0.5;
-    const dist = 0.2 + Math.abs(noise.perlin2(i * 0.3, 10)) * 0.3;
+    const angle = (i / count) * Math.PI * 2 + noise.perlin2(i * 0.5, 0) * PLATE_ANGLE_JITTER;
+    const dist = PLATE_DIST_MIN + Math.abs(noise.perlin2(i * 0.3, 10)) * PLATE_DIST_MAX;
     const x = 0.5 + Math.cos(angle) * dist;
     const y = 0.5 + Math.sin(angle) * dist;
-    const vx = noise.perlin2(i * 0.7, 20) * 0.02;
-    const vy = noise.perlin2(i * 0.7, 30) * 0.02;
+    const vx = noise.perlin2(i * 0.7, 20) * PLATE_VELOCITY_SCALE;
+    const vy = noise.perlin2(i * 0.7, 30) * PLATE_VELOCITY_SCALE;
     const isLand = i < Math.floor(count * landmass);
     const h = i * 137.508;
     const color = [
@@ -175,22 +181,17 @@ export function computeBoundaryTypes(
       }
 
       // Dot product of relative velocity with boundary normal.
-      // n = cx2 - cx1（从板块1指向板块2），relV = v2 - v1（板块2相对板块1）。
-      // 汇聚：板块1朝+n、板块2朝-n ⇒ relV·n < 0；离散：板块1朝-n、板块2朝+n ⇒ relV·n > 0。
       const dot = (relVX * nx_norm + relVY * ny_norm) / normLen;
 
-      if (dot < -0.003) {
-        // Convergent boundary: plates moving toward each other → higher mountains
+      if (dot < -BOUNDARY_TYPE_THRESHOLD) {
         boundaryType[idx] = 1;
-        boundaryIntensity[idx] = -dot * 10;
-      } else if (dot > 0.003) {
-        // Divergent boundary: plates moving apart → rifts/lower elevation
+        boundaryIntensity[idx] = -dot * CONVERGENT_INTENSITY_SCALE;
+      } else if (dot > BOUNDARY_TYPE_THRESHOLD) {
         boundaryType[idx] = 2;
-        boundaryIntensity[idx] = dot * 10;
+        boundaryIntensity[idx] = dot * DIVERGENT_INTENSITY_SCALE;
       } else {
-        // Transform boundary: plates sliding past → linear features
         boundaryType[idx] = 3;
-        boundaryIntensity[idx] = relSpeed * 5;
+        boundaryIntensity[idx] = relSpeed * TRANSFORM_INTENSITY_SCALE;
       }
     }
   }

@@ -12,6 +12,8 @@ import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js'
 import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';
 import { DebugPanel } from './ui/debugPanel.js';
+import { exportDialog } from './export/exportDialog.js';
+import { exportManager } from './export/exportManager.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
   style: 'u_style',
@@ -510,9 +512,10 @@ function bindEventBus(): void {
     scheduleRender();
   });
   bus.on('export.request', () => {
-    const c = $('glCanvas') as HTMLCanvasElement | null;
-    if (!c) return;
-    c.toBlob((blob) => {
+    // 快速导出 PNG（'e' 快捷键）
+    const canvas = $('glCanvas') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -521,6 +524,9 @@ function bindEventBus(): void {
       a.click();
       URL.revokeObjectURL(url);
     }, 'image/png');
+  });
+  bus.on('export.dialog.open', () => {
+    exportDialog.open();
   });
 }
 
@@ -551,15 +557,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  if (import.meta.env.DEV) {
-    (window as unknown as { __mapgen: unknown }).__mapgen = { state };
-  }
+  // 暴露 state 给导出对话框等模块访问
+  (window as unknown as { __mapgen: unknown }).__mapgen = { state };
 
   if (minimap) {
     minimapCtx = minimap.getContext('2d');
   }
 
   await initRenderer(canvas);
+  exportManager.setCanvas(canvas);
 
   checkpointMgr = new CheckpointManager();
   await checkpointMgr.load();

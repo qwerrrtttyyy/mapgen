@@ -1,6 +1,18 @@
 import { createNoise, type NoiseType, type FbmType } from './noise.js';
 import type { Plate } from './tectonic.js';
 import { computeSlope } from './slope.js';
+import {
+  CONTINENT_BASE_ELEVATION, CONTINENT_SHELF_DROP,
+  OCEAN_BASE_DEPTH, OCEAN_ABYSS_DROP,
+  LAND_RIDGED_WEIGHT, LAND_DETAIL_WEIGHT, OCEAN_DETAIL_WEIGHT,
+  RIDGE_ACTIVATION_THRESHOLD, COAST_DETAIL_RANGE, COAST_DETAIL_MAX_OFFSET,
+  BOUNDARY_SMOOTH_RADIUS, BOUNDARY_SMOOTH_PASSES,
+  CONVERGENT_MOUNTAIN_SCALE, CONVERGENT_NOISE_OFFSET, DIVERGENT_RIFT_SCALE,
+  EROSION_WATER_INCREMENT, EROSION_SLOPE_CAPACITY_FACTOR,
+  EROSION_STEP_FRACTION, EROSION_WATER_TRANSFER,
+  EROSION_DEFAULT_EVAPORATION, EROSION_MAX_CHANGE_THRESHOLD,
+  LAKE_MAX_ELEV_ABOVE_SEA, LAKE_FILL_RADIUS,
+} from './constants.js';
 
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
@@ -48,13 +60,11 @@ export function generateElevation(
       const normDist = plateDist[idx] / maxD; // 0 中心 → 1 边缘
       let elev: number;
       if (isContinental) {
-        // 大陆：内部高，边缘大陆架下降
-        const shelf = smoothstep(0.5, 1.0, normDist); // 边缘 ~0.4 衰减
-        elev = 0.35 - shelf * 0.15;
+        const shelf = smoothstep(0.5, 1.0, normDist);
+        elev = CONTINENT_BASE_ELEVATION - shelf * CONTINENT_SHELF_DROP;
       } else {
-        // 大洋：中心深，边缘略浅（洋中脊由构造力处理）
         const abyss = 1 - smoothstep(0.0, 0.7, normDist);
-        elev = -0.35 - abyss * 0.25;
+        elev = OCEAN_BASE_DEPTH - abyss * OCEAN_ABYSS_DROP;
       }
 
       // ── 2. 多尺度地形噪声（自然 FBM：谱权重+域形变+各向异性）──
@@ -64,22 +74,22 @@ export function generateElevation(
           { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 });
         const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
           { warpStrength: 0.4 });
-        elev += ridged * 0.12 + detail * 0.14;
+        elev += ridged * LAND_RIDGED_WEIGHT + detail * LAND_DETAIL_WEIGHT;
       } else {
         const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
           { warpStrength: 0.3 });
-        elev += detail * 0.10;
+        elev += detail * OCEAN_DETAIL_WEIGHT;
       }
 
       // ── 3. 山脊场（用于独立山脊图层）──
       const r = ridgeNoise.fbm(nx * 8, ny * 8, 4, 2, 0.5, 'ridged');
       ridge[idx] = r;
-      ridgeMask[idx] = r > 0.55 && elev > seaLevel ? 1 : 0;
+      ridgeMask[idx] = r > RIDGE_ACTIVATION_THRESHOLD && elev > seaLevel ? 1 : 0;
 
       // ── 4. 海岸细节抖动 ──
-      if (coastDetail > 0 && Math.abs(elev - seaLevel) < 0.12) {
+      if (coastDetail > 0 && Math.abs(elev - seaLevel) < COAST_DETAIL_RANGE) {
         const cn = detailNoise.fbm(nx * 18, ny * 18, 3, 2, 0.5, 'standard');
-        elev += cn * coastDetail * 0.06;
+        elev += cn * coastDetail * COAST_DETAIL_MAX_OFFSET;
       }
 
       elevation[idx] = elev < -1 ? -1 : elev > 1 ? 1 : elev;
@@ -97,8 +107,8 @@ export function generateElevation(
       const pid = plateId[idx];
       if (plateId[idx - 1] !== pid || plateId[idx + 1] !== pid ||
           plateId[idx - width] !== pid || plateId[idx + width] !== pid) {
-        for (let dy = -2; dy <= 2; dy++) {
-          for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -BOUNDARY_SMOOTH_RADIUS; dy <= BOUNDARY_SMOOTH_RADIUS; dy++) {
+          for (let dx = -BOUNDARY_SMOOTH_RADIUS; dx <= BOUNDARY_SMOOTH_RADIUS; dx++) {
             const ny = y + dy, nx = x + dx;
             if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
               boundaryBand[ny * width + nx] = 1;
@@ -109,7 +119,7 @@ export function generateElevation(
     }
   }
   const smoothed = new Float32Array(elevation);
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < BOUNDARY_SMOOTH_PASSES; pass++) {
     const src = pass === 0 ? elevation : smoothed;
     const dst = pass === 0 ? smoothed : elevation;
     for (let y = 1; y < height - 1; y++) {
@@ -118,8 +128,8 @@ export function generateElevation(
         if (!boundaryBand[idx]) { if (pass === 1) dst[idx] = src[idx]; continue; }
         let sum = src[idx];
         let cnt = 1;
-        for (let dy = -2; dy <= 2; dy++) {
-          for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -BOUNDARY_SMOOTH_RADIUS; dy <= BOUNDARY_SMOOTH_RADIUS; dy++) {
+          for (let dx = -BOUNDARY_SMOOTH_RADIUS; dx <= BOUNDARY_SMOOTH_RADIUS; dx++) {
             if (dx === 0 && dy === 0) continue;
             const ni = (y + dy) * width + (x + dx);
             sum += src[ni];
@@ -140,11 +150,11 @@ export function generateElevation(
       if (tf === 0) continue;
       const nx = x / width, ny = y / height;
       if (tf > 0) {
-        let m = tf * mountainFold * 0.8;
-        m += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.25;
+        let m = tf * mountainFold * CONVERGENT_MOUNTAIN_SCALE;
+        m += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * CONVERGENT_NOISE_OFFSET;
         elevation[idx] = Math.min(1, elevation[idx] + m);
       } else {
-        elevation[idx] = Math.max(-1, elevation[idx] + tf * mountainFold * 0.4);
+        elevation[idx] = Math.max(-1, elevation[idx] + tf * mountainFold * DIVERGENT_RIFT_SCALE);
       }
     }
   }
@@ -160,18 +170,17 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 
 export function hydraulicErosion(
   width: number, height: number, elevation: Float32Array,
-  iterations: number, strength: number, evaporationRate: number = 0.01
+  iterations: number, strength: number, evaporationRate: number = EROSION_DEFAULT_EVAPORATION
 ): Float32Array {
   const elev = new Float32Array(elevation);
   const size = width * height;
   const water = new Float32Array(size);
   const sediment = new Float32Array(size);
   const dirs = EROSION_DIRS;
-  const maxChangeThreshold = 1e-5;
 
   for (let iter = 0; iter < iterations; iter++) {
     for (let i = 0; i < size; i++) {
-      if (elev[i] > 0) water[i] += 0.01;
+      if (elev[i] > 0) water[i] += EROSION_WATER_INCREMENT;
     }
     let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
@@ -187,15 +196,15 @@ export function hydraulicErosion(
         }
         if (minDir >= 0) {
           const slp = e - minE;
-          const carryCapacity = slp * water[idx] * strength * (1 + slp * 5);
+          const carryCapacity = slp * water[idx] * strength * (1 + slp * EROSION_SLOPE_CAPACITY_FACTOR);
           const sDiff = carryCapacity - sediment[idx];
           let amount = 0;
           if (sDiff > 0) {
-            amount = Math.min(sDiff * 0.1, e - minE);
+            amount = Math.min(sDiff * EROSION_STEP_FRACTION, e - minE);
             elev[idx] -= amount;
             sediment[idx] += amount;
           } else {
-            amount = Math.min(-sDiff * 0.1, sediment[idx]);
+            amount = Math.min(-sDiff * EROSION_STEP_FRACTION, sediment[idx]);
             elev[idx] += amount;
             sediment[idx] -= amount;
           }
@@ -203,8 +212,8 @@ export function hydraulicErosion(
           const ddx = dirs[minDir * 2];
           const ddy = dirs[minDir * 2 + 1];
           const ni = idx + ddx + ddy * width;
-          const halfWater = water[idx] * 0.5;
-          const halfSediment = sediment[idx] * 0.5;
+          const halfWater = water[idx] * EROSION_WATER_TRANSFER;
+          const halfSediment = sediment[idx] * EROSION_WATER_TRANSFER;
           water[ni] += halfWater;
           sediment[ni] += halfSediment;
           water[idx] = halfWater;
@@ -213,7 +222,7 @@ export function hydraulicErosion(
       }
     }
     for (let i = 0; i < size; i++) water[i] *= (1 - evaporationRate);
-    if (totalChange < maxChangeThreshold) break;
+    if (totalChange < EROSION_MAX_CHANGE_THRESHOLD) break;
   }
   return elev;
 }
@@ -225,7 +234,7 @@ export function generateLakes(width: number, height: number, elevation: Float32A
     for (let x = 2; x < width - 2; x++) {
       const idx = y * width + x;
       const elev = elevation[idx];
-      if (elev > seaLevel && elev < seaLevel + 0.1) {
+      if (elev > seaLevel && elev < seaLevel + LAKE_MAX_ELEV_ABOVE_SEA) {
         const n = noise.fbm(x / width * 20, y / height * 20, 2, 2, 0.5, 'standard');
         if (n > 1 - lakeDensity) {
           let isBasin = true;
@@ -239,8 +248,8 @@ export function generateLakes(width: number, height: number, elevation: Float32A
           }
           if (isBasin) {
             lakes[idx] = 1;
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -LAKE_FILL_RADIUS; dy <= LAKE_FILL_RADIUS; dy++) {
+              for (let dx = -LAKE_FILL_RADIUS; dx <= LAKE_FILL_RADIUS; dx++) {
                 lakes[(y + dy) * width + (x + dx)] = 1;
               }
             }

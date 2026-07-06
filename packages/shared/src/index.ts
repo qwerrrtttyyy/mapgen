@@ -19,6 +19,7 @@ export { computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonIn
 export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming } from './debug.js';
 export { t, getPreferredLocale, createTranslator, translations, type Locale } from './i18n/index.js';
 export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
+export * from './constants.js';
 
 import { hashSeed } from './noise.js';
 import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
@@ -37,6 +38,12 @@ import { computeWatershed } from './watershed.js';
 import { computeVolcanism, type VolcanoSite, type Hotspot } from './volcanism.js';
 import { computeSeasonalVariation } from './seasons.js';
 import type { NoiseType, FbmType } from './noise.js';
+import {
+  BOUNDARY_VIS_BASE, BOUNDARY_VIS_SCALE,
+  CURRENT_TEX_OFFSET, CURRENT_SPEED_SCALE,
+  BIOME_ID_NORMALIZE, TEMP_ZONE_NORMALIZE, KOPPEN_BAND_NORMALIZE,
+  STREAM_ORDER_NORMALIZE, BASIN_ID_MAX, CALDERA_MASK_NORMALIZE, HOTSPOT_STRENGTH_NORMALIZE,
+} from './constants.js';
 
 const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
 
@@ -215,7 +222,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     const bt = computeBoundaryTypes(width, height, plateId, plates);
     tectonicForce = new Float32Array(size0); // 无构造力 → 无山脉
     for (let i = 0; i < boundary.length; i++) {
-      if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + bt.boundaryIntensity[i] * 0.3);
+      if (boundary[i] > 0) boundary[i] = Math.min(1, BOUNDARY_VIS_BASE + bt.boundaryIntensity[i] * BOUNDARY_VIS_SCALE);
     }
     checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
 
@@ -247,7 +254,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
       else if (boundaryType[i] === 3) tectonicForce[i] = boundaryIntensity[i] * 0.3;
     }
     for (let i = 0; i < boundary.length; i++) {
-      if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + boundaryIntensity[i] * 0.3);
+      if (boundary[i] > 0) boundary[i] = Math.min(1, BOUNDARY_VIS_BASE + boundaryIntensity[i] * BOUNDARY_VIS_SCALE);
     }
     checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
 
@@ -455,10 +462,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   }
 
   const invPlateCount = 1 / params.plateCount;
-  const inv4 = 0.25;
   const inv13 = 1 / 15;
-  const inv31 = 1 / 31;
-  const inv7 = 1 / 7;
   const seaLevel = params.seaLevel;
   const snowLine = params.snowLine;
 
@@ -468,7 +472,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     const elev = elevation[i];
     const temp = temperature[i];
     const moist = moisture[i];
-    const tz = tempZone[i] * inv4;
+    const tz = tempZone[i] * TEMP_ZONE_NORMALIZE;
 
     plateTex[i4 + 0] = pid * invPlateCount;
     plateTex[i4 + 1] = plateTypeArr[pid];
@@ -497,39 +501,39 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     tempTex[i4 + 3] = 0;
 
     // 洋流纹理 RGBA: R=vx G=vy B=tempDelta A=speed
-    currentTex[i4 + 0] = (currentVx[i] + 1) * 0.5; // [-1,1] → [0,1]
-    currentTex[i4 + 1] = (currentVy[i] + 1) * 0.5;
-    currentTex[i4 + 2] = (currentTempDelta[i] + 1) * 0.5; // [-1,1] → [0,1]
-    currentTex[i4 + 3] = Math.min(1, currentSpeed[i] * 4);
+    currentTex[i4 + 0] = (currentVx[i] + 1) * CURRENT_TEX_OFFSET;
+    currentTex[i4 + 1] = (currentVy[i] + 1) * CURRENT_TEX_OFFSET;
+    currentTex[i4 + 2] = (currentTempDelta[i] + 1) * CURRENT_TEX_OFFSET;
+    currentTex[i4 + 3] = Math.min(1, currentSpeed[i] * CURRENT_SPEED_SCALE);
 
     // 冰盖纹理 RGBA: R=landIce G=seaIce B=glacierVx A=glacierVy
     iceTex[i4 + 0] = landIce[i];
     iceTex[i4 + 1] = seaIce[i];
-    iceTex[i4 + 2] = (glacierVx[i] + 1) * 0.5; // [-1,1] → [0,1]
-    iceTex[i4 + 3] = (glacierVy[i] + 1) * 0.5;
+    iceTex[i4 + 2] = (glacierVx[i] + 1) * CURRENT_TEX_OFFSET;
+    iceTex[i4 + 3] = (glacierVy[i] + 1) * CURRENT_TEX_OFFSET;
 
     // v2 生物群系纹理 RGBA: R=biomeId/31 G=isLand(1/0) B=koppenBand(0..6) A=streamOrder/7
     const bId = biomeId[i];
     const bInfo = getBiomeInfo(bId);
-    biomeTex[i4 + 0] = bId * inv31;
+    biomeTex[i4 + 0] = bId * BIOME_ID_NORMALIZE;
     biomeTex[i4 + 1] = bInfo.isLand ? 1 : 0;
-    biomeTex[i4 + 2] = ['X','A','B','C','D','E','M'].indexOf(bInfo.koppen) * inv7;
-    biomeTex[i4 + 3] = streamOrder[i] * inv7;
+    biomeTex[i4 + 2] = ['X','A','B','C','D','E','M'].indexOf(bInfo.koppen) * KOPPEN_BAND_NORMALIZE;
+    biomeTex[i4 + 3] = streamOrder[i] * STREAM_ORDER_NORMALIZE;
 
     // v2 流域纹理 RGBA: R=basinId/65535 G=isDivide B=streamOrder/7 A=flowDir/255
     // basinId 可能很大或 -1（海洋），用最大值归一化
     const b = basinId[i];
-    watershedTex[i4 + 0] = b < 0 ? 0 : Math.min(1, b / 65535);
+    watershedTex[i4 + 0] = b < 0 ? 0 : Math.min(1, b / BASIN_ID_MAX);
     watershedTex[i4 + 1] = isDivide[i];
-    watershedTex[i4 + 2] = streamOrder[i] * inv7;
+    watershedTex[i4 + 2] = streamOrder[i] * STREAM_ORDER_NORMALIZE;
     // flowDir 暂用 0（已在 watershed 计算但暂不打包到纹理，节省带宽）
 
     // v2 火山纹理 RGBA: R=volcanoProb G=calderaMask(0/1/2) B=hotspotStrength A=volcanoSite(0/1)
     volcanismTex[i4 + 0] = volcanoProb[i];
-    volcanismTex[i4 + 1] = calderaMask[i] * 0.5;
+    volcanismTex[i4 + 1] = calderaMask[i] * CALDERA_MASK_NORMALIZE;
     // 热点强度：取最近热点（简化为全局最大值）
     volcanismTex[i4 + 2] = hotspots.length > 0
-      ? Math.max(...hotspots.map(h => h.strength)) * 0.5
+      ? Math.max(...hotspots.map(h => h.strength)) * HOTSPOT_STRENGTH_NORMALIZE
       : 0;
     volcanismTex[i4 + 3] = 0; // 具体火山位置通过 volcanoSites 列表传给 UI
   }

@@ -27,7 +27,7 @@ export class Toolbar extends Colleague {
     const listeners: [HTMLElement | null, () => void][] = [
       [randomSeed, () => this.send('randomSeed.request')],
       [generate, () => this.send('generate.request')],
-      [exportBtn, () => this.send('export.request')],
+      [exportBtn, () => this.send('export.dialog.open')],
       [saveCheckpoint, () => this.send('checkpoint.save.request')],
       [clearSelectionBtn, () => clearSelection()],
     ];
@@ -73,7 +73,7 @@ export class Toolbar extends Colleague {
     const listeners: [HTMLElement | null, () => void][] = [
       [randomSeed, () => bus.emit('randomSeed.request')],
       [generate, () => bus.emit('generate.request')],
-      [exportBtn, () => bus.emit('export.request')],
+      [exportBtn, () => bus.emit('export.dialog.open')],
       [saveCheckpoint, () => bus.emit('checkpoint.save.request')],
       [clearSelectionBtn, () => clearSelection()],
     ];
