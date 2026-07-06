@@ -1,0 +1,7 @@
+dist
+node_modules
+*.lock
+package-lock.json
+bun.lock
+.turbo
+coverage

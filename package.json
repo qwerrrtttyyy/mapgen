@@ -10,10 +10,19 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "lint:fix": "eslint packages/*/src --ext .ts,.tsx --fix",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,css,json,md}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx,css,json,md}\""
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
     "playwright": "^1.61.1",
+    "prettier": "^3.9.4",
     "puppeteer-core": "^25.2.1",
     "turbo": "^2.0.0"
   },
