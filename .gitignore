@@ -78,5 +78,7 @@ Thumbs.db
 # Dogfood test output
 dogfood-output/
 
-# Lock file conflict — using npm
-bun.lock
+# Lock file - using bun
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

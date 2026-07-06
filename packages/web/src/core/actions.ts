@@ -1,6 +1,7 @@
 import { bus } from './eventBus.js';
 import { patchParams, state, toMapParams, type UIParams } from './appState.js';
-import { mapGenWorker } from './mapGenWorker.js';
+import { getEngineProvider } from '../engine/factory.js';
+import { deserializeMapData } from '@mapgen/shared-types';
 
 const phaseLabels: Record<string, string> = {
   tectonic: '板块构造',
@@ -42,7 +43,10 @@ export function selectPlate(id: number, add = false): void {
     state.selectedPlates.clear();
     state.selectedPlates.add(id);
   }
-  bus.emit('selection.changed', { plates: Array.from(state.selectedPlates), regions: Array.from(state.selectedRegions) });
+  bus.emit('selection.changed', {
+    plates: Array.from(state.selectedPlates),
+    regions: Array.from(state.selectedRegions),
+  });
 }
 
 export function clearSelection(): void {
@@ -64,17 +68,33 @@ export function generate(): void {
   bus.emit('generating.started');
 
   const params = toMapParams(state.params);
+  const provider = getEngineProvider();
+  const controller = new AbortController();
 
-  mapGenWorker.generate(params, (progress, phaseName) => {
-    setProgress(progress, phaseName);
-  }).then((result) => {
-    state.mapData = result.mapData;
-    state.checkpoints = result.checkpoints;
-    bus.emit('generating.completed', result);
-  }).catch((err: string) => {
-    state.error = err;
-    bus.emit('generating.failed', err);
-  }).finally(() => {
-    state.isGenerating = false;
-  });
+  provider
+    .generate(
+      params,
+      progress => {
+        setProgress(progress.fraction, progress.phase);
+      },
+      controller.signal
+    )
+    .then(result => {
+      if (!result.ok) {
+        state.error = result.error.message;
+        bus.emit('generating.failed', result.error.message);
+        return;
+      }
+      const mapData = deserializeMapData(result.value.mapData);
+      state.mapData = mapData;
+      state.checkpoints = result.value.checkpoints ?? null;
+      bus.emit('generating.completed', { mapData });
+    })
+    .catch((err: Error) => {
+      state.error = err.message;
+      bus.emit('generating.failed', err.message);
+    })
+    .finally(() => {
+      state.isGenerating = false;
+    });
 }

@@ -6,7 +6,12 @@
  */
 
 import { MapgenManager } from './manager.js';
-import type { CreateConfigOptions, UpdateConfigOptions, ListFilter, MapgenParams } from './types.js';
+import type {
+  CreateConfigOptions,
+  UpdateConfigOptions,
+  ListFilter,
+  MapgenParams,
+} from './types.js';
 
 const manager = new MapgenManager();
 
@@ -30,7 +35,7 @@ function printTable(items: Record<string, unknown>[], columns: string[]): void {
     return;
   }
   for (const item of items) {
-    const parts = columns.map((col) => `${col}=${String(item[col] ?? '')}`);
+    const parts = columns.map(col => `${col}=${String(item[col] ?? '')}`);
     console.log(`  ${parts.join('  |  ')}`);
   }
 }
@@ -56,7 +61,9 @@ async function main(): Promise<void> {
     case 'create': {
       const name = args[1];
       if (!name) {
-        console.error('✗ Usage: mapgen create <name> [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>] [--noise <type>] [--fbm <type>]');
+        console.error(
+          '✗ Usage: mapgen create <name> [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>] [--noise <type>] [--fbm <type>]'
+        );
         process.exit(1);
       }
       const opts: CreateConfigOptions = {
@@ -99,7 +106,9 @@ async function main(): Promise<void> {
     case 'update': {
       const nameOrId = args[1];
       if (!nameOrId) {
-        console.error('✗ Usage: mapgen update <name-or-id> [--name <new-name>] [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>]');
+        console.error(
+          '✗ Usage: mapgen update <name-or-id> [--name <new-name>] [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>]'
+        );
         process.exit(1);
       }
       const updates: UpdateConfigOptions = {};
@@ -134,10 +143,14 @@ async function main(): Promise<void> {
           const result = await manager.listVersions();
           if (result.success) {
             console.log(`✓ ${result.message}`);
-            const data = result.data as { versions: { tag: string; createdAt: number; description?: string }[] };
+            const data = result.data as {
+              versions: { tag: string; createdAt: number; description?: string }[];
+            };
             for (const v of data.versions) {
               const marker = v.tag === (result.data as { current: string }).current ? ' *' : '';
-              console.log(`  ${v.tag}${marker}  (${new Date(v.createdAt).toISOString()})${v.description ? `  - ${v.description}` : ''}`);
+              console.log(
+                `  ${v.tag}${marker}  (${new Date(v.createdAt).toISOString()})${v.description ? `  - ${v.description}` : ''}`
+              );
             }
           } else {
             print(result);
@@ -241,6 +254,9 @@ function getArg(args: string[], flag: string): string | undefined {
 }
 
 function parseParams(args: string[]): MapgenParams {
+  const size = getArg(args, '--size');
+  const width = getArg(args, '--width');
+  const height = getArg(args, '--height');
   return {
     seedStr: getArg(args, '--seed') ?? 'default',
     plateCount: parseInt(getArg(args, '--plates') ?? '10', 10),
@@ -248,9 +264,9 @@ function parseParams(args: string[]): MapgenParams {
     noiseType: getArg(args, '--noise') ?? 'perlin',
     fbmType: getArg(args, '--fbm') ?? 'standard',
     mapAspect: getArg(args, '--aspect'),
-    mapSize: getArg(args, '--size') ? parseInt(getArg(args, '--size')!, 10) : undefined,
-    mapWidth: getArg(args, '--width') ? parseInt(getArg(args, '--width')!, 10) : undefined,
-    mapHeight: getArg(args, '--height') ? parseInt(getArg(args, '--height')!, 10) : undefined,
+    mapSize: size ? parseInt(size, 10) : undefined,
+    mapWidth: width ? parseInt(width, 10) : undefined,
+    mapHeight: height ? parseInt(height, 10) : undefined,
   };
 }
 
@@ -269,7 +285,7 @@ function parseParamsPartial(args: string[]): Partial<MapgenParams> {
   return params;
 }
 
-main().catch((err) => {
-  console.error(`✗ ${err.message}`);
+main().catch(err => {
+  console.error(`✗ ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

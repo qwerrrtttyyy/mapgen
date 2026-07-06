@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { computeSeasonalVariation, decodeSeasonDelta } from '../seasons.js';
 
 describe('季节性气候变差', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
 
   function buildElev(landFraction: number): Float32Array {
     const e = new Float32Array(W * H);
@@ -13,7 +14,10 @@ describe('季节性气候变差', () => {
   it('夏冬温度 delta 范围 [-1,1]', () => {
     const elevation = buildElev(0.5);
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
     });
     for (let i = 0; i < W * H; i++) {
       expect(result.summerTemp[i]).toBeGreaterThanOrEqual(-1);
@@ -26,7 +30,10 @@ describe('季节性气候变差', () => {
   it('极地季节振幅 > 赤道季节振幅', () => {
     const elevation = buildElev(0.5);
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
     });
     // 赤道 y = H/2, 极地 y = 0
     const equatorIdx = Math.floor(H / 2) * W + Math.floor(W / 2);
@@ -46,7 +53,10 @@ describe('季节性气候变差', () => {
       }
     }
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
     });
     const midY = Math.floor(H / 2);
     const landIdx = midY * W + 1;
@@ -68,7 +78,11 @@ describe('季节性气候变差', () => {
       }
     }
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0, coastDist,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
+      coastDist,
     });
     const midY = Math.floor(H / 2);
     const coastalIdx = midY * W + 1;
@@ -81,7 +95,10 @@ describe('季节性气候变差', () => {
   it('seasonTex 通道值在 [0,1]', () => {
     const elevation = buildElev(0.5);
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
     });
     for (let i = 0; i < W * H * 4; i++) {
       expect(result.seasonTex[i]).toBeGreaterThanOrEqual(0);
@@ -92,7 +109,10 @@ describe('季节性气候变差', () => {
   it('decodeSeasonDelta 4 季循环正确', () => {
     const elevation = buildElev(0.5);
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
     });
     const size = W * H;
     for (const season of ['spring', 'summer', 'autumn', 'winter'] as const) {
@@ -109,7 +129,10 @@ describe('季节性气候变差', () => {
   it('夏季温度 delta > 冬季温度 delta（中纬度陆地）', () => {
     const elevation = buildElev(0.5);
     const result = computeSeasonalVariation({
-      width: W, height: H, elevation, seaLevel: 0,
+      width: W,
+      height: H,
+      elevation,
+      seaLevel: 0,
     });
     const size = W * H;
     const summer = decodeSeasonDelta(result.seasonTex, size, 'summer');

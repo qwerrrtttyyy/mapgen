@@ -58,7 +58,8 @@ export class Toolbar extends Colleague {
         if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = false;
       }),
       this.subscribe('selection.changed', ({ plates }) => {
-        if (clearSelectionBtn) clearSelectionBtn.style.display = plates.length > 0 ? 'inline-block' : 'none';
+        if (clearSelectionBtn)
+          clearSelectionBtn.style.display = plates.length > 0 ? 'inline-block' : 'none';
       })
     );
   }
@@ -104,7 +105,8 @@ export class Toolbar extends Colleague {
         if (saveCheckpoint) (saveCheckpoint as HTMLButtonElement).disabled = false;
       }),
       bus.on('selection.changed', ({ plates }: { plates: number[] }) => {
-        if (clearSelectionBtn) clearSelectionBtn.style.display = plates.length > 0 ? 'inline-block' : 'none';
+        if (clearSelectionBtn)
+          clearSelectionBtn.style.display = plates.length > 0 ? 'inline-block' : 'none';
       })
     );
   }

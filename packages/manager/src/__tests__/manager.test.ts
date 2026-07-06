@@ -91,7 +91,10 @@ describe('CRUD - Create', () => {
       metadata: { tags: ['fantasy', 'continent'] },
     });
     expect(result.success).toBe(true);
-    expect((result.data as { metadata: { tags: string[] } }).metadata?.tags).toEqual(['fantasy', 'continent']);
+    expect((result.data as { metadata: { tags: string[] } }).metadata?.tags).toEqual([
+      'fantasy',
+      'continent',
+    ]);
   });
 });
 

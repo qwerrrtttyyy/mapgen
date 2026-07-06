@@ -1,4 +1,20 @@
 import { logger } from './logger.js';
+import type { MapData } from '@mapgen/core';
+import type { UIParams } from './appState.js';
+
+export interface EventMap {
+  'render.request': void;
+  'generate.request': void;
+  'generating.started': void;
+  progress: { fraction: number; label: string };
+  'generating.completed': { mapData: MapData };
+  'generating.failed': string;
+  'selection.changed': { plates: number[]; regions: number[] };
+  'export.request': void;
+  'params.changed': { key: string; value: unknown };
+  'params.committed': UIParams;
+  'map.hover': number;
+}
 
 export type EventHandler<T = unknown> = (payload: T) => void;
 
@@ -50,9 +66,9 @@ export class EventBus {
   }
 
   once<T>(event: string, handler: EventHandler<T>): () => void {
-    const wrap = (payload: T) => {
+    const wrap = (payload: T): void => {
       this.off(event, wrap as EventHandler<T>);
-      (handler as EventHandler<T>)(payload);
+      handler(payload);
     };
     return this.on(event, wrap as EventHandler<T>);
   }

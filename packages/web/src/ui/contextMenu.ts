@@ -23,7 +23,9 @@ export class ContextMenu extends Colleague {
     }
 
     this.clickHandler = () => this.hide();
-    this.keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') this.hide(); };
+    this.keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') this.hide();
+    };
     document.addEventListener('click', this.clickHandler);
     document.addEventListener('keydown', this.keyHandler);
     this.unsub.push(
@@ -39,7 +41,7 @@ export class ContextMenu extends Colleague {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
 
-    const emit = (event: string, payload?: unknown) => {
+    const emit = (event: string, payload?: unknown): void => {
       if (this.mediator) {
         this.send(event as never, payload as never);
       } else {
@@ -59,7 +61,7 @@ export class ContextMenu extends Colleague {
       const item = document.createElement('div');
       item.className = 'context-menu-item';
       item.textContent = label;
-      item.addEventListener('click', (e) => {
+      item.addEventListener('click', e => {
         e.stopPropagation();
         action();
         this.hide();

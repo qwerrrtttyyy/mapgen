@@ -41,7 +41,7 @@ import { t } from '@mapgen/shared';
 const sizeInfo = t('zh-CN', 'world.sizeInfo', {
   width: 512,
   height: 512,
-  pixels: 262144
+  pixels: 262144,
 });
 // 输出："512×512 · 262,144 像素"
 ```
@@ -72,10 +72,12 @@ const translate = createTranslator(locale);
 ## 翻译键位结构
 
 ### 应用标题
+
 - `app.title` - 应用标题
 - `app.logo` - Logo 文本
 
 ### 工具栏
+
 - `toolbar.generate` - 生成按钮
 - `toolbar.random` - 随机按钮
 - `toolbar.undo` - 撤销按钮
@@ -84,6 +86,7 @@ const translate = createTranslator(locale);
 - `toolbar.statusReady` - 状态文本（就绪）
 
 ### 面板标签
+
 - `tabs.world` - 世界
 - `tabs.terrain` - 地形
 - `tabs.climate` - 气候
@@ -91,6 +94,7 @@ const translate = createTranslator(locale);
 - `tabs.render` - 渲染
 
 ### 世界设置
+
 - `world.presets` - 世界预设
 - `world.seed` - 种子
 - `world.mapSize` - 地图尺寸
@@ -99,21 +103,25 @@ const translate = createTranslator(locale);
 - `world.simulation` - 世界模拟
 
 ### 地形设置
+
 - `terrain.basics` - 地形基础
 - `terrain.seaLevel` - 海平面
 - `terrain.erosionStrength` - 侵蚀强度
 
 ### 气候设置
+
 - `climate.parameters` - 气候参数
 - `climate.windDirection` - 风向
 
 ### 渲染设置
+
 - `render.style` - 渲染风格
 - `render.overlays` - 叠层
 - `render.lighting` - 光影
 - `render.laser` - 激光指针
 
 ### 编辑器工具
+
 - `editor.view` - 查看
 - `editor.brush` - 画笔
 - `editor.mountain` - 山脉
@@ -160,18 +168,20 @@ export type Locale = 'zh-CN' | 'en-US' | 'ja-JP' | 'fr-FR';
 对于静态 HTML 文件（如 `index.html`），建议：
 
 1. 使用 `data-i18n` 属性标记需要翻译的元素：
+
 ```html
 <button data-i18n="toolbar.generate">生成</button>
 ```
 
 2. 在 JavaScript 中初始化时批量替换：
+
 ```typescript
 import { createTranslator } from '@mapgen/shared';
 
 function initI18n() {
   const locale = getPreferredLocale();
   const translate = createTranslator(locale);
-  
+
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (key) {
@@ -194,13 +204,13 @@ import { getPreferredLocale, createTranslator } from '@mapgen/shared';
 
 class UIManager {
   private translate: ReturnType<typeof createTranslator>;
-  
+
   constructor() {
     const locale = getPreferredLocale();
     this.translate = createTranslator(locale);
     this.initUI();
   }
-  
+
   private initUI() {
     // 设置按钮文本
     const generateBtn = document.getElementById('btn-generate');
@@ -208,13 +218,13 @@ class UIManager {
       generateBtn.textContent = this.translate('toolbar.generate');
       generateBtn.setAttribute('title', this.translate('toolbar.generateTitle'));
     }
-    
+
     // 设置标签页
     const worldTab = document.querySelector('[data-tab="world"] span');
     if (worldTab) {
       worldTab.textContent = this.translate('tabs.world');
     }
-    
+
     // ... 其他 UI 元素
   }
 }
@@ -223,11 +233,13 @@ class UIManager {
 ## 故障排除
 
 ### 翻译显示为键路径
+
 - 检查翻译键是否正确
 - 确认语言包中是否存在该键
 - 查看控制台是否有错误信息
 
 ### 参数未正确替换
+
 - 确认参数名称与模板中的占位符匹配
 - 检查参数值是否为字符串或数字类型
 

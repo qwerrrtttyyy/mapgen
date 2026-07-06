@@ -1,10 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { detectTerrainRegions, type DetectedRegion } from '../editor.js';
-import { CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, recomputePlateGeometry } from '../editor.js';
+import { detectTerrainRegions } from '../editor.js';
+import {
+  CommandStack,
+  type Command,
+  applyBrushStroke,
+  applyVectorMountain,
+  applyVectorPolygon,
+  movePlate,
+  recomputePlateGeometry,
+} from '../editor.js';
 import type { Plate } from '../tectonic.js';
 
 describe('地形区检测 (AC-8.2)', () => {
-  const W = 50, H = 50;
+  const W = 50,
+    H = 50;
   const seaLevel = 0;
 
   it('识别山脉连通域', () => {
@@ -148,7 +157,8 @@ describe('命令栈 (AC-9.1, AC-9.2, BR-3)', () => {
 
 // ── 画笔 (AC-5.1, AC-5.2, C-1) ──
 describe('画笔涂刷 (AC-5.1, AC-5.2)', () => {
-  const W = 30, H = 30;
+  const W = 30,
+    H = 30;
 
   it('AC-5.1 抬升画笔在半径内抬升高程，中心强边缘弱', () => {
     const elev = new Float32Array(W * H).fill(0.2);
@@ -192,11 +202,15 @@ describe('画笔涂刷 (AC-5.1, AC-5.2)', () => {
 
 // ── 矢量工具 (AC-6.1, AC-6.2) ──
 describe('矢量工具 (AC-6.1, AC-6.2)', () => {
-  const W = 40, H = 40;
+  const W = 40,
+    H = 40;
 
   it('AC-6.1 矢量线生成山脉', () => {
     const elev = new Float32Array(W * H).fill(0.2);
-    const line = [[5, 20], [35, 20]]; // 水平线
+    const line = [
+      [5, 20],
+      [35, 20],
+    ]; // 水平线
     const cmd = applyVectorMountain(W, H, elev, line, 3, 0.6);
     cmd.redo();
     // 线上点抬升
@@ -209,7 +223,12 @@ describe('矢量工具 (AC-6.1, AC-6.2)', () => {
 
   it('AC-6.2 多边形设为海洋', () => {
     const elev = new Float32Array(W * H).fill(0.2);
-    const poly = [[10, 10], [30, 10], [30, 30], [10, 30]];
+    const poly = [
+      [10, 10],
+      [30, 10],
+      [30, 30],
+      [10, 30],
+    ];
     const cmd = applyVectorPolygon(W, H, elev, poly, 'sea');
     cmd.redo();
     // 多边形内部点低于海平面
@@ -223,7 +242,8 @@ describe('矢量工具 (AC-6.1, AC-6.2)', () => {
 
 // ── 板块拖拽 (AC-7.1) ──
 describe('板块拖拽 (AC-7.1)', () => {
-  const W = 30, H = 30;
+  const W = 30,
+    H = 30;
 
   it('AC-7.1 平移板块像素到新位置', () => {
     const plateId = new Float32Array(W * H);
@@ -244,14 +264,27 @@ describe('板块拖拽 (AC-7.1)', () => {
 
 // ── 板块几何重算（plate-paint 后修正 Bug-1）──
 describe('板块几何重算 recomputePlateGeometry', () => {
-  const W = 40, H = 40;
+  const W = 40,
+    H = 40;
   const seaLevel = 0;
 
   function makePlates(n: number): Plate[] {
     return Array.from({ length: n }, (_, i) => ({
-      id: i, x: 0.5, y: 0.5, vx: 0, vy: 0,
-      type: 'ocean' as const, color: [0, 0, 0], area: 0, boundary: 0, growth: 0,
-      elevation: 0, moisture: 0, temperature: 0, name: `P${i}`, selected: false,
+      id: i,
+      x: 0.5,
+      y: 0.5,
+      vx: 0,
+      vy: 0,
+      type: 'ocean' as const,
+      color: [0, 0, 0],
+      area: 0,
+      boundary: 0,
+      growth: 0,
+      elevation: 0,
+      moisture: 0,
+      temperature: 0,
+      name: `P${i}`,
+      selected: false,
     }));
   }
 

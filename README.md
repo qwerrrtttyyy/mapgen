@@ -4,7 +4,11 @@
 [![License](https://img.shields.io/github/license/qwerrrtttyyy/mapgen)](LICENSE)
 [![Build](https://img.shields.io/badge/build-monorepo-blue)](https://github.com/qwerrrtttyyy/mapgen)
 
+<<<<<<< HEAD
+基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。前端可独立运行全功能；可选 Node.js 后端提供 REST + SSE 远程生成与持久化。
+=======
 基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。纯前端，无需服务器。
+>>>>>>> main
 
 ## 截图
 
@@ -23,10 +27,20 @@
 
 ```bash
 bun install
+<<<<<<< HEAD
+bun run dev        # 前端开发模式 → http://localhost:3000
+bun run dev:server # 后端开发模式 → http://localhost:8787
+bun run dev:all    # 同时启动前端 + 后端
+bun run build      # 生产构建
+bun run build:server # 仅构建后端
+bun run typecheck  # 类型检查
+bun test           # 运行全部测试
+=======
 
 bun run dev      # 开发模式 → http://localhost:3000
 bun run build    # 生产构建
 bun run typecheck # 类型检查
+>>>>>>> main
 ```
 
 ## 功能
@@ -49,20 +63,27 @@ mapgen/
 ├── packages/
 │   ├── shared/          @mapgen/core — 核心引擎（TypeScript）
 │   │   └── src/
+│   │       ├── pipeline/      # 分阶段生成管线
 │   │       ├── noise.ts       # 噪声生成
 │   │       ├── tectonic.ts    # 板块构造
 │   │       ├── erosion.ts     # 侵蚀模拟
 │   │       ├── rivers.ts      # 河流生成
 │   │       └── regions.ts     # 区域分析
-│   └── web/             @mapgen/web — 前端应用（TypeScript + Vite）
-│       ├── public/
-│       │   ├── shaders/       # GLSL ES 3.00 着色器
-│       │   └── style.css      # Material Design 3 令牌
+│   ├── shared-types/    @mapgen/shared-types — 跨边界类型契约与序列化
+│   ├── web/             @mapgen/web — 前端应用（TypeScript + Vite）
+│   │   ├── public/
+│   │   │   ├── shaders/       # GLSL ES 3.00 着色器
+│   │   │   └── style.css      # Material Design 3 令牌
+│   │   └── src/
+│   │       ├── engine/        # MapGenEngine 抽象层（Local/Remote Provider）
+│   │       ├── app.ts         # 应用主逻辑
+│   │       └── renderer/
+│   │           ├── webgl.ts   # WebGL2 渲染器
+│   │           └── canvas2d.ts # Canvas2D 回退
+│   └── server/          @mapgen/server — 可选参考后端（Hono + in-memory）
 │       └── src/
-│           ├── app.ts         # 应用主逻辑
-│           └── renderer/
-│               ├── webgl.ts   # WebGL2 渲染器
-│               └── canvas2d.ts # Canvas2D 回退
+│           ├── routes/        # REST API
+│           └── services/      # 任务队列、地图存储
 ├── turbo.json           # Turborepo 配置
 ├── CHANGELOG.md         # 更新日志
 └── AGENTS.md            # AI Agent 上下文
@@ -78,6 +99,7 @@ mapgen/
 | 着色器 | GLSL ES 3.00 |
 | 构建 | Turborepo + Vite + tsc |
 | 包管理 | npm workspaces |
+| 后端（可选）| Hono + in-memory 存储 + REST + SSE |
 
 ## 许可证
 

@@ -53,13 +53,13 @@ describe('Slope 坡度计算', () => {
       const elevation = new Float32Array(W * H);
       const center = Math.floor(H / 2) * W + Math.floor(W / 2);
 
-      // 创建陡峭山峰（梯度 0.1/像素）
+      // 创建山峰
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const dx = x - W / 2;
           const dy = y - H / 2;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          elevation[y * W + x] = Math.max(0.1, 0.9 - dist * 0.1);
+          elevation[y * W + x] = Math.max(0.2, 0.8 - dist * 0.02);
         }
       }
 
@@ -67,7 +67,7 @@ describe('Slope 坡度计算', () => {
 
       // 山峰周围坡度应高
       const aroundPeak = center - W - 1;
-      expect(slope[aroundPeak]).toBeGreaterThan(0.05);
+      expect(slope[aroundPeak]).toBeGreaterThan(0.1);
     });
 
     it('边界处理正确', () => {

@@ -7,13 +7,11 @@ import { randomUUID } from 'node:crypto';
 import { Storage } from './storage.js';
 import type {
   MapgenConfig,
-  ManagerState,
   CommandResult,
   CreateConfigOptions,
   UpdateConfigOptions,
   ListFilter,
   VersionEntry,
-  MapgenParams,
 } from './types.js';
 
 export class MapgenManager {
@@ -103,7 +101,7 @@ export class MapgenManager {
     const id = this.generateId(options.name);
 
     // Check for duplicate name
-    if (state.configs.some((c) => c.name === options.name)) {
+    if (state.configs.some(c => c.name === options.name)) {
       return {
         success: false,
         message: `Config "${options.name}" already exists. Use "mapgen update" to modify it.`,
@@ -140,9 +138,7 @@ export class MapgenManager {
     await this.ensureInstalled();
 
     const state = await this.storage.readState();
-    const config = state.configs.find(
-      (c) => c.name === nameOrId || c.id === nameOrId
-    );
+    const config = state.configs.find(c => c.name === nameOrId || c.id === nameOrId);
 
     if (!config) {
       return {
@@ -171,22 +167,20 @@ export class MapgenManager {
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       configs = configs.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.description?.toLowerCase().includes(q)
+        c => c.name.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q)
       );
     }
 
     if (filter?.version) {
-      configs = configs.filter((c) => c.version === filter.version);
+      configs = configs.filter(c => c.version === filter.version);
     }
 
     // Sort
     const sortBy = filter?.sortBy ?? 'updatedAt';
     const sortDir = filter?.sortDir ?? 'desc';
     configs.sort((a, b) => {
-      const av = a[sortBy] as number | string;
-      const bv = b[sortBy] as number | string;
+      const av = a[sortBy];
+      const bv = b[sortBy];
       if (typeof av === 'string' && typeof bv === 'string') {
         return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       }
@@ -203,16 +197,11 @@ export class MapgenManager {
   /**
    * Update an existing config by name or id.
    */
-  async updateConfig(
-    nameOrId: string,
-    updates: UpdateConfigOptions
-  ): Promise<CommandResult> {
+  async updateConfig(nameOrId: string, updates: UpdateConfigOptions): Promise<CommandResult> {
     await this.ensureInstalled();
 
     const state = await this.storage.readState();
-    const idx = state.configs.findIndex(
-      (c) => c.name === nameOrId || c.id === nameOrId
-    );
+    const idx = state.configs.findIndex(c => c.name === nameOrId || c.id === nameOrId);
 
     if (idx === -1) {
       return {
@@ -225,7 +214,7 @@ export class MapgenManager {
 
     // Check name uniqueness if renaming
     if (updates.name && updates.name !== config.name) {
-      if (state.configs.some((c) => c.name === updates.name && c.id !== config.id)) {
+      if (state.configs.some(c => c.name === updates.name && c.id !== config.id)) {
         return {
           success: false,
           message: `Config "${updates.name}" already exists.`,
@@ -266,9 +255,7 @@ export class MapgenManager {
     await this.ensureInstalled();
 
     const state = await this.storage.readState();
-    const idx = state.configs.findIndex(
-      (c) => c.name === nameOrId || c.id === nameOrId
-    );
+    const idx = state.configs.findIndex(c => c.name === nameOrId || c.id === nameOrId);
 
     if (idx === -1) {
       return {
@@ -313,15 +300,12 @@ export class MapgenManager {
   /**
    * Create a new version snapshot.
    */
-  async createVersion(
-    tag: string,
-    description?: string
-  ): Promise<CommandResult> {
+  async createVersion(tag: string, description?: string): Promise<CommandResult> {
     await this.ensureInstalled();
 
     const state = await this.storage.readState();
 
-    if (state.versions.versions.some((v) => v.tag === tag)) {
+    if (state.versions.versions.some(v => v.tag === tag)) {
       return {
         success: false,
         message: `Version "${tag}" already exists.`,
@@ -332,7 +316,7 @@ export class MapgenManager {
       tag,
       createdAt: Date.now(),
       description,
-      configIds: state.configs.map((c) => c.id),
+      configIds: state.configs.map(c => c.id),
     };
 
     state.versions.versions.push(entry);
@@ -355,7 +339,7 @@ export class MapgenManager {
     await this.ensureInstalled();
 
     const state = await this.storage.readState();
-    const entry = state.versions.versions.find((v) => v.tag === tag);
+    const entry = state.versions.versions.find(v => v.tag === tag);
 
     if (!entry) {
       return {
@@ -389,7 +373,7 @@ export class MapgenManager {
       };
     }
 
-    const idx = state.versions.versions.findIndex((v) => v.tag === tag);
+    const idx = state.versions.versions.findIndex(v => v.tag === tag);
     if (idx === -1) {
       return {
         success: false,

@@ -32,20 +32,41 @@ export interface TerrainDetectOptions {
 
 // 类型 ID 编码（用于 Uint8Array 标记图）
 const TYPE_IDS: Record<string, number> = {
-  ocean: 0, mountain: 1, plateau: 2, basin: 3, desert: 4, forest: 5, plain: 6,
-  glacier: 7, delta: 8, volcano: 9, archipelago: 10,
+  ocean: 0,
+  mountain: 1,
+  plateau: 2,
+  basin: 3,
+  desert: 4,
+  forest: 5,
+  plain: 6,
+  glacier: 7,
+  delta: 8,
+  volcano: 9,
+  archipelago: 10,
 };
-const TYPE_NAMES = ['ocean', 'mountain', 'plateau', 'basin', 'desert', 'forest', 'plain', 'glacier', 'delta', 'volcano', 'archipelago'] as const;
+const TYPE_NAMES = [
+  'ocean',
+  'mountain',
+  'plateau',
+  'basin',
+  'desert',
+  'forest',
+  'plain',
+  'glacier',
+  'delta',
+  'volcano',
+  'archipelago',
+] as const;
 
 const SLOPE_MOUNTAIN = 0.15;
 const SLOPE_FLAT = 0.05;
-const GLACIER_ICE_THRESHOLD = 0.3;   // 陆地冰厚超过此值 → 冰川
-const DELTA_COAST_RANGE = 10;        // 距海岸像素数
-const DELTA_RIVER_THRESHOLD = 0.05;  // 河流掩码
-const VOLCANO_MAX_AREA = 100;        // 火山：孤立小山峰
-const VOLCANO_MIN_ELEV = 0.75;       // 火山最低高程
+const GLACIER_ICE_THRESHOLD = 0.3; // 陆地冰厚超过此值 → 冰川
+const DELTA_COAST_RANGE = 10; // 距海岸像素数
+const DELTA_RIVER_THRESHOLD = 0.05; // 河流掩码
+const VOLCANO_MAX_AREA = 100; // 火山：孤立小山峰
+const VOLCANO_MIN_ELEV = 0.75; // 火山最低高程
 const VOLCANO_PROB_THRESHOLD = 0.35; // v2: 火山概率阈值
-const ARCHIPELAGO_MAX_AREA = 50;     // 群岛：小岛最大面积
+const ARCHIPELAGO_MAX_AREA = 50; // 群岛：小岛最大面积
 
 /**
  * 单像素地形分类。
@@ -53,9 +74,13 @@ const ARCHIPELAGO_MAX_AREA = 50;     // 群岛：小岛最大面积
  * 冰川/三角洲/火山需要 options 中的 world-gen 数据，缺省时跳过。
  */
 function classifyTerrain(
-  elev: number, slope: number, moist: number,
-  seaLevel: number, snowLine: number,
-  idx: number, opts?: TerrainDetectOptions
+  elev: number,
+  slope: number,
+  moist: number,
+  seaLevel: number,
+  snowLine: number,
+  idx: number,
+  opts?: TerrainDetectOptions
 ): number {
   if (elev <= seaLevel) return TYPE_IDS.ocean;
   // 冰川：陆地 + 冰厚充足
@@ -63,14 +88,23 @@ function classifyTerrain(
   // 三角洲：近海岸 + 河流出海 + 低坡度 + 低海拔
   if (opts?.coastDist && opts?.riverMask) {
     const cd = opts.coastDist[idx];
-    if (cd > 0 && cd < DELTA_COAST_RANGE && opts.riverMask[idx] > DELTA_RIVER_THRESHOLD
-        && slope < 0.03 && elev < seaLevel + 0.08) {
+    if (
+      cd > 0 &&
+      cd < DELTA_COAST_RANGE &&
+      opts.riverMask[idx] > DELTA_RIVER_THRESHOLD &&
+      slope < 0.03 &&
+      elev < seaLevel + 0.08
+    ) {
       return TYPE_IDS.delta;
     }
   }
   // v2: 火山——高海拔 + 火山概率高 + 陡坡
-  if (opts?.volcanoProb && opts.volcanoProb[idx] > VOLCANO_PROB_THRESHOLD
-      && elev > seaLevel + 0.3 && slope > SLOPE_MOUNTAIN * 0.7) {
+  if (
+    opts?.volcanoProb &&
+    opts.volcanoProb[idx] > VOLCANO_PROB_THRESHOLD &&
+    elev > seaLevel + 0.3 &&
+    slope > SLOPE_MOUNTAIN * 0.7
+  ) {
     return TYPE_IDS.volcano;
   }
   if (elev > snowLine * 0.7 && slope > SLOPE_MOUNTAIN) return TYPE_IDS.mountain;
@@ -90,22 +124,35 @@ function classifyTerrain(
  * @param options 可选世界式数据（landIce/coastDist/riverMask），启用冰川/三角洲检测
  */
 export function detectTerrainRegions(
-  width: number, height: number,
-  elevation: Float32Array, slope: Float32Array, moisture: Float32Array,
-  seaLevel: number, snowLine: number,
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  slope: Float32Array,
+  moisture: Float32Array,
+  seaLevel: number,
+  snowLine: number,
   minArea: number = 30,
   options?: TerrainDetectOptions
 ): DetectedRegion[] {
   const size = width * height;
   const typeMap = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
-    typeMap[i] = classifyTerrain(elevation[i], slope[i], moisture[i], seaLevel, snowLine, i, options);
+    typeMap[i] = classifyTerrain(
+      elevation[i],
+      slope[i],
+      moisture[i],
+      seaLevel,
+      snowLine,
+      i,
+      options
+    );
   }
 
   const { labels, count } = labelComponents(
-    width, height,
-    (i) => typeMap[i] !== TYPE_IDS.ocean,
-    (i, j) => typeMap[i] === typeMap[j],
+    width,
+    height,
+    i => typeMap[i] !== TYPE_IDS.ocean,
+    (i, j) => typeMap[i] === typeMap[j]
   );
 
   const stats = computeComponentStats(width, height, labels);
@@ -159,19 +206,24 @@ export function detectTerrainRegions(
         regions.push({
           key: `r${regionCounter++}`,
           type: 'volcano' as TerrainType,
-          centroid, area: count2,
+          centroid,
+          area: count2,
         });
         continue;
       }
     }
 
-    if (count2 < ARCHIPELAGO_MAX_AREA && count2 >= 5
-        && ob > 0
-        && (ob + lb === 0 || ob / (ob + lb) > 0.7)) {
+    if (
+      count2 < ARCHIPELAGO_MAX_AREA &&
+      count2 >= 5 &&
+      ob > 0 &&
+      (ob + lb === 0 || ob / (ob + lb) > 0.7)
+    ) {
       smallFragments.push({
         key: `r${regionCounter++}`,
         type: 'archipelago' as TerrainType,
-        centroid, area: count2,
+        centroid,
+        area: count2,
       });
       continue;
     }
@@ -180,13 +232,15 @@ export function detectTerrainRegions(
       regions.push({
         key: `r${regionCounter++}`,
         type: TYPE_NAMES[t] as TerrainType,
-        centroid, area: count2,
+        centroid,
+        area: count2,
       });
     } else if (count2 >= 5) {
       smallFragments.push({
         key: `r${regionCounter++}`,
         type: TYPE_NAMES[t] as TerrainType,
-        centroid, area: count2,
+        centroid,
+        area: count2,
       });
     }
   }
@@ -208,7 +262,9 @@ export function detectTerrainRegions(
         }
       }
       if (cluster.length >= 3) {
-        let cx = 0, cy = 0, ca = 0;
+        let cx = 0,
+          cy = 0,
+          ca = 0;
         for (const ci of cluster) {
           cx += smallFragments[ci].centroid[0] * smallFragments[ci].area;
           cy += smallFragments[ci].centroid[1] * smallFragments[ci].area;
@@ -273,10 +329,18 @@ export class CommandStack {
     return true;
   }
 
-  get canUndo(): boolean { return this.undoStack.length > 0; }
-  get canRedo(): boolean { return this.redoStack.length > 0; }
-  get undoDepth(): number { return this.undoStack.length; }
-  get redoDepth(): number { return this.redoStack.length; }
+  get canUndo(): boolean {
+    return this.undoStack.length > 0;
+  }
+  get canRedo(): boolean {
+    return this.redoStack.length > 0;
+  }
+  get undoDepth(): number {
+    return this.undoStack.length;
+  }
+  get redoDepth(): number {
+    return this.redoStack.length;
+  }
 
   clear(): void {
     this.undoStack = [];
@@ -301,9 +365,13 @@ function gaussianFalloff(dist: number, radius: number): number {
  * @param target  raise/lower 调整高程；sea/land 设定陆海；plate-paint 切换板块
  */
 export function applyBrushStroke(
-  width: number, height: number,
+  width: number,
+  height: number,
   data: Float32Array,
-  cx: number, cy: number, radius: number, strength: number,
+  cx: number,
+  cy: number,
+  radius: number,
+  strength: number,
   target: BrushTarget,
   opts?: { targetPlateId?: number; seaLevel?: number }
 ): Command {
@@ -319,7 +387,8 @@ export function applyBrushStroke(
 
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
-      const dx = x - cx, dy = y - cy;
+      const dx = x - cx,
+        dy = y - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > r) continue;
       const idx = y * width + x;
@@ -357,15 +426,27 @@ export function applyBrushStroke(
 
   return {
     kind: 'brush',
-    redo: () => { for (const c of changes) data[c.idx] = c.after; },
-    undo: () => { for (const c of changes) data[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) data[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) data[c.idx] = c.before;
+    },
   };
 }
 
 // ── 矢量线 → 山脉（AC-6.1）──
 /** 点到线段最短距离 */
-function pointToSegmentDist(px: number, py: number, x0: number, y0: number, x1: number, y1: number): number {
-  const dx = x1 - x0, dy = y1 - y0;
+function pointToSegmentDist(
+  px: number,
+  py: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number
+): number {
+  const dx = x1 - x0,
+    dy = y1 - y0;
   const len2 = dx * dx + dy * dy;
   if (len2 === 0) return Math.hypot(px - x0, py - y0);
   let t = ((px - x0) * dx + (py - y0) * dy) / len2;
@@ -374,18 +455,26 @@ function pointToSegmentDist(px: number, py: number, x0: number, y0: number, x1: 
 }
 
 export function applyVectorMountain(
-  width: number, height: number,
+  width: number,
+  height: number,
   elevation: Float32Array,
-  line: number[][], width_: number, mountainHeight: number
+  line: number[][],
+  width_: number,
+  mountainHeight: number
 ): Command {
   const r = Math.max(1, width_);
   const changes: Array<{ idx: number; before: number; after: number }> = [];
 
   // 折线包围盒（含半径）
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const [x, y] of line) {
-    if (x < minX) minX = x; if (x > maxX) maxX = x;
-    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
   }
   const x0 = Math.max(0, Math.floor(minX) - r);
   const x1 = Math.min(width - 1, Math.ceil(maxX) + r);
@@ -397,7 +486,14 @@ export function applyVectorMountain(
       // 像素中心点到折线的最短距离
       let minDist = Infinity;
       for (let i = 0; i < line.length - 1; i++) {
-        const d = pointToSegmentDist(x + 0.5, y + 0.5, line[i][0], line[i][1], line[i + 1][0], line[i + 1][1]);
+        const d = pointToSegmentDist(
+          x + 0.5,
+          y + 0.5,
+          line[i][0],
+          line[i][1],
+          line[i + 1][0],
+          line[i + 1][1]
+        );
         if (d < minDist) minDist = d;
       }
       if (minDist > r) continue;
@@ -415,29 +511,37 @@ export function applyVectorMountain(
 
   return {
     kind: 'vector-mountain',
-    redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
-    undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) elevation[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) elevation[c.idx] = c.before;
+    },
   };
 }
 
 // ── 矢量多边形 → 地形（AC-6.2）──
 export function applyVectorPolygon(
-  width: number, height: number,
+  width: number,
+  height: number,
   elevation: Float32Array,
   polygon: number[][],
   target: VectorTarget,
   seaLevel: number = 0
 ): Command {
-  const targetElev = target === 'sea' ? seaLevel - 0.3
-    : target === 'lake' ? seaLevel + 0.05
-    : 0.2;
+  const targetElev = target === 'sea' ? seaLevel - 0.3 : target === 'lake' ? seaLevel + 0.05 : 0.2;
   const changes: Array<{ idx: number; before: number; after: number }> = [];
 
   // 多边形包围盒
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const [x, y] of polygon) {
-    if (x < minX) minX = x; if (x > maxX) maxX = x;
-    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
   }
   minX = Math.max(0, Math.floor(minX));
   maxX = Math.min(width - 1, Math.ceil(maxX));
@@ -448,9 +552,11 @@ export function applyVectorPolygon(
   function inside(x: number, y: number): boolean {
     let hit = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i][0], yi = polygon[i][1];
-      const xj = polygon[j][0], yj = polygon[j][1];
-      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 1e-9) + xi)) {
+      const xi = polygon[i][0],
+        yi = polygon[i][1];
+      const xj = polygon[j][0],
+        yj = polygon[j][1];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-9) + xi) {
         hit = !hit;
       }
     }
@@ -471,8 +577,12 @@ export function applyVectorPolygon(
 
   return {
     kind: 'vector-terrain',
-    redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
-    undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) elevation[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) elevation[c.idx] = c.before;
+    },
   };
 }
 
@@ -486,9 +596,12 @@ export function applyVectorPolygon(
  * 用于 plate-paint / 板块拖拽后局部重算高程前，修正 generateElevation 依赖的几何量。
  */
 export function recomputePlateGeometry(
-  width: number, height: number,
-  plateId: Float32Array, plates: Plate[],
-  elevation: Float32Array, seaLevel: number
+  width: number,
+  height: number,
+  plateId: Float32Array,
+  plates: Plate[],
+  elevation: Float32Array,
+  seaLevel: number
 ): { plateDist: Float32Array; plates: Plate[] } {
   const size = width * height;
   const n = plates.length;
@@ -501,7 +614,9 @@ export function recomputePlateGeometry(
       const idx = y * width + x;
       const pid = plateId[idx] | 0;
       if (pid < 0 || pid >= n) continue;
-      sumX[pid] += x; sumY[pid] += y; cnt[pid]++;
+      sumX[pid] += x;
+      sumY[pid] += y;
+      cnt[pid]++;
       sumElev[pid] += elevation[idx];
     }
   }
@@ -510,13 +625,14 @@ export function recomputePlateGeometry(
   const newPlates: Plate[] = plates.map((p, i) => {
     const ccx = cnt[i] > 0 ? sumX[i] / cnt[i] : p.x * width;
     const ccy = cnt[i] > 0 ? sumY[i] / cnt[i] : p.y * height;
-    cx[i] = ccx; cy[i] = ccy;
+    cx[i] = ccx;
+    cy[i] = ccy;
     const meanElev = cnt[i] > 0 ? sumElev[i] / cnt[i] : seaLevel - 0.3;
     return {
       ...p,
       x: ccx / width,
       y: ccy / height,
-      type: (meanElev > seaLevel ? 'continent' : 'ocean') as 'continent' | 'ocean',
+      type: meanElev > seaLevel ? 'continent' : 'ocean',
       area: cnt[i],
     };
   });
@@ -525,8 +641,12 @@ export function recomputePlateGeometry(
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
       const pid = plateId[idx] | 0;
-      if (pid < 0 || pid >= n) { plateDist[idx] = 0; continue; }
-      const dx = x - cx[pid], dy = y - cy[pid];
+      if (pid < 0 || pid >= n) {
+        plateDist[idx] = 0;
+        continue;
+      }
+      const dx = x - cx[pid],
+        dy = y - cy[pid];
       plateDist[idx] = Math.sqrt(dx * dx + dy * dy);
     }
   }
@@ -535,10 +655,12 @@ export function recomputePlateGeometry(
 
 // ── 板块拖拽（AC-7.1）──
 export function movePlate(
-  width: number, height: number,
+  width: number,
+  height: number,
   plateId: Float32Array,
   plateIdValue: number,
-  dx: number, dy: number
+  dx: number,
+  dy: number
 ): Command {
   const size = width * height;
   // 收集该板块所有像素位置
@@ -552,7 +674,8 @@ export function movePlate(
     if (!affected.has(idx)) affected.set(idx, plateId[idx]);
     const x = idx % width;
     const y = (idx / width) | 0;
-    const nx = x + dx, ny = y + dy;
+    const nx = x + dx,
+      ny = y + dy;
     if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
       const nidx = ny * width + nx;
       if (!affected.has(nidx)) affected.set(nidx, plateId[nidx]);
@@ -566,7 +689,8 @@ export function movePlate(
       for (const idx of srcPositions) {
         const x = idx % width;
         const y = (idx / width) | 0;
-        const nx = x + dx, ny = y + dy;
+        const nx = x + dx,
+          ny = y + dy;
         if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
           plateId[ny * width + nx] = plateIdValue;
         }

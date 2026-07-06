@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { generateRivers } from '../rivers.js';
 
 // 构造一个确定性斜坡：北高南低，底部为海
-function makeSlopeElevation(W: number, H: number, seaLevel: number): Float32Array {
+function makeSlopeElevation(W: number, H: number, _seaLevel: number): Float32Array {
   const elev = new Float32Array(W * H);
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
@@ -24,7 +24,8 @@ function makeMoisture(W: number, H: number, val: number): Float32Array {
 
 describe('河流系统 (AC-2.1, AC-2.2)', () => {
   it('AC-2.1 河流不逆坡：每条河全程高程递减', () => {
-    const W = 48, H = 48;
+    const W = 48,
+      H = 48;
     const seaLevel = 0;
     const elev = makeSlopeElevation(W, H, seaLevel);
     const moist = makeMoisture(W, H, 0.7);
@@ -42,7 +43,8 @@ describe('河流系统 (AC-2.1, AC-2.2)', () => {
   });
 
   it('AC-2.1 河流终点低于源头（下流而非上爬）', () => {
-    const W = 48, H = 48;
+    const W = 48,
+      H = 48;
     const seaLevel = 0;
     const elev = makeSlopeElevation(W, H, seaLevel);
     const moist = makeMoisture(W, H, 0.7);
@@ -58,7 +60,8 @@ describe('河流系统 (AC-2.1, AC-2.2)', () => {
   });
 
   it('AC-2.2 下游宽度不小于上游（累积流量驱动）', () => {
-    const W = 64, H = 64;
+    const W = 64,
+      H = 64;
     const seaLevel = 0;
     const elev = makeSlopeElevation(W, H, seaLevel);
     const moist = makeMoisture(W, H, 0.8);
@@ -72,7 +75,8 @@ describe('河流系统 (AC-2.1, AC-2.2)', () => {
   });
 
   it('河流数量受 count 参数控制', () => {
-    const W = 64, H = 64;
+    const W = 64,
+      H = 64;
     const seaLevel = 0;
     const elev = makeSlopeElevation(W, H, seaLevel);
     const moist = makeMoisture(W, H, 0.8);

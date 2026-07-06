@@ -41,7 +41,7 @@ export interface OceanCurrentInput {
  * 约定：y=0 为南极（lat=-1）、y=H 为北极（lat=+1）—— 与 regions.ts 一致。
  */
 export function computeOceanCurrents(input: OceanCurrentInput): OceanCurrentResult {
-  const { width, height, elevation, seaLevel, coastDist, windDirX, windDirY, seed } = input;
+  const { width, height, elevation, seaLevel, coastDist, windDirX, windDirY } = input;
   const rainStrength = input.rainStrength ?? 1;
   const size = width * height;
   const invH = 1 / height;
@@ -93,7 +93,8 @@ export function computeOceanCurrents(input: OceanCurrentInput): OceanCurrentResu
       const sinA = Math.sin(ekmanAngle);
       const rx = cvx * cosA - cvy * sinA;
       const ry = cvx * sinA + cvy * cosA;
-      cvx = rx; cvy = ry;
+      cvx = rx;
+      cvy = ry;
       vx[idx] = cvx;
       vy[idx] = cvy;
     }
@@ -127,12 +128,16 @@ export function computeOceanCurrents(input: OceanCurrentInput): OceanCurrentResu
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
         if (elevation[idx] > seaLevel) continue;
-        let sx = 0, sy = 0, cnt = 0;
+        let sx = 0,
+          sy = 0,
+          cnt = 0;
         for (let dy = -1; dy <= 1; dy++) {
           for (let dx = -1; dx <= 1; dx++) {
             const ni = idx + dy * width + dx;
             if (elevation[ni] > seaLevel) continue;
-            sx += srcX[ni]; sy += srcY[ni]; cnt++;
+            sx += srcX[ni];
+            sy += srcY[ni];
+            cnt++;
           }
         }
         if (cnt > 0) {
@@ -141,7 +146,8 @@ export function computeOceanCurrents(input: OceanCurrentInput): OceanCurrentResu
         }
       }
     }
-    void tmpX; void tmpY;
+    void tmpX;
+    void tmpY;
   }
 
   // ── 阶段 4：流速模长 + 温度增量 ──
@@ -169,12 +175,15 @@ export function computeOceanCurrents(input: OceanCurrentInput): OceanCurrentResu
     if (elevation[i] <= seaLevel) continue; // 陆地
     if (coastDist[i] <= 0 || coastDist[i] > COASTAL_RANGE) continue;
     // 取该陆地像素最近的海洋邻居的 tempDelta 平均
-    const x = i % width, y = (i / width) | 0;
-    let sum = 0, cnt = 0;
+    const x = i % width,
+      y = (i / width) | 0;
+    let sum = 0,
+      cnt = 0;
     const r = 3;
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
-        const nx = x + dx, ny = y + dy;
+        const nx = x + dx,
+          ny = y + dy;
         if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
         const ni = ny * width + nx;
         if (elevation[ni] > seaLevel) continue;

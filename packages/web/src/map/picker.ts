@@ -41,8 +41,13 @@ export class MapPicker {
       moisture: this.mapData.moistTex[i4],
       temperature: this.mapData.moistTex[i4 + 2],
       rainfall: this.mapData.moistTex[i4 + 1],
-      plateId: Math.max(0, Math.min(this.mapData.plates.length - 1,
-        Math.round(this.mapData.plateTex[i4] * this.mapData.plates.length))),
+      plateId: Math.max(
+        0,
+        Math.min(
+          this.mapData.plates.length - 1,
+          Math.round(this.mapData.plateTex[i4] * this.mapData.plates.length)
+        )
+      ),
       regionId: -1,
       biome: Math.floor(this.mapData.tempTex[i4 + 2] * 8),
     };

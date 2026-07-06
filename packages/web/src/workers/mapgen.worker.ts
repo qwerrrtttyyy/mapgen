@@ -45,7 +45,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       const { mapData, checkpoints } = result;
 
       const transferables: Transferable[] = [];
-      const addBuf = (arr: ArrayBufferView | undefined) => {
+      const addBuf = (arr: ArrayBufferView | undefined): void => {
         if (arr && arr.buffer) transferables.push(arr.buffer);
       };
 

@@ -9,6 +9,16 @@ interface PendingRequest {
   onProgress: ProgressCallback | null;
 }
 
+interface WorkerMessage {
+  type: 'ready' | 'progress' | 'complete' | 'error';
+  requestId?: number;
+  progress?: number;
+  phase?: string;
+  mapData?: MapData;
+  checkpoints?: Record<string, unknown>;
+  message?: string;
+}
+
 class MapGenWorkerManager {
   private worker: Worker | null = null;
   private pending = new Map<number, PendingRequest>();
@@ -22,11 +32,10 @@ class MapGenWorkerManager {
     if (this.worker) return true;
 
     try {
-      this.worker = new Worker(
-        new URL('../workers/mapgen.worker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      this.worker.onmessage = (e: MessageEvent) => this.handleMessage(e.data);
+      this.worker = new Worker(new URL('../workers/mapgen.worker.ts', import.meta.url), {
+        type: 'module',
+      });
+      this.worker.onmessage = (e: MessageEvent) => this.handleMessage(e.data as WorkerMessage);
       this.worker.onerror = (e: ErrorEvent) => {
         this.initError = e.message;
         this.failAll(e.message);
@@ -39,15 +48,7 @@ class MapGenWorkerManager {
     }
   }
 
-  private handleMessage(msg: {
-    type: 'ready' | 'progress' | 'complete' | 'error';
-    requestId?: number;
-    progress?: number;
-    phase?: string;
-    mapData?: MapData;
-    checkpoints?: Record<string, unknown>;
-    message?: string;
-  }): void {
+  private handleMessage(msg: WorkerMessage): void {
     if (msg.type === 'ready') {
       this.workerReady = true;
       this.flushQueue();
@@ -75,15 +76,17 @@ class MapGenWorkerManager {
   private flushQueue(): void {
     if (!this.worker || !this.workerReady) return;
     while (this.queued.length > 0) {
-      const req = this.queued.shift()!;
+      const req = this.queued.shift();
+      if (!req) continue;
       this.sendToWorker(req);
     }
   }
 
   private sendToWorker(req: PendingRequest): number {
+    if (!this.worker) throw new Error('Worker not ready');
     const requestId = this.nextRequestId++;
     this.pending.set(requestId, req);
-    this.worker!.postMessage({ type: 'generate', requestId, params: req.params });
+    this.worker.postMessage({ type: 'generate', requestId, params: req.params });
     return requestId;
   }
 
@@ -104,7 +107,7 @@ class MapGenWorkerManager {
 
   generate(params: MapParams, onProgress?: ProgressCallback): Promise<GenerateResult> {
     return new Promise((resolve, reject) => {
-      const runSync = () => {
+      const runSync = (): void => {
         requestAnimationFrame(() => {
           setTimeout(() => {
             try {
@@ -125,7 +128,7 @@ class MapGenWorkerManager {
       const req: PendingRequest = {
         params,
         resolve,
-        reject: (msg: string) => {
+        reject: (_msg: string) => {
           this.destroyWorker();
           this.initError = null;
           this.ensureWorker();

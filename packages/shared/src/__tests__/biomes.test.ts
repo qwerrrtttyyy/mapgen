@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { classifyBiomes, getBiomeInfo, BIOME_INFO, BIOME_COUNT } from '../biomes.js';
 
 describe('生物群系分类 (Köppen-Geiger)', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
 
   function buildField(fn: (i: number) => number): Float32Array {
     const arr = new Float32Array(W * H);
@@ -23,8 +24,12 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
     const rainfall = buildField(() => 0.5);
     const moisture = buildField(() => 0.5);
     const { biomeId } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
     });
     // 全部应为 0（深海）
     for (let i = 0; i < W * H; i++) {
@@ -38,8 +43,12 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
     const rainfall = buildField(() => 0.85);
     const moisture = buildField(() => 0.85); // 高湿
     const { biomeId } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
     });
     expect(biomeId[0]).toBe(2);
   });
@@ -50,8 +59,12 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
     const rainfall = buildField(() => 0.3);
     const moisture = buildField(() => 0.3);
     const { biomeId } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
     });
     expect(biomeId[0]).toBe(20); // EF 极地冰盖
   });
@@ -62,8 +75,12 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
     const rainfall = buildField(() => 0.4);
     const moisture = buildField(() => 0.4);
     const { biomeId } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
     });
     // 应为高山寒漠(24)或高山苔原(21)
     expect([21, 24]).toContain(biomeId[0]);
@@ -76,8 +93,13 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
     const moisture = buildField(() => 0.5);
     const landIce = buildField(() => 0.6); // 冰川覆盖
     const { biomeId } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5, landIce,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
+      landIce,
     });
     expect(biomeId[0]).toBe(28);
   });
@@ -89,8 +111,13 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
     const moisture = buildField(() => 0.4);
     const lakeMask = buildField(() => 0.8); // 湖泊
     const { biomeId } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5, lakeMask,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
+      lakeMask,
     });
     expect(biomeId[0]).toBe(30);
   });
@@ -103,13 +130,17 @@ describe('生物群系分类 (Köppen-Geiger)', () => {
   });
 
   it('biomeNormalized 在 [0,1] 范围内', () => {
-    const elevation = buildField((i) => i % 2 === 0 ? 0.3 : -0.3);
+    const elevation = buildField(i => (i % 2 === 0 ? 0.3 : -0.3));
     const temperature = buildField(() => 0.5);
     const rainfall = buildField(() => 0.5);
     const moisture = buildField(() => 0.5);
     const { biomeNormalized } = classifyBiomes({
-      elevation, temperature, rainfall, moisture,
-      seaLevel: 0, snowLine: 0.5,
+      elevation,
+      temperature,
+      rainfall,
+      moisture,
+      seaLevel: 0,
+      snowLine: 0.5,
     });
     for (let i = 0; i < W * H; i++) {
       expect(biomeNormalized[i]).toBeGreaterThanOrEqual(0);

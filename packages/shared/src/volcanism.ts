@@ -78,7 +78,7 @@ function makeRng(seed: number): () => number {
     s ^= s << 13;
     s ^= s >>> 17;
     s ^= s << 5;
-    return ((s >>> 0) / 4294967296);
+    return (s >>> 0) / 4294967296;
   };
 }
 
@@ -96,7 +96,7 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
   const size = width * height;
   const intensity = input.intensity ?? 1;
   const hotspotCount = input.hotspotCount ?? 3;
-  const rng = makeRng(seed ^ 0x5C7A);
+  const rng = makeRng(seed ^ 0x5c7a);
 
   const volcanoProb = new Float32Array(size);
   const calderaMask = new Uint8Array(size);
@@ -123,11 +123,16 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
     const pid = Math.round(plateId[hy * width + hx]);
     const plate = plates[pid] ?? plates[0];
     // 板块漂移方向（vx, vy 归一化）
-    let pvx = 1, pvy = 0;
+    let pvx = 1,
+      pvy = 0;
     if (plate) {
-      const vx = plate.vx, vy = plate.vy;
+      const vx = plate.vx,
+        vy = plate.vy;
       const mag = Math.sqrt(vx * vx + vy * vy);
-      if (mag > 1e-4) { pvx = vx / mag; pvy = vy / mag; }
+      if (mag > 1e-4) {
+        pvx = vx / mag;
+        pvy = vy / mag;
+      }
     }
 
     // 沿漂移反方向（板块从反方向移动过来）画火山链
@@ -144,7 +149,8 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
       // 高斯涂抹
       for (let dy = -R; dy <= R; dy++) {
         for (let dx = -R; dx <= R; dx++) {
-          const nx = cx + dx, ny = cy + dy;
+          const nx = cx + dx,
+            ny = cy + dy;
           if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
           const d2 = dx * dx + dy * dy;
           if (d2 > R * R) continue;
@@ -168,8 +174,10 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
       let prob = 0;
       if (btArr) {
         const t = btArr[idx];
-        if (t === 1) prob = 0.7 * intensity; // 汇聚 → 火山弧
-        else if (t === 2) prob = 0.35 * intensity; // 离散 → 洋中脊
+        if (t === 1)
+          prob = 0.7 * intensity; // 汇聚 → 火山弧
+        else if (t === 2)
+          prob = 0.35 * intensity; // 离散 → 洋中脊
         else if (t === 3) prob = 0.15 * intensity; // 转换 → 裂谷
       } else {
         prob = 0.4 * intensity;
@@ -177,7 +185,8 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
       // 涂抹到 5 像素半径
       for (let dy = -2; dy <= 2; dy++) {
         for (let dx = -2; dx <= 2; dx++) {
-          const nx = x + dx, ny = y + dy;
+          const nx = x + dx,
+            ny = y + dy;
           if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
           const ni = ny * width + nx;
           const falloff = 1 - Math.sqrt(dx * dx + dy * dy) / 3;
@@ -219,11 +228,16 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
         else kind = 'arc';
       } else {
         // 找最近热点
-        let minD2 = Infinity, nearestH = -1;
+        let minD2 = Infinity,
+          nearestH = -1;
         for (const h of hotspots) {
-          const dx = h.x - x, dy = h.y - y;
+          const dx = h.x - x,
+            dy = h.y - y;
           const d2 = dx * dx + dy * dy;
-          if (d2 < minD2) { minD2 = d2; nearestH = h.id; }
+          if (d2 < minD2) {
+            minD2 = d2;
+            nearestH = h.id;
+          }
         }
         if (minD2 < 100) {
           kind = 'hotspot';
@@ -238,7 +252,8 @@ export function computeVolcanism(input: VolcanismInput): VolcanismResult {
         const calderaR = 3;
         for (let dy = -calderaR; dy <= calderaR; dy++) {
           for (let dx = -calderaR; dx <= calderaR; dx++) {
-            const nx = x + dx, ny = y + dy;
+            const nx = x + dx,
+              ny = y + dy;
             if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
             const d = Math.sqrt(dx * dx + dy * dy);
             if (d < calderaR * 0.4) {

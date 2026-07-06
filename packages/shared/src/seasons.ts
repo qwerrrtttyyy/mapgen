@@ -81,9 +81,6 @@ export function computeSeasonalVariation(input: SeasonInput): SeasonResult {
 
     // 季节振幅：极地（absLat=1）=0.5；赤道（absLat=0）=0.05
     const latAmplitude = 0.05 + absLat * 0.45;
-    // 大陆度系数（陆地，越内陆季节振幅越大）
-    const isLand = elevation[row] > seaLevel; // 仅作 row-level 提示
-
     for (let x = 0; x < width; x++) {
       const idx = row + x;
       const elev = elevation[idx];
@@ -101,7 +98,7 @@ export function computeSeasonalVariation(input: SeasonInput): SeasonResult {
 
       // 总振幅 = 纬度振幅 × (海洋 0.4 / 内陆 1.0) × 高海拔衰减
       // 海洋热容大 → 季节振幅小
-      const amp = latAmplitude * (landHere ? (0.5 + cont * 0.5) : 0.4) * altFactor;
+      const amp = latAmplitude * (landHere ? 0.5 + cont * 0.5 : 0.4) * altFactor;
 
       // 夏季：暖 delta（北半球 lat>0 夏季 = +amp，南半球 lat<0 夏季 = +amp 因为对称）
       // 简化：夏季=+amp, 冬季=-amp（南北半球都按本半球的夏天处理）
@@ -135,7 +132,7 @@ export function computeSeasonalVariation(input: SeasonInput): SeasonResult {
           summerRainDelta = -itczStrength * 0.4 * (landHere ? 1 : 0.5);
           winterRainDelta = itczStrength * 0.4 * (landHere ? 1 : 0.5);
         }
-      } else if (absLat >= 0.30 && absLat <= 0.45) {
+      } else if (absLat >= 0.3 && absLat <= 0.45) {
         // 副热带地中海带：夏干冬雨（仅陆地西岸，简化为全陆地）
         if (landHere) {
           summerRainDelta = -0.2;
@@ -169,15 +166,21 @@ export function computeSeasonalVariation(input: SeasonInput): SeasonResult {
   const seasonTex = new Float32Array(size * 4);
   for (let i = 0; i < size; i++) {
     const i4 = i * 4;
-    seasonTex[i4]     = (summerTemp[i] + 1) * 0.5;
+    seasonTex[i4] = (summerTemp[i] + 1) * 0.5;
     seasonTex[i4 + 1] = (winterTemp[i] + 1) * 0.5;
     seasonTex[i4 + 2] = (summerRain[i] + 1) * 0.5;
     seasonTex[i4 + 3] = (winterRain[i] + 1) * 0.5;
   }
 
   return {
-    springTemp, summerTemp, autumnTemp, winterTemp,
-    springRain, summerRain, autumnRain, winterRain,
+    springTemp,
+    summerTemp,
+    autumnTemp,
+    winterTemp,
+    springRain,
+    summerRain,
+    autumnRain,
+    winterRain,
     seasonTex,
   };
 }
@@ -186,7 +189,7 @@ export function computeSeasonalVariation(input: SeasonInput): SeasonResult {
 export function decodeSeasonDelta(
   seasonTex: Float32Array,
   size: number,
-  season: Season,
+  season: Season
 ): { tempDelta: Float32Array; rainDelta: Float32Array } {
   const tempDelta = new Float32Array(size);
   const rainDelta = new Float32Array(size);
@@ -201,10 +204,22 @@ export function decodeSeasonDelta(
     const autumnT = (summerT + winterT) * 0.1;
     const autumnR = (summerR + winterR) * 0.5;
     switch (season) {
-      case 'spring': tempDelta[i] = springT; rainDelta[i] = springR; break;
-      case 'summer': tempDelta[i] = summerT; rainDelta[i] = summerR; break;
-      case 'autumn': tempDelta[i] = autumnT; rainDelta[i] = autumnR; break;
-      case 'winter': tempDelta[i] = winterT; rainDelta[i] = winterR; break;
+      case 'spring':
+        tempDelta[i] = springT;
+        rainDelta[i] = springR;
+        break;
+      case 'summer':
+        tempDelta[i] = summerT;
+        rainDelta[i] = summerR;
+        break;
+      case 'autumn':
+        tempDelta[i] = autumnT;
+        rainDelta[i] = autumnR;
+        break;
+      case 'winter':
+        tempDelta[i] = winterT;
+        rainDelta[i] = winterR;
+        break;
     }
   }
   return { tempDelta, rainDelta };

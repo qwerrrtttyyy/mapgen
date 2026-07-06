@@ -22,12 +22,12 @@
 
 请描述您如何验证此变更：
 
-- [ ] 本地开发测试通过 (`npm run dev`)
-- [ ] TypeScript 类型检查通过 (`npm run typecheck`)
-- [ ] 单元测试通过 (`npm run test`)
-- [ ] 构建成功 (`npm run build`)
-- [ ] ESLint 检查通过 (`npm run lint`)
-- [ ] Prettier 格式化通过 (`npm run format:check`)
+- [ ] 本地开发测试通过 (`bun run dev`)
+- [ ] TypeScript 类型检查通过 (`bun run typecheck`)
+- [ ] 单元测试通过 (`bun run test`)
+- [ ] 构建成功 (`bun run build`)
+- [ ] ESLint 检查通过 (`bun run lint`)
+- [ ] Prettier 格式化通过 (`bun run format:check`)
 
 **测试覆盖率变化**：
 - 新增测试用例：XX 个

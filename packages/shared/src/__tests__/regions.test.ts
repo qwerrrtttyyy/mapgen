@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { computeClimate } from '../regions.js';
 
 describe('气候分布 (AC-3.1, AC-3.2)', () => {
-  const W = 64, H = 64;
+  const W = 64,
+    H = 64;
   const seaLevel = 0;
 
   // 全海洋世界（测试纯纬度气候带）

@@ -178,10 +178,10 @@ async function readCheckpoints(): Promise<CheckpointData[]> {
       const req = store.get(STORAGE_KEY);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => {
-        const value = req.result;
+        const value: unknown = req.result;
         db.close();
         if (Array.isArray(value)) {
-          resolve(value.filter(c => c.version === CHECKPOINT_VERSION));
+          resolve(value.filter(c => (c as CheckpointData).version === CHECKPOINT_VERSION));
         } else {
           resolve([]);
         }
@@ -244,21 +244,23 @@ export class CheckpointManager {
       name,
       phase,
       time: Date.now(),
-      seed: (params.seedStr as string) || '',
+      seed: params.seedStr || '',
       mapWidth: mapData.width,
       mapHeight: mapData.height,
       thumbnail: generateThumbnail(mapData),
       data: {
         params: { ...params } as unknown as Record<string, unknown>,
         packed: {
-          plateTex: packFloat(mapData.plateTex, mapData.width, mapData.height)!,
-          elevTex: packFloat(mapData.elevTex, mapData.width, mapData.height)!,
-          moistTex: packFloat(mapData.moistTex, mapData.width, mapData.height)!,
-          riverTex: packFloat(mapData.riverTex, mapData.width, mapData.height)!,
-          tempTex: packFloat(mapData.tempTex, mapData.width, mapData.height)!,
-          currentTex: packFloat(mapData.currentTex ?? null, mapData.width, mapData.height) ?? undefined,
+          plateTex: packFloat(mapData.plateTex, mapData.width, mapData.height) as PackedArray,
+          elevTex: packFloat(mapData.elevTex, mapData.width, mapData.height) as PackedArray,
+          moistTex: packFloat(mapData.moistTex, mapData.width, mapData.height) as PackedArray,
+          riverTex: packFloat(mapData.riverTex, mapData.width, mapData.height) as PackedArray,
+          tempTex: packFloat(mapData.tempTex, mapData.width, mapData.height) as PackedArray,
+          currentTex:
+            packFloat(mapData.currentTex ?? null, mapData.width, mapData.height) ?? undefined,
           iceTex: packFloat(mapData.iceTex ?? null, mapData.width, mapData.height) ?? undefined,
-          coastDist: packFloat(mapData.coastDist ?? null, mapData.width, mapData.height) ?? undefined,
+          coastDist:
+            packFloat(mapData.coastDist ?? null, mapData.width, mapData.height) ?? undefined,
         },
         tectonic: {
           plates: mapData.plates as unknown[],
@@ -283,12 +285,12 @@ export class CheckpointManager {
     }
   }
 
-  async restore(id: number): Promise<CheckpointData | null> {
+  restore(id: number): Promise<CheckpointData | null> {
     try {
-      return this.checkpoints[id] || null;
+      return Promise.resolve(this.checkpoints[id] || null);
     } catch (e) {
       logger.warn('Checkpoint restore failed:', e);
-      return null;
+      return Promise.resolve(null);
     }
   }
 

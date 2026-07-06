@@ -16,7 +16,7 @@ export const translations: Record<Locale, TranslationTree> = {
       title: 'MapGen Studio — 程序化世界生成器',
       logo: 'MapGen <em>Studio</em>',
     },
-    
+
     // Top Bar
     toolbar: {
       generate: '生成',
@@ -33,7 +33,7 @@ export const translations: Record<Locale, TranslationTree> = {
       togglePanel: '切换面板 (Tab)',
       sizeHandle: '拖拽调整地图尺寸',
     },
-    
+
     // Panel Tabs
     tabs: {
       world: '世界',
@@ -42,7 +42,7 @@ export const translations: Record<Locale, TranslationTree> = {
       water: '水文',
       render: '渲染',
     },
-    
+
     // World Settings
     world: {
       presets: '世界预设',
@@ -69,7 +69,7 @@ export const translations: Record<Locale, TranslationTree> = {
       continentality: '大陆度修正',
       hadleyEnhancement: 'Hadley 环流强化',
     },
-    
+
     // Terrain Settings
     terrain: {
       basics: '地形基础',
@@ -78,7 +78,7 @@ export const translations: Record<Locale, TranslationTree> = {
       erosionIterations: '侵蚀迭代',
       lakeDensity: '湖泊密度',
     },
-    
+
     // Climate Settings
     climate: {
       parameters: '气候参数',
@@ -89,20 +89,20 @@ export const translations: Record<Locale, TranslationTree> = {
       windX: 'X',
       windY: 'Y',
     },
-    
+
     // Water Settings
     water: {
       rivers: '河流',
       riverCount: '河流数量',
     },
-    
+
     // Render Settings
     render: {
       style: '渲染风格',
       overlays: '叠层',
       lighting: '光影',
       laser: '激光指针 (L)',
-      
+
       // Render styles
       styles: {
         terrain: '地形',
@@ -125,7 +125,7 @@ export const translations: Record<Locale, TranslationTree> = {
         oceanCurrentMap: '洋流图',
         iceSheetMap: '冰盖图',
       },
-      
+
       // Overlay options
       boundaries: '板块边界',
       boundaryWidth: '宽度',
@@ -135,12 +135,12 @@ export const translations: Record<Locale, TranslationTree> = {
       selectionHighlight: '选中高亮',
       climateZones: '气候分区',
       grid: '网格',
-      
+
       // Lighting options
       lightAngle: '光照角度',
       pointLight: '点光源',
       glowEffect: '辉光效果',
-      
+
       // Laser options
       enableLaser: '启用激光',
       laserSelection: '激光选区模式',
@@ -148,14 +148,14 @@ export const translations: Record<Locale, TranslationTree> = {
       cursorFollow: '光标跟随',
       mouseTrail: '鼠标轨迹',
     },
-    
+
     // World Info Panel
     worldInfo: {
       seed: '种子',
       size: '尺寸',
       stats: '统计',
     },
-    
+
     // Editor Tools
     editor: {
       view: '查看',
@@ -170,39 +170,39 @@ export const translations: Record<Locale, TranslationTree> = {
       plateTitle: '拖拽板块 (D)',
       annotate: '标注',
       annotateTitle: '标注 (A)',
-      
+
       // Brush settings
       radius: '半径',
       strength: '强度',
-      
+
       // Brush operations
       raise: '抬升',
       lower: '沉降',
       land: '成陆',
       sea: '成海',
       platePaint: '涂板块',
-      
+
       // Tool buttons
       toggleNames: '切换名称显示',
       clearSelection: '清空选择 (Esc)',
     },
-    
+
     // Zoom Controls
     zoom: {
       resetTitle: '重置视图',
     },
-    
+
     // Progress View
     progress: {
       initializing: '初始化...',
     },
-    
+
     // Checkpoint Panel
     checkpoint: {
       title: '检查点',
       save: '+ 保存',
     },
-    
+
     // Noise types
     noiseTypes: {
       perlin: 'Perlin',
@@ -210,7 +210,7 @@ export const translations: Record<Locale, TranslationTree> = {
       value: 'Value',
       worley: 'Worley',
     },
-    
+
     // FBM types
     fbmTypes: {
       standard: '标准 FBM',
@@ -218,7 +218,7 @@ export const translations: Record<Locale, TranslationTree> = {
       billowy: '丘陵',
       warped: '扭曲',
     },
-    
+
     // Size presets
     sizePresets: {
       '256²': '256²',
@@ -227,14 +227,14 @@ export const translations: Record<Locale, TranslationTree> = {
       '1024²': '1024²',
     },
   },
-  
+
   'en-US': {
     // App Title & Header
     app: {
       title: 'MapGen Studio — Procedural World Generator',
       logo: 'MapGen <em>Studio</em>',
     },
-    
+
     // Top Bar
     toolbar: {
       generate: 'Generate',
@@ -251,7 +251,7 @@ export const translations: Record<Locale, TranslationTree> = {
       togglePanel: 'Toggle Panel (Tab)',
       sizeHandle: 'Drag to Resize Map',
     },
-    
+
     // Panel Tabs
     tabs: {
       world: 'World',
@@ -260,7 +260,7 @@ export const translations: Record<Locale, TranslationTree> = {
       water: 'Water',
       render: 'Render',
     },
-    
+
     // World Settings
     world: {
       presets: 'World Presets',
@@ -287,7 +287,7 @@ export const translations: Record<Locale, TranslationTree> = {
       continentality: 'Continentality Correction',
       hadleyEnhancement: 'Hadley Cell Enhancement',
     },
-    
+
     // Terrain Settings
     terrain: {
       basics: 'Terrain Basics',
@@ -296,7 +296,7 @@ export const translations: Record<Locale, TranslationTree> = {
       erosionIterations: 'Erosion Iterations',
       lakeDensity: 'Lake Density',
     },
-    
+
     // Climate Settings
     climate: {
       parameters: 'Climate Parameters',
@@ -307,20 +307,20 @@ export const translations: Record<Locale, TranslationTree> = {
       windX: 'X',
       windY: 'Y',
     },
-    
+
     // Water Settings
     water: {
       rivers: 'Rivers',
       riverCount: 'River Count',
     },
-    
+
     // Render Settings
     render: {
       style: 'Render Style',
       overlays: 'Overlays',
       lighting: 'Lighting',
       laser: 'Laser Pointer (L)',
-      
+
       // Render styles
       styles: {
         terrain: 'Terrain',
@@ -343,7 +343,7 @@ export const translations: Record<Locale, TranslationTree> = {
         oceanCurrentMap: 'Ocean Current Map',
         iceSheetMap: 'Ice Sheet Map',
       },
-      
+
       // Overlay options
       boundaries: 'Plate Boundaries',
       boundaryWidth: 'Width',
@@ -353,12 +353,12 @@ export const translations: Record<Locale, TranslationTree> = {
       selectionHighlight: 'Selection Highlight',
       climateZones: 'Climate Zones',
       grid: 'Grid',
-      
+
       // Lighting options
       lightAngle: 'Light Angle',
       pointLight: 'Point Light',
       glowEffect: 'Glow Effect',
-      
+
       // Laser options
       enableLaser: 'Enable Laser',
       laserSelection: 'Laser Selection Mode',
@@ -366,14 +366,14 @@ export const translations: Record<Locale, TranslationTree> = {
       cursorFollow: 'Cursor Follow',
       mouseTrail: 'Mouse Trail',
     },
-    
+
     // World Info Panel
     worldInfo: {
       seed: 'Seed',
       size: 'Size',
       stats: 'Stats',
     },
-    
+
     // Editor Tools
     editor: {
       view: 'View',
@@ -388,39 +388,39 @@ export const translations: Record<Locale, TranslationTree> = {
       plateTitle: 'Drag Plate (D)',
       annotate: 'Annotate',
       annotateTitle: 'Annotate (A)',
-      
+
       // Brush settings
       radius: 'Radius',
       strength: 'Strength',
-      
+
       // Brush operations
       raise: 'Raise',
       lower: 'Lower',
       land: 'Make Land',
       sea: 'Make Sea',
       platePaint: 'Plate Paint',
-      
+
       // Tool buttons
       toggleNames: 'Toggle Name Display',
       clearSelection: 'Clear Selection (Esc)',
     },
-    
+
     // Zoom Controls
     zoom: {
       resetTitle: 'Reset View',
     },
-    
+
     // Progress View
     progress: {
       initializing: 'Initializing...',
     },
-    
+
     // Checkpoint Panel
     checkpoint: {
       title: 'Checkpoint',
       save: '+ Save',
     },
-    
+
     // Noise types
     noiseTypes: {
       perlin: 'Perlin',
@@ -428,7 +428,7 @@ export const translations: Record<Locale, TranslationTree> = {
       value: 'Value',
       worley: 'Worley',
     },
-    
+
     // FBM types
     fbmTypes: {
       standard: 'Standard FBM',
@@ -436,7 +436,7 @@ export const translations: Record<Locale, TranslationTree> = {
       billowy: 'Billowy',
       warped: 'Warped',
     },
-    
+
     // Size presets
     sizePresets: {
       '256²': '256²',
@@ -445,14 +445,14 @@ export const translations: Record<Locale, TranslationTree> = {
       '1024²': '1024²',
     },
   },
-  
+
   'ja-JP': {
     // App Title & Header
     app: {
       title: 'MapGen Studio — プロシージャルワールドジェネレーター',
       logo: 'MapGen <em>Studio</em>',
     },
-    
+
     // Top Bar
     toolbar: {
       generate: '生成',
@@ -469,7 +469,7 @@ export const translations: Record<Locale, TranslationTree> = {
       togglePanel: 'パネルを切り替え (Tab)',
       sizeHandle: 'ドラッグしてマップサイズを変更',
     },
-    
+
     // Panel Tabs
     tabs: {
       world: 'ワールド',
@@ -478,7 +478,7 @@ export const translations: Record<Locale, TranslationTree> = {
       water: '水文',
       render: 'レンダリング',
     },
-    
+
     // World Settings
     world: {
       presets: 'ワールドプリセット',
@@ -505,7 +505,7 @@ export const translations: Record<Locale, TranslationTree> = {
       continentality: '大陸度補正',
       hadleyEnhancement: 'ハドレー循環強化',
     },
-    
+
     // Terrain Settings
     terrain: {
       basics: '地形の基本',
@@ -514,7 +514,7 @@ export const translations: Record<Locale, TranslationTree> = {
       erosionIterations: '侵食反復回数',
       lakeDensity: '湖の密度',
     },
-    
+
     // Climate Settings
     climate: {
       parameters: '気候パラメータ',
@@ -525,20 +525,20 @@ export const translations: Record<Locale, TranslationTree> = {
       windX: 'X',
       windY: 'Y',
     },
-    
+
     // Water Settings
     water: {
       rivers: '河川',
       riverCount: '河川数',
     },
-    
+
     // Render Settings
     render: {
       style: 'レンダリングスタイル',
       overlays: 'オーバーレイ',
       lighting: '照明',
       laser: 'レーザーポインタ (L)',
-      
+
       // Render styles
       styles: {
         terrain: '地形',
@@ -561,7 +561,7 @@ export const translations: Record<Locale, TranslationTree> = {
         oceanCurrentMap: '海流図',
         iceSheetMap: '氷床図',
       },
-      
+
       // Overlay options
       boundaries: 'プレート境界',
       boundaryWidth: '幅',
@@ -571,12 +571,12 @@ export const translations: Record<Locale, TranslationTree> = {
       selectionHighlight: '選択ハイライト',
       climateZones: '気候帯',
       grid: 'グリッド',
-      
+
       // Lighting options
       lightAngle: '照明角度',
       pointLight: 'ポイントライト',
       glowEffect: 'グロー効果',
-      
+
       // Laser options
       enableLaser: 'レーザーを有効化',
       laserSelection: 'レーザー選択モード',
@@ -584,14 +584,14 @@ export const translations: Record<Locale, TranslationTree> = {
       cursorFollow: 'カーソル追従',
       mouseTrail: 'マウストレイル',
     },
-    
+
     // World Info Panel
     worldInfo: {
       seed: 'シード',
       size: 'サイズ',
       stats: '統計',
     },
-    
+
     // Editor Tools
     editor: {
       view: '表示',
@@ -606,39 +606,39 @@ export const translations: Record<Locale, TranslationTree> = {
       plateTitle: 'プレートをドラッグ (D)',
       annotate: '注釈',
       annotateTitle: '注釈 (A)',
-      
+
       // Brush settings
       radius: '半径',
       strength: '強度',
-      
+
       // Brush operations
       raise: '隆起',
       lower: '沈降',
       land: '陸地化',
       sea: '海洋化',
       platePaint: 'プレートペイント',
-      
+
       // Tool buttons
       toggleNames: '名前表示を切り替え',
       clearSelection: '選択をクリア (Esc)',
     },
-    
+
     // Zoom Controls
     zoom: {
       resetTitle: 'ビューをリセット',
     },
-    
+
     // Progress View
     progress: {
       initializing: '初期化中...',
     },
-    
+
     // Checkpoint Panel
     checkpoint: {
       title: 'チェックポイント',
       save: '+ 保存',
     },
-    
+
     // Noise types
     noiseTypes: {
       perlin: 'Perlin',
@@ -646,7 +646,7 @@ export const translations: Record<Locale, TranslationTree> = {
       value: 'Value',
       worley: 'Worley',
     },
-    
+
     // FBM types
     fbmTypes: {
       standard: '標準 FBM',
@@ -654,7 +654,7 @@ export const translations: Record<Locale, TranslationTree> = {
       billowy: 'ビロウ',
       warped: 'ワープ',
     },
-    
+
     // Size presets
     sizePresets: {
       '256²': '256²',
@@ -672,10 +672,14 @@ export const translations: Record<Locale, TranslationTree> = {
  * @param params - Optional parameters for template substitution
  * @returns The translated string or the key path if not found
  */
-export function t(locale: Locale, keyPath: string, params?: Record<string, string | number>): string {
+export function t(
+  locale: Locale,
+  keyPath: string,
+  params?: Record<string, string | number>
+): string {
   const keys = keyPath.split('.');
   let value: string | TranslationTree | undefined = translations[locale];
-  
+
   for (const key of keys) {
     if (value && typeof value === 'object' && key in value) {
       value = value[key];
@@ -687,17 +691,18 @@ export function t(locale: Locale, keyPath: string, params?: Record<string, strin
       return keyPath; // Return key path as last resort
     }
   }
-  
+
   if (typeof value === 'string') {
     // Substitute parameters if provided
     if (params) {
-      return value.replace(/\{(\w+)\}/g, (match, key) => {
-        return params[key] !== undefined ? String(params[key]) : match;
+      return value.replace(/\{(\w+)\}/g, (match, key: string) => {
+        const param = params[key];
+        return param !== undefined ? String(param) : match;
       });
     }
     return value;
   }
-  
+
   return keyPath;
 }
 
@@ -708,7 +713,7 @@ export function getPreferredLocale(): Locale {
   // eslint-disable-next-line no-restricted-globals
   if (typeof navigator !== 'undefined') {
     // eslint-disable-next-line no-restricted-globals
-    const lang = navigator.language || (navigator as any).languages?.[0] || 'zh-CN';
+    const lang = navigator.language || navigator.languages[0] || 'zh-CN';
     if (lang.startsWith('en')) return 'en-US';
     if (lang.startsWith('ja')) return 'ja-JP';
   }
@@ -720,7 +725,9 @@ export function getPreferredLocale(): Locale {
  * @param locale - The locale to bind to
  * @returns A function that translates key paths
  */
-export function createTranslator(locale: Locale): (keyPath: string, params?: Record<string, string | number>) => string {
+export function createTranslator(
+  locale: Locale
+): (keyPath: string, params?: Record<string, string | number>) => string {
   return (keyPath: string, params?: Record<string, string | number>) => t(locale, keyPath, params);
 }
 

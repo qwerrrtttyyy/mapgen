@@ -2,14 +2,26 @@ import { describe, it, expect } from 'vitest';
 import { computeBoundaryTypes } from '../tectonic.js';
 import type { Plate } from '../tectonic.js';
 
-const W = 32, H = 32;
+const W = 32,
+  H = 32;
 
 function makePlate(id: number, x: number, y: number, vx: number, vy: number): Plate {
   return {
-    id, x, y, vx, vy,
+    id,
+    x,
+    y,
+    vx,
+    vy,
     type: 'continent' as const,
-    color: [0.5, 0.5, 0.5], area: 0, boundary: 0, growth: 0,
-    elevation: 0.3, moisture: 0.5, temperature: 0.5, name: `P${id}`, selected: false,
+    color: [0.5, 0.5, 0.5],
+    area: 0,
+    boundary: 0,
+    growth: 0,
+    elevation: 0.3,
+    moisture: 0.5,
+    temperature: 0.5,
+    name: `P${id}`,
+    selected: false,
   };
 }
 
@@ -29,7 +41,7 @@ describe('computeBoundaryTypes 边界类型符号判定（Bug-A 回归）', () =
     // 取中线边界像素 (x=W/2-1 与 x=W/2 交界处)
     const midY = H >> 1;
     const leftEdge = midY * W + (W / 2 - 1);
-    const rightEdge = midY * W + (W / 2);
+    const rightEdge = midY * W + W / 2;
     // 至少一边被判为汇聚(1)
     const isConv = boundaryType[leftEdge] === 1 || boundaryType[rightEdge] === 1;
     expect(isConv).toBe(true);
@@ -44,7 +56,7 @@ describe('computeBoundaryTypes 边界类型符号判定（Bug-A 回归）', () =
     const { boundaryType, boundaryIntensity } = computeBoundaryTypes(W, H, plateId, plates);
     const midY = H >> 1;
     const leftEdge = midY * W + (W / 2 - 1);
-    const rightEdge = midY * W + (W / 2);
+    const rightEdge = midY * W + W / 2;
     const isDiv = boundaryType[leftEdge] === 2 || boundaryType[rightEdge] === 2;
     expect(isDiv).toBe(true);
     expect(boundaryIntensity[leftEdge]).toBeGreaterThan(0);

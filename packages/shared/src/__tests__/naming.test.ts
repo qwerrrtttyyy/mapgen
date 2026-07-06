@@ -1,16 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { generateNames, type NameManifest, type NameablePlate, type NameableRegion } from '../naming.js';
+import { generateNames, type NameablePlate, type NameableRegion } from '../naming.js';
 
 describe('命名系统 (AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4)', () => {
-  const W = 100, H = 80;
+  const W = 100,
+    H = 80;
 
   function makePlates(): NameablePlate[] {
     // 4 个板块：北大陆、南大陆、东大洋、西大洋
     return [
       { plateId: 0, type: 'continent', centroid: [W * 0.5, H * 0.2] }, // 北
       { plateId: 1, type: 'continent', centroid: [W * 0.5, H * 0.8] }, // 南
-      { plateId: 2, type: 'ocean', centroid: [W * 0.8, H * 0.5] },     // 东
-      { plateId: 3, type: 'ocean', centroid: [W * 0.2, H * 0.5] },     // 西
+      { plateId: 2, type: 'ocean', centroid: [W * 0.8, H * 0.5] }, // 东
+      { plateId: 3, type: 'ocean', centroid: [W * 0.2, H * 0.5] }, // 西
     ];
   }
 
@@ -58,12 +59,24 @@ describe('命名系统 (AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4)', () => {
     expect(manifest.regions).toHaveLength(4);
     for (const r of manifest.regions) {
       switch (r.type) {
-        case 'mountain': expect(r.name).toMatch(/(山脉|山脊|峰群)$/); break;
-        case 'plain':    expect(r.name).toMatch(/(平原|草原|低地)$/); break;
-        case 'desert':   expect(r.name).toMatch(/(沙漠|荒原)$/); break;
-        case 'plateau':  expect(r.name).toMatch(/(高原|台地)$/); break;
-        case 'basin':    expect(r.name).toMatch(/(盆地|洼地)$/); break;
-        case 'forest':   expect(r.name).toMatch(/(森林|林地)$/); break;
+        case 'mountain':
+          expect(r.name).toMatch(/(山脉|山脊|峰群)$/);
+          break;
+        case 'plain':
+          expect(r.name).toMatch(/(平原|草原|低地)$/);
+          break;
+        case 'desert':
+          expect(r.name).toMatch(/(沙漠|荒原)$/);
+          break;
+        case 'plateau':
+          expect(r.name).toMatch(/(高原|台地)$/);
+          break;
+        case 'basin':
+          expect(r.name).toMatch(/(盆地|洼地)$/);
+          break;
+        case 'forest':
+          expect(r.name).toMatch(/(森林|林地)$/);
+          break;
       }
       // 专有名至少 2 字 + 地貌词 ≥ 2 字 → 总长 ≥ 4
       expect(r.name.length).toBeGreaterThanOrEqual(4);

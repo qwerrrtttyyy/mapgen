@@ -21,7 +21,13 @@ const INV31 = 1 / 31;
 const INV7 = 1 / 7;
 
 /** 15 种生物群系分类（与 tempTex 通道 B 编码一致）。 */
-export function classifyBiome(elev: number, temp: number, moist: number, seaLevel: number, snowLine: number): number {
+export function classifyBiome(
+  elev: number,
+  temp: number,
+  moist: number,
+  seaLevel: number,
+  snowLine: number
+): number {
   if (elev <= seaLevel) return 0;
   if (temp < snowLine && elev > 0.6) return 1;
   if (elev > 0.7) return 2;
@@ -48,7 +54,11 @@ export function extractChannel(tex: Float32Array, channel: number, size: number)
 }
 
 /** 从 plateTex 通道 R 还原 plateId（乘回 plateCount）。 */
-export function extractPlateId(plateTex: Float32Array, plateCount: number, size: number): Float32Array {
+export function extractPlateId(
+  plateTex: Float32Array,
+  plateCount: number,
+  size: number
+): Float32Array {
   const plateId = new Float32Array(size);
   for (let i = 0; i < size; i++) plateId[i] = Math.round(plateTex[i * 4] * plateCount);
   return plateId;
@@ -66,10 +76,19 @@ export interface TexturePackParams {
  */
 export function packAllTextures(
   md: MapData,
-  elevation: Float32Array, slope: Float32Array, ridge: Float32Array, ridgeMask: Float32Array,
-  moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array,
-  riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array, lakes: Float32Array,
-  p: TexturePackParams,
+  elevation: Float32Array,
+  slope: Float32Array,
+  ridge: Float32Array,
+  ridgeMask: Float32Array,
+  moisture: Float32Array,
+  rainfall: Float32Array,
+  temperature: Float32Array,
+  tempZone: Float32Array,
+  riverMask: Float32Array,
+  riverWidth: Float32Array,
+  riverDepth: Float32Array,
+  lakes: Float32Array,
+  p: TexturePackParams
 ): void {
   const size = md.width * md.height;
   for (let i = 0; i < size; i++) {
@@ -107,9 +126,15 @@ export function packAllTextures(
  */
 export function packClimateRiverTextures(
   md: MapData,
-  moisture: Float32Array, rainfall: Float32Array, temperature: Float32Array, tempZone: Float32Array,
-  riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array, lakes: Float32Array,
-  p: TexturePackParams,
+  moisture: Float32Array,
+  rainfall: Float32Array,
+  temperature: Float32Array,
+  tempZone: Float32Array,
+  riverMask: Float32Array,
+  riverWidth: Float32Array,
+  riverDepth: Float32Array,
+  lakes: Float32Array,
+  p: TexturePackParams
 ): void {
   const size = md.width * md.height;
   for (let i = 0; i < size; i++) {
@@ -136,7 +161,10 @@ export function packClimateRiverTextures(
 /** 仅重写 elevTex（侵蚀/编辑改高程后，slope 需调用方传入重算值）。 */
 export function packElevTex(
   md: MapData,
-  elevation: Float32Array, slope: Float32Array, ridge: Float32Array, ridgeMask: Float32Array,
+  elevation: Float32Array,
+  slope: Float32Array,
+  ridge: Float32Array,
+  ridgeMask: Float32Array
 ): void {
   const size = md.width * md.height;
   for (let i = 0; i < size; i++) {
@@ -155,7 +183,10 @@ export function packElevTex(
  */
 export function packCurrentTex(
   md: MapData,
-  vx: Float32Array, vy: Float32Array, tempDelta: Float32Array, speed: Float32Array,
+  vx: Float32Array,
+  vy: Float32Array,
+  tempDelta: Float32Array,
+  speed: Float32Array
 ): void {
   const size = md.width * md.height;
   if (!md.currentTex || md.currentTex.length !== size * 4) {
@@ -177,8 +208,10 @@ export function packCurrentTex(
  */
 export function packIceTex(
   md: MapData,
-  landIce: Float32Array, seaIce: Float32Array,
-  glacierVx: Float32Array, glacierVy: Float32Array,
+  landIce: Float32Array,
+  seaIce: Float32Array,
+  glacierVx: Float32Array,
+  glacierVy: Float32Array
 ): void {
   const size = md.width * md.height;
   if (!md.iceTex || md.iceTex.length !== size * 4) {
@@ -197,11 +230,7 @@ export function packIceTex(
  * v2: 打包生物群系纹理 RGBA: R=biomeId/31 G=isLand B=koppenBand A=streamOrder/7。
  * 若 md.biomeTex 不存在则按需创建。
  */
-export function packBiomeTex(
-  md: MapData,
-  biomeId: Uint8Array,
-  streamOrder: Uint8Array,
-): void {
+export function packBiomeTex(md: MapData, biomeId: Uint8Array, streamOrder: Uint8Array): void {
   const size = md.width * md.height;
   if (!md.biomeTex || md.biomeTex.length !== size * 4) {
     md.biomeTex = new Float32Array(size * 4);
@@ -212,7 +241,7 @@ export function packBiomeTex(
     const info = getBiomeInfo(id);
     md.biomeTex[i4] = id * INV31;
     md.biomeTex[i4 + 1] = info.isLand ? 1 : 0;
-    const band = ['X','A','B','C','D','E','M'].indexOf(info.koppen);
+    const band = ['X', 'A', 'B', 'C', 'D', 'E', 'M'].indexOf(info.koppen);
     md.biomeTex[i4 + 2] = band * INV7;
     md.biomeTex[i4 + 3] = streamOrder[i] * INV7;
   }
@@ -226,7 +255,7 @@ export function packWatershedTex(
   md: MapData,
   basinId: Int32Array,
   isDivide: Uint8Array,
-  streamOrder: Uint8Array,
+  streamOrder: Uint8Array
 ): void {
   const size = md.width * md.height;
   if (!md.watershedTex || md.watershedTex.length !== size * 4) {
@@ -250,7 +279,7 @@ export function packVolcanismTex(
   md: MapData,
   volcanoProb: Float32Array,
   calderaMask: Uint8Array,
-  hotspotStrength: number, // 全局最大热点强度
+  hotspotStrength: number // 全局最大热点强度
 ): void {
   const size = md.width * md.height;
   if (!md.volcanismTex || md.volcanismTex.length !== size * 4) {
@@ -274,7 +303,7 @@ export function packSeasonTex(
   summerTempDelta: Float32Array,
   winterTempDelta: Float32Array,
   summerRainDelta: Float32Array,
-  winterRainDelta: Float32Array,
+  winterRainDelta: Float32Array
 ): void {
   const size = md.width * md.height;
   if (!md.seasonTex || md.seasonTex.length !== size * 4) {
@@ -282,7 +311,7 @@ export function packSeasonTex(
   }
   for (let i = 0; i < size; i++) {
     const i4 = i * 4;
-    md.seasonTex[i4]     = (summerTempDelta[i] + 1) * 0.5;
+    md.seasonTex[i4] = (summerTempDelta[i] + 1) * 0.5;
     md.seasonTex[i4 + 1] = (winterTempDelta[i] + 1) * 0.5;
     md.seasonTex[i4 + 2] = (summerRainDelta[i] + 1) * 0.5;
     md.seasonTex[i4 + 3] = (winterRainDelta[i] + 1) * 0.5;

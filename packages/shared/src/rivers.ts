@@ -20,7 +20,10 @@ const D8_DY = [-1, -1, 0, 1, 1, 1, 0, -1];
 const D8_DIST = [1, Math.SQRT2, 1, Math.SQRT2, 1, Math.SQRT2, 1, Math.SQRT2];
 
 function computeFlowDirection(
-  width: number, height: number, elevation: Float32Array, seaLevel: number
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number
 ): Int8Array {
   const size = width * height;
   const flowDir = new Int8Array(size);
@@ -56,7 +59,11 @@ function computeFlowDirection(
 }
 
 function computeFlowAccumulation(
-  width: number, height: number, flowDir: Int8Array, seaLevel: number, elevation: Float32Array
+  width: number,
+  height: number,
+  flowDir: Int8Array,
+  seaLevel: number,
+  elevation: Float32Array
 ): Float32Array {
   const size = width * height;
   const accumulation = new Float32Array(size);
@@ -90,7 +97,8 @@ function computeFlowAccumulation(
   }
 
   while (queue.length > 0) {
-    const idx = queue.shift()!;
+    const idx = queue.shift();
+    if (idx === undefined) continue;
     const dir = flowDir[idx];
     if (dir < 0) continue;
     const x = idx % width;
@@ -108,9 +116,19 @@ function computeFlowAccumulation(
 }
 
 export function generateRivers(
-  width: number, height: number, elevation: Float32Array, moisture: Float32Array,
-  seaLevel: number, count: number, seed: number
-): { rivers: River[]; riverMask: Float32Array; riverWidth: Float32Array; riverDepth: Float32Array } {
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  moisture: Float32Array,
+  seaLevel: number,
+  count: number,
+  _seed: number
+): {
+  rivers: River[];
+  riverMask: Float32Array;
+  riverWidth: Float32Array;
+  riverDepth: Float32Array;
+} {
   const size = width * height;
   const riverMask = new Float32Array(size);
   const riverWidth = new Float32Array(size);
@@ -142,8 +160,12 @@ export function generateRivers(
     if (sources.length >= count) break;
     let ok = true;
     for (const s of sources) {
-      const dx = c.x - s.x, dy = c.y - s.y;
-      if (dx * dx + dy * dy < minDist2) { ok = false; break; }
+      const dx = c.x - s.x,
+        dy = c.y - s.y;
+      if (dx * dx + dy * dy < minDist2) {
+        ok = false;
+        break;
+      }
     }
     if (ok) sources.push({ x: c.x, y: c.y });
   }
@@ -158,7 +180,9 @@ export function generateRivers(
   for (let i = 0; i < sources.length; i++) {
     const src = sources[i];
     const segments: RiverSegment[] = [];
-    let cx = src.x, cy = src.y, steps = 0;
+    let cx = src.x,
+      cy = src.y,
+      steps = 0;
     const maxSteps = Math.max(width, height) * 4;
 
     while (steps < maxSteps) {
@@ -205,7 +229,8 @@ export function generateRivers(
         const w = Math.floor(s.width / 2) + 1;
         for (let dy = -w; dy <= w; dy++) {
           for (let dx = -w; dx <= w; dx++) {
-            const px = s.x + dx, py = s.y + dy;
+            const px = s.x + dx,
+              py = s.y + dy;
             if (px < 0 || px >= width || py < 0 || py >= height) continue;
             const pidx = py * width + px;
             const dist2 = dx * dx + dy * dy;

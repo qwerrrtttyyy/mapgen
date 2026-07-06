@@ -7,12 +7,15 @@ import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import { clientToMapUv, mapPixelToClient } from '../map/viewport.js';
 import {
-  CommandStack, type Command,
-  applyVectorMountain, applyVectorPolygon, movePlate,
+  CommandStack,
+  applyVectorMountain,
+  applyVectorPolygon,
+  movePlate,
   type VectorTarget,
 } from '@mapgen/core';
 
-export type EditorMode = 'idle' | 'brush' | 'vector-line' | 'vector-poly' | 'drag-plate' | 'annotate';
+export type EditorMode =
+  'idle' | 'brush' | 'vector-line' | 'vector-poly' | 'drag-plate' | 'annotate';
 export type BrushKind = 'raise' | 'lower' | 'sea' | 'land' | 'plate-paint';
 
 export interface EditorToolParams {
@@ -35,7 +38,10 @@ export const DEFAULT_TOOL_PARAMS: EditorToolParams = {
   vectorWidth: 4,
 };
 
-interface PixelCoord { x: number; y: number; }
+interface PixelCoord {
+  x: number;
+  y: number;
+}
 
 export class EditorController extends Colleague {
   private canvas: HTMLCanvasElement;
@@ -60,11 +66,11 @@ export class EditorController extends Colleague {
     this.canvas = canvas;
 
     // capture 阶段拦截，确保编辑器在 MapInteraction（bubble）之前处理
-    const down = (e: MouseEvent) => this.onMouseDown(e);
-    const move = (e: MouseEvent) => this.onMouseMove(e);
-    const up = (e: MouseEvent) => this.onMouseUp(e);
-    const dbl = (e: MouseEvent) => this.onDoubleClick(e);
-    const key = (e: KeyboardEvent) => this.onKeyDown(e);
+    const down = (e: MouseEvent): void => this.onMouseDown(e);
+    const move = (e: MouseEvent): void => this.onMouseMove(e);
+    const up = (e: MouseEvent): void => this.onMouseUp(e);
+    const dbl = (e: MouseEvent): void => this.onDoubleClick(e);
+    const key = (e: KeyboardEvent): void => this.onKeyDown(e);
 
     canvas.addEventListener('mousedown', down, true);
     window.addEventListener('mousemove', move, true);
@@ -77,7 +83,7 @@ export class EditorController extends Colleague {
       () => window.removeEventListener('mousemove', move, true),
       () => window.removeEventListener('mouseup', up, true),
       () => canvas.removeEventListener('dblclick', dbl, true),
-      () => document.removeEventListener('keydown', key),
+      () => document.removeEventListener('keydown', key)
     );
   }
 
@@ -107,8 +113,12 @@ export class EditorController extends Colleague {
     }
   }
 
-  get canUndo(): boolean { return this.stack.canUndo; }
-  get canRedo(): boolean { return this.stack.canRedo; }
+  get canUndo(): boolean {
+    return this.stack.canUndo;
+  }
+  get canRedo(): boolean {
+    return this.stack.canRedo;
+  }
 
   undo(): void {
     if (!this.stack.undo()) return;
@@ -141,7 +151,8 @@ export class EditorController extends Colleague {
 
   /** 地图像素 → 屏幕坐标（用于名称命中检测） */
   private mapToScreen(mx: number, my: number): [number, number] {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const rect = this.canvas.getBoundingClientRect();
     const [rx, ry] = mapPixelToClient(mx, my, rect, md.width, md.height);
     return [rect.left + rx, rect.top + ry];
@@ -149,29 +160,34 @@ export class EditorController extends Colleague {
 
   // ── 通道提取/回写 ──
   private extractElev(): Float32Array {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const arr = new Float32Array(md.width * md.height);
     for (let i = 0; i < arr.length; i++) arr[i] = md.elevTex[i * 4];
     return arr;
   }
   private writeElev(arr: Float32Array): void {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     for (let i = 0; i < arr.length; i++) md.elevTex[i * 4] = arr[i];
   }
   private extractPlateId(): Float32Array {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const pc = state.params.plateCount;
     const arr = new Float32Array(md.width * md.height);
     for (let i = 0; i < arr.length; i++) arr[i] = Math.round(md.plateTex[i * 4] * pc);
     return arr;
   }
   private writePlateId(arr: Float32Array): void {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const inv = 1 / state.params.plateCount;
     for (let i = 0; i < arr.length; i++) md.plateTex[i * 4] = arr[i] * inv;
   }
   private plateIdAt(x: number, y: number): number {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const pc = state.params.plateCount;
     const i4 = (y * md.width + x) * 4;
     return Math.max(0, Math.min(pc - 1, Math.round(md.plateTex[i4] * pc)));
@@ -203,7 +219,10 @@ export class EditorController extends Colleague {
       this.moveBrushCursor(e.clientX, e.clientY);
       if (this.dragging) {
         const p = this.toMapPixel(e.clientX, e.clientY);
-        if (p) { e.stopPropagation(); this.applyBrushAt(p.x, p.y); }
+        if (p) {
+          e.stopPropagation();
+          this.applyBrushAt(p.x, p.y);
+        }
       }
     } else if (this.mode === 'drag-plate' && this.dragStart) {
       e.stopPropagation(); // 拖拽中阻止选择
@@ -250,7 +269,8 @@ export class EditorController extends Colleague {
   private tryRenameAt(clientX: number, clientY: number): boolean {
     const md = state.mapData;
     if (!md || !md.names) return false;
-    const TH_X = 60, TH_Y = 16;
+    const TH_X = 60,
+      TH_Y = 16;
 
     // 优先地形区（更密集，更可能被点中），再板块
     for (const r of md.names.regions) {
@@ -282,8 +302,13 @@ export class EditorController extends Colleague {
     const target = e.target as HTMLElement;
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
     if (this.mode === 'vector-line' || this.mode === 'vector-poly') {
-      if (e.key === 'Enter') { e.preventDefault(); this.commitVector(); }
-      else if (e.key === 'Escape') { e.preventDefault(); this.cancelVector(); }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.commitVector();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.cancelVector();
+      }
     } else if (e.key === 'Escape' && this.mode !== 'idle') {
       this.setMode('idle');
     }
@@ -307,14 +332,17 @@ export class EditorController extends Colleague {
     const str = this.tool.brushStrength;
     const seaLevel = state.params.seaLevel;
     const sigma = r / 2;
-    const x0 = Math.max(0, x - r), x1 = Math.min(md.width - 1, x + r);
-    const y0 = Math.max(0, y - r), y1 = Math.min(md.height - 1, y + r);
+    const x0 = Math.max(0, x - r),
+      x1 = Math.min(md.width - 1, x + r);
+    const y0 = Math.max(0, y - r),
+      y1 = Math.min(md.height - 1, y + r);
 
     if (this.snapshotChannel === 0) {
       const kind = this.tool.brushKind;
       for (let yy = y0; yy <= y1; yy++) {
         for (let xx = x0; xx <= x1; xx++) {
-          const dx = xx - x, dy = yy - y;
+          const dx = xx - x,
+            dy = yy - y;
           const dist2 = dx * dx + dy * dy;
           if (dist2 > r * r) continue;
           const i4 = (yy * md.width + xx) * 4;
@@ -322,10 +350,18 @@ export class EditorController extends Colleague {
           const fall = Math.exp(-dist2 / (2 * sigma * sigma));
           let after = before;
           switch (kind) {
-            case 'raise': after = Math.min(1, before + str * fall); break;
-            case 'lower': after = Math.max(-1, before - str * fall); break;
-            case 'sea': after = before * (1 - fall) + (seaLevel - 0.3) * fall; break;
-            case 'land': after = before * (1 - fall) + 0.2 * fall; break;
+            case 'raise':
+              after = Math.min(1, before + str * fall);
+              break;
+            case 'lower':
+              after = Math.max(-1, before - str * fall);
+              break;
+            case 'sea':
+              after = before * (1 - fall) + (seaLevel - 0.3) * fall;
+              break;
+            case 'land':
+              after = before * (1 - fall) + 0.2 * fall;
+              break;
           }
           md.elevTex[i4] = after;
         }
@@ -336,7 +372,8 @@ export class EditorController extends Colleague {
       const tid = this.tool.brushTargetPlate;
       for (let yy = y0; yy <= y1; yy++) {
         for (let xx = x0; xx <= x1; xx++) {
-          const dx = xx - x, dy = yy - y;
+          const dx = xx - x,
+            dy = yy - y;
           if (dx * dx + dy * dy > r * r) continue;
           md.plateTex[(yy * md.width + xx) * 4] = tid * inv;
         }
@@ -351,9 +388,10 @@ export class EditorController extends Colleague {
     const before = this.beforeSnapshot;
     const after = this.snapshotChannel === 0 ? this.extractElev() : this.extractPlateId();
     const channel = this.snapshotChannel;
-    const writeBack = channel === 0
-      ? (arr: Float32Array) => this.writeElev(arr)
-      : (arr: Float32Array) => this.writePlateId(arr);
+    const writeBack =
+      channel === 0
+        ? (arr: Float32Array): void => this.writeElev(arr)
+        : (arr: Float32Array): void => this.writePlateId(arr);
     this.stack.push({
       kind: 'brush',
       redo: () => writeBack(after),
@@ -369,21 +407,44 @@ export class EditorController extends Colleague {
     // 与上一点过近 → 视为提交（避免双击重复点）
     if (this.vectorPoints.length >= 1) {
       const last = this.vectorPoints[this.vectorPoints.length - 1];
-      if (Math.hypot(last[0] - x, last[1] - y) < 3) { this.commitVector(); return; }
+      if (Math.hypot(last[0] - x, last[1] - y) < 3) {
+        this.commitVector();
+        return;
+      }
     }
     this.vectorPoints.push([x, y]);
-    this.emit('editor.vector.update', { points: this.vectorPoints.map(p => [...p]), mode: this.mode });
+    this.emit('editor.vector.update', {
+      points: this.vectorPoints.map(p => [...p]),
+      mode: this.mode,
+    });
   }
 
   private commitVector(): void {
     const md = state.mapData;
-    if (!md || this.vectorPoints.length < 2) { this.cancelVector(); return; }
+    if (!md || this.vectorPoints.length < 2) {
+      this.cancelVector();
+      return;
+    }
     const before = this.extractElev();
     const elev = new Float32Array(before);
     if (this.mode === 'vector-line') {
-      applyVectorMountain(md.width, md.height, elev, this.vectorPoints, this.tool.vectorWidth, this.tool.vectorMountainHeight);
+      applyVectorMountain(
+        md.width,
+        md.height,
+        elev,
+        this.vectorPoints,
+        this.tool.vectorWidth,
+        this.tool.vectorMountainHeight
+      );
     } else {
-      applyVectorPolygon(md.width, md.height, elev, this.vectorPoints, this.tool.vectorTarget, state.params.seaLevel);
+      applyVectorPolygon(
+        md.width,
+        md.height,
+        elev,
+        this.vectorPoints,
+        this.tool.vectorTarget,
+        state.params.seaLevel
+      );
     }
     this.writeElev(elev);
     const after = new Float32Array(elev);
@@ -436,8 +497,8 @@ export class EditorController extends Colleague {
     const size = this.tool.brushRadius * 2 * this.screenScale();
     this.cursorDiv.style.width = size + 'px';
     this.cursorDiv.style.height = size + 'px';
-    this.cursorDiv.style.left = (clientX - size / 2) + 'px';
-    this.cursorDiv.style.top = (clientY - size / 2) + 'px';
+    this.cursorDiv.style.left = clientX - size / 2 + 'px';
+    this.cursorDiv.style.top = clientY - size / 2 + 'px';
   }
   private hideBrushCursor(): void {
     if (this.cursorDiv) this.cursorDiv.style.display = 'none';

@@ -41,8 +41,11 @@ export interface DetailPeak {
 
 /** 双线性采样基础高程到高分辨率网格 */
 function bilinearSample(
-  base: Float32Array, baseW: number, baseH: number,
-  mapX: number, mapY: number,
+  base: Float32Array,
+  baseW: number,
+  baseH: number,
+  mapX: number,
+  mapY: number
 ): number {
   // 钳制到基础网格范围
   const fx = Math.max(0, Math.min(baseW - 1.001, mapX));
@@ -70,13 +73,17 @@ function bilinearSample(
  * @param detailOctaves 高频 octave 起始层（默认 4，即从第 4 个 octave 开始叠加）
  */
 export function computeDetailPatch(
-  baseElevation: Float32Array, baseWidth: number, baseHeight: number,
+  baseElevation: Float32Array,
+  baseWidth: number,
+  baseHeight: number,
   region: ViewportRegion,
-  seed: number, noiseType: NoiseType = 'perlin',
+  seed: number,
+  noiseType: NoiseType = 'perlin',
   fbmType: FbmType = 'standard',
-  lacunarity: number = 2.0, persistence: number = 0.5,
+  lacunarity: number = 2.0,
+  persistence: number = 0.5,
   detailStrength: number = 0.04,
-  detailOctaves: number = 3,
+  detailOctaves: number = 3
 ): DetailPatch {
   const { x: rx, y: ry, w: rw, h: rh, outW, outH } = region;
   const size = outW * outH;
@@ -98,8 +105,11 @@ export function computeDetailPatch(
       let elev = bilinearSample(baseElevation, baseWidth, baseHeight, mapX, mapY);
       // 2. 高频噪声叠加（仅高频 octave，模拟基础网格丢失的细节）
       const nx = mapX * baseFreq;
-    const ny = mapY * baseFreq;
-      let detail = 0, amp = 1, freq = 1, maxV = 0;
+      const ny = mapY * baseFreq;
+      let detail = 0,
+        amp = 1,
+        freq = 1,
+        maxV = 0;
       for (let o = 0; o < detailOctaves; o++) {
         let n = noise.sample(nx * freq, ny * freq);
         if (fbmType === 'ridged') n = 1 - Math.abs(n);
@@ -140,7 +150,7 @@ export function detectDetailPeaks(
   patch: DetailPatch,
   seaLevel: number,
   minProminence: number = 0.03,
-  minSpacing: number = 8,
+  minSpacing: number = 8
 ): DetailPeak[] {
   const { width: w, height: h, elevation, region } = patch;
   const candidates: DetailPeak[] = [];
@@ -156,7 +166,10 @@ export function detectDetailPeaks(
       for (let dy = -R; dy <= R && isMax; dy++) {
         for (let dx = -R; dx <= R; dx++) {
           if (dx === 0 && dy === 0) continue;
-          if (elevation[idx + dy * w + dx] > elev) { isMax = false; break; }
+          if (elevation[idx + dy * w + dx] > elev) {
+            isMax = false;
+            break;
+          }
         }
       }
       if (!isMax) continue;
@@ -166,7 +179,8 @@ export function detectDetailPeaks(
       let minElev = 1;
       for (let dy = -probeR; dy <= probeR; dy++) {
         for (let dx = -probeR; dx <= probeR; dx++) {
-          const nx = px + dx, ny = py + dy;
+          const nx = px + dx,
+            ny = py + dy;
           if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
           const e = elevation[ny * w + nx];
           if (e < minElev) minElev = e;
@@ -176,7 +190,8 @@ export function detectDetailPeaks(
       if (prominence < minProminence) continue;
 
       candidates.push({
-        x: px, y: py,
+        x: px,
+        y: py,
         mapX: region.x + px * (region.w / w),
         mapY: region.y + py * (region.h / h),
         elevation: elev,
@@ -191,8 +206,12 @@ export function detectDetailPeaks(
   for (const c of candidates) {
     let tooClose = false;
     for (const k of kept) {
-      const dx = c.x - k.x, dy = c.y - k.y;
-      if (dx * dx + dy * dy < minSpacing * minSpacing) { tooClose = true; break; }
+      const dx = c.x - k.x,
+        dy = c.y - k.y;
+      if (dx * dx + dy * dy < minSpacing * minSpacing) {
+        tooClose = true;
+        break;
+      }
     }
     if (!tooClose) kept.push(c);
   }

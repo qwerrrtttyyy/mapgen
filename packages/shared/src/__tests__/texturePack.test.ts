@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { classifyBiome, extractChannel, extractPlateId } from '../texturePack.js';
 
 describe('TexturePack 纹理打包', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
   const size = W * H;
 
   describe('classifyBiome 生物群系分类', () => {

@@ -7,23 +7,21 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
-    "lint": "eslint packages/*/src --ext .ts,.tsx",
-    "lint:fix": "eslint packages/*/src --ext .ts,.tsx --fix",
-    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,css,json,md}\"",
-    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx,css,json,md}\"",
-    "bun:dev": "bunx turbo run dev",
-    "bun:build": "bunx turbo run build",
-    "bun:test": "bunx turbo run test",
-    "bun:typecheck": "bunx turbo run typecheck"
+    "dev": "bunx turbo run dev",
+    "dev:server": "bunx turbo run dev --filter=@mapgen/server",
+    "dev:all": "bunx turbo run dev --filter=@mapgen/web --filter=@mapgen/server",
+    "build": "bunx turbo run build",
+    "build:server": "bunx turbo run build --filter=@mapgen/server",
+    "typecheck": "bunx turbo run typecheck",
+    "test": "bunx turbo run test",
+    "lint": "bunx eslint packages/*/src --ext .ts,.tsx",
+    "lint:fix": "bunx eslint packages/*/src --ext .ts,.tsx --fix",
+    "format": "bunx prettier --write \"packages/*/src/**/*.{ts,tsx,css,json,md}\"",
+    "format:check": "bunx prettier --check \"packages/*/src/**/*.{ts,tsx,css,json,md}\""
   },
-  "packageManager": "bun@1.1.30",
+  "packageManager": "bun@1.2.14",
   "engines": {
-    "node": ">=16.0.0",
-    "bun": ">=1.0.0"
+    "bun": ">=1.2.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

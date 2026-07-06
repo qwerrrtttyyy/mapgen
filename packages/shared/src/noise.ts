@@ -1,5 +1,4 @@
 import { lerp, clamp } from './utils.js';
-import { WORLEY_CACHE_MAX, SPECTRAL_DECAY } from './constants.js';
 
 const GRAD3: number[][] = [
   [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
@@ -54,7 +53,7 @@ export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
  */
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
 
-const WORLEY_CACHE_MAX_CONST = WORLEY_CACHE_MAX;
+const WORLEY_CACHE_MAX = 10000;
 
 export class NoiseEngine {
   seed: number;
@@ -163,7 +162,7 @@ export class NoiseEngine {
           pts = [{ x: px, y: py }];
           this.worleyCache.set(key, pts);
           this.cacheInsertOrder.push(key);
-          if (this.cacheInsertOrder.length > WORLEY_CACHE_MAX_CONST) {
+          if (this.cacheInsertOrder.length > WORLEY_CACHE_MAX) {
             const oldest = this.cacheInsertOrder.shift()!;
             this.worleyCache.delete(oldest);
           }
@@ -263,7 +262,7 @@ export class NoiseEngine {
     const oct = Math.max(1, octaves);
     for (let i = 0; i < oct; i++) {
       // 谱权重：高频衰减补偿
-      const spectral = oct > 1 ? (1 - SPECTRAL_DECAY * i / (oct - 1)) : 1;
+      const spectral = oct > 1 ? (1 - 0.4 * i / (oct - 1)) : 1;
       const amplitude = Math.pow(persistence, i) * spectral;
       const n = this.sample(sx * frequency, sy * frequency);
       let v: number;
