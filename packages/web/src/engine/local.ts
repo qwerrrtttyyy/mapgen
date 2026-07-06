@@ -13,6 +13,12 @@ import type {
 import { ok, err, serializeMapData } from '@mapgen/shared-types';
 import { mapGenWorker } from '../core/mapGenWorker.js';
 
+interface StoredMapRecord {
+  map: SerializedMapData;
+  meta?: MapMeta;
+  savedAt: number;
+}
+
 export class LocalProvider implements MapGenEngine {
   async generate(
     params: MapParams,
@@ -43,29 +49,29 @@ export class LocalProvider implements MapGenEngine {
     }
   }
 
-  async saveMap(map: SerializedMapData, meta?: MapMeta): Promise<Result<SavedMapRef>> {
+  saveMap(map: SerializedMapData, meta?: MapMeta): Promise<Result<SavedMapRef>> {
     const id = `local-map-${Date.now()}`;
     try {
       const payload = JSON.stringify({ map, meta, savedAt: Date.now() });
       localStorage.setItem(`mapgen.map.${id}`, payload);
-      return ok({ id, createdAt: Date.now() });
+      return Promise.resolve(ok({ id, createdAt: Date.now() }));
     } catch (e) {
-      return err({ code: 'STORAGE_ERROR', message: String(e) });
+      return Promise.resolve(err({ code: 'STORAGE_ERROR', message: String(e) }));
     }
   }
 
-  async loadMap(id: string): Promise<Result<SerializedMapData | null>> {
+  loadMap(id: string): Promise<Result<SerializedMapData | null>> {
     try {
       const raw = localStorage.getItem(`mapgen.map.${id}`);
-      if (!raw) return ok(null);
-      const parsed = JSON.parse(raw);
-      return ok(parsed.map as SerializedMapData);
+      if (!raw) return Promise.resolve(ok(null));
+      const parsed = JSON.parse(raw) as StoredMapRecord;
+      return Promise.resolve(ok(parsed.map));
     } catch (e) {
-      return err({ code: 'STORAGE_ERROR', message: String(e) });
+      return Promise.resolve(err({ code: 'STORAGE_ERROR', message: String(e) }));
     }
   }
 
-  async listMaps(): Promise<Result<SavedMapSummary[]>> {
+  listMaps(): Promise<Result<SavedMapSummary[]>> {
     try {
       const summaries: SavedMapSummary[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -73,7 +79,7 @@ export class LocalProvider implements MapGenEngine {
         if (key?.startsWith('mapgen.map.')) {
           const raw = localStorage.getItem(key);
           if (!raw) continue;
-          const parsed = JSON.parse(raw);
+          const parsed = JSON.parse(raw) as StoredMapRecord;
           summaries.push({
             id: key.replace('mapgen.map.', ''),
             name: parsed.meta?.name || '未命名地图',
@@ -85,18 +91,18 @@ export class LocalProvider implements MapGenEngine {
           });
         }
       }
-      return ok(summaries);
+      return Promise.resolve(ok(summaries));
     } catch (e) {
-      return err({ code: 'STORAGE_ERROR', message: String(e) });
+      return Promise.resolve(err({ code: 'STORAGE_ERROR', message: String(e) }));
     }
   }
 
-  async deleteMap(id: string): Promise<Result<void>> {
+  deleteMap(id: string): Promise<Result<void>> {
     try {
       localStorage.removeItem(`mapgen.map.${id}`);
-      return ok(undefined);
+      return Promise.resolve(ok(undefined));
     } catch (e) {
-      return err({ code: 'STORAGE_ERROR', message: String(e) });
+      return Promise.resolve(err({ code: 'STORAGE_ERROR', message: String(e) }));
     }
   }
 

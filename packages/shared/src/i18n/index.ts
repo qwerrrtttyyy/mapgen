@@ -695,8 +695,9 @@ export function t(
   if (typeof value === 'string') {
     // Substitute parameters if provided
     if (params) {
-      return value.replace(/\{(\w+)\}/g, (match, key) => {
-        return params[key] !== undefined ? String(params[key]) : match;
+      return value.replace(/\{(\w+)\}/g, (match, key: string) => {
+        const param = params[key];
+        return param !== undefined ? String(param) : match;
       });
     }
     return value;
@@ -712,7 +713,7 @@ export function getPreferredLocale(): Locale {
   // eslint-disable-next-line no-restricted-globals
   if (typeof navigator !== 'undefined') {
     // eslint-disable-next-line no-restricted-globals
-    const lang = navigator.language || (navigator as any).languages?.[0] || 'zh-CN';
+    const lang = navigator.language || navigator.languages[0] || 'zh-CN';
     if (lang.startsWith('en')) return 'en-US';
     if (lang.startsWith('ja')) return 'ja-JP';
   }

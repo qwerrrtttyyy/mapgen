@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { jobQueue } from '../services/jobQueue.js';
 import type { GenerateRequest } from '@mapgen/shared-types';
 
-export function createGenerateRoute() {
+export function createGenerateRoute(): Hono {
   const app = new Hono();
   app.post('/generate', async c => {
     const body = await c.req.json<GenerateRequest>();

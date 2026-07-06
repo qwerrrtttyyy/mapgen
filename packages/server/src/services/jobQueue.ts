@@ -27,7 +27,7 @@ class JobQueue {
   private jobs = new Map<string, Job>();
   private queue: string[] = [];
   private running = false;
-  private executor?: (job: Job) => Promise<void>;
+  private executor?: (job: Job) => void | Promise<void>;
 
   create(params: MapParams): string {
     const id = randomUUID();
@@ -41,7 +41,7 @@ class JobQueue {
     };
     this.jobs.set(id, job);
     this.queue.push(id);
-    this.process();
+    void this.process();
     return id;
   }
 
@@ -49,7 +49,7 @@ class JobQueue {
     return this.jobs.get(id);
   }
 
-  setExecutor(executor: (job: Job) => Promise<void>): void {
+  setExecutor(executor: (job: Job) => void | Promise<void>): void {
     this.executor = executor;
   }
 
@@ -57,7 +57,8 @@ class JobQueue {
     if (this.running) return;
     this.running = true;
     while (this.queue.length > 0) {
-      const id = this.queue.shift()!;
+      const id = this.queue.shift();
+      if (!id) continue;
       const job = this.jobs.get(id);
       if (!job) continue;
       job.status = 'running';

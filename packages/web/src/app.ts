@@ -157,7 +157,7 @@ function syncUIFromParams(): void {
   setSliderVal('coastDetail', Math.round(p.coastDetail * 100));
   setDispVal('coastDetail-val', p.coastDetail.toFixed(2));
 
-  const setCheck = (id: string, val: boolean) => {
+  const setCheck = (id: string, val: boolean): void => {
     const el = $<HTMLInputElement>(id);
     if (el) el.checked = val;
   };
@@ -589,343 +589,345 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const canvas = $<HTMLCanvasElement>('glCanvas');
-  const minimap = $<HTMLCanvasElement>('minimap');
-  if (!canvas) {
-    logger.error('#glCanvas not found');
-    return;
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  void (async () => {
+    const canvas = $<HTMLCanvasElement>('glCanvas');
+    const minimap = $<HTMLCanvasElement>('minimap');
+    if (!canvas) {
+      logger.error('#glCanvas not found');
+      return;
+    }
 
-  if (import.meta.env.DEV) {
-    (window as unknown as { __mapgen: unknown }).__mapgen = { state };
-  }
+    if (import.meta.env.DEV) {
+      (window as unknown as { __mapgen: unknown }).__mapgen = { state };
+    }
 
-  if (minimap) {
-    minimapCtx = minimap.getContext('2d');
-  }
+    if (minimap) {
+      minimapCtx = minimap.getContext('2d');
+    }
 
-  await initRenderer(canvas);
+    await initRenderer(canvas);
 
-  checkpointMgr = new CheckpointManager();
-  await checkpointMgr.load();
+    checkpointMgr = new CheckpointManager();
+    await checkpointMgr.load();
 
-  debugPanel = new DebugPanel();
-  debugPanel.bind();
+    debugPanel = new DebugPanel();
+    debugPanel.bind();
 
-  buildPresetGrid();
-  syncUIFromParams();
+    buildPresetGrid();
+    syncUIFromParams();
 
-  bindEventBus();
-  bindSizeHandle();
+    bindEventBus();
+    bindSizeHandle();
 
-  const panel = $('panel');
-  $('btn-panel-toggle')?.addEventListener('click', () => {
-    panel?.classList.toggle('panel-open');
-    panel?.classList.toggle('panel-closed');
-  });
+    const panel = $('panel');
+    $('btn-panel-toggle')?.addEventListener('click', () => {
+      panel?.classList.toggle('panel-open');
+      panel?.classList.toggle('panel-closed');
+    });
 
-  document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.tab;
-      if (!target) return;
-      document
-        .querySelectorAll<HTMLElement>('.panel-tab')
-        .forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
-        s.classList.toggle('active', s.dataset.section === target);
+    document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        if (!target) return;
+        document
+          .querySelectorAll<HTMLElement>('.panel-tab')
+          .forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
+          s.classList.toggle('active', s.dataset.section === target);
+        });
       });
     });
-  });
 
-  $('btn-generate')?.addEventListener('click', () => generateMap());
-  $('btn-random')?.addEventListener('click', () => {
-    const seed = String(Math.floor(Math.random() * 99999));
-    setParam('seedStr', seed);
-    const seedInput = $<HTMLInputElement>('seedStr');
-    if (seedInput) seedInput.value = seed;
-    generateMap();
-  });
-  $('btn-random-seed')?.addEventListener('click', () => {
-    const seed = String(Math.floor(Math.random() * 99999));
-    setParam('seedStr', seed);
-    const seedInput = $<HTMLInputElement>('seedStr');
-    if (seedInput) seedInput.value = seed;
-    generateMap();
-  });
-  $('btn-undo')?.addEventListener('click', () => {});
-  $('btn-redo')?.addEventListener('click', () => {});
-  $('btn-export')?.addEventListener('click', () => bus.emit('export.request'));
-  $('btn-clear-selection')?.addEventListener('click', () => clearSelection());
-  $('btn-toggle-names')?.addEventListener('click', () => {
-    namesVisible = !namesVisible;
-    $('btn-toggle-names')?.classList.toggle('active', namesVisible);
-  });
-
-  $('seedStr')?.addEventListener('change', e => {
-    setParam('seedStr', (e.target as HTMLInputElement).value);
-  });
-
-  const wInput = $<HTMLInputElement>('mapWidth');
-  const hInput = $<HTMLInputElement>('mapHeight');
-  const onSizeChange = () => {
-    const w = parseInt(wInput?.value || '512', 10);
-    const h = parseInt(hInput?.value || '512', 10);
-    patchParams({ mapWidth: w, mapHeight: h });
-    document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
-    updateSizeInfo();
-  };
-  wInput?.addEventListener('change', () => {
-    onSizeChange();
-    generateMap();
-  });
-  hInput?.addEventListener('change', () => {
-    onSizeChange();
-    generateMap();
-  });
-
-  document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const w = parseInt(btn.dataset.w || '512', 10);
-      const h = parseInt(btn.dataset.h || '512', 10);
-      document
-        .querySelectorAll<HTMLButtonElement>('.sz-btn')
-        .forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      patchParams({ mapWidth: w, mapHeight: h });
-      if (wInput) wInput.value = String(w);
-      if (hInput) hInput.value = String(h);
-      updateSizeInfo();
-      generateMap();
-    });
-  });
-
-  bindSliderEx('octaves', 'octaves', {
-    toParam: raw => raw,
-    toDisplay: raw => String(raw),
-    autoGen: true,
-  });
-  bindSliderEx('lacunarity', 'lacunarity', {
-    toParam: raw => raw,
-    toDisplay: raw => raw.toFixed(1),
-    autoGen: true,
-  });
-  bindSliderEx('persistence', 'persistence', {
-    toParam: raw => raw,
-    toDisplay: raw => raw.toFixed(2),
-    autoGen: true,
-  });
-  bindSliderEx('plateCount', 'plateCount', {
-    toParam: raw => raw,
-    toDisplay: raw => String(raw),
-    autoGen: true,
-  });
-  bindSliderEx('landmass', 'landmass', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => raw + '%',
-    autoGen: true,
-  });
-  bindSliderEx('mountainFold', 'mountainFold', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(2),
-    autoGen: true,
-  });
-  bindSliderEx('coastDetail', 'coastDetail', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(2),
-    autoGen: true,
-  });
-
-  bindCheckbox('enableOceanCurrents', 'enableOceanCurrents', true);
-  bindCheckbox('enableIceSheet', 'enableIceSheet', true);
-  bindCheckbox('enableMonsoon', 'enableMonsoon', true);
-  bindCheckbox('enableContinentality', 'enableContinentality', true);
-  bindCheckbox('enableHadleyEnhancement', 'enableHadleyEnhancement', true);
-
-  bindSliderEx('seaLevel', 'seaLevel', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(2),
-    autoGen: true,
-  });
-  bindSliderEx('erosionStrength', 'erosionStrength', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(1),
-    autoGen: true,
-  });
-  bindSliderEx('erosionIterations', 'erosionIterations', {
-    toParam: raw => raw,
-    toDisplay: raw => String(raw),
-    autoGen: true,
-  });
-  bindSliderEx('lakeDensity', 'lakeDensity', {
-    toParam: raw => raw / 1000,
-    toDisplay: raw => (raw / 1000).toFixed(3),
-    autoGen: true,
-  });
-
-  bindSliderEx('tempOffset', 'tempOffset', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(2),
-    autoGen: true,
-  });
-  bindSliderEx('snowLine', 'snowLine', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(2),
-    autoGen: true,
-  });
-  bindSliderEx('rainStrength', 'rainStrength', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(1),
-    autoGen: true,
-  });
-  bindSliderEx('windDirX', 'windDirX', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(1),
-    autoGen: true,
-  });
-  bindSliderEx('windDirY', 'windDirY', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(1),
-    autoGen: true,
-  });
-
-  bindSliderEx('riverCount', 'riverCount', {
-    toParam: raw => raw,
-    toDisplay: raw => String(raw),
-    autoGen: true,
-  });
-
-  bindSelect('noiseType', 'noiseType', true);
-  bindSelect('fbmType', 'fbmType', true);
-  bindSelect('style', 'style');
-
-  bindCheckbox('showBoundaries', 'showBoundaries');
-  bindSliderEx('boundaryWidth', 'boundaryWidth', {
-    toParam: raw => raw / 10,
-    toDisplay: raw => (raw / 10).toFixed(1),
-  });
-  bindCheckbox('showRivers', 'showRivers');
-  bindCheckbox('showContours', 'showContours');
-  bindCheckbox('showTerrain', 'showTerrain');
-  bindCheckbox('showSelection', 'showSelection');
-  bindCheckbox('showClimate', 'showClimate');
-  bindSliderEx('lightAngle', 'lightAngle', {
-    toParam: raw => raw / 100,
-    toDisplay: raw => (raw / 100).toFixed(2),
-  });
-  bindCheckbox('pointLightEnabled', 'pointLightEnabled');
-  bindCheckbox('glowEnabled', 'glowEnabled');
-  bindCheckbox('laserActive', 'laserActive');
-  bindCheckbox('laserSelection', 'laserSelection');
-  bindSliderEx('laserWidth', 'laserWidth', {
-    toParam: raw => raw / 1000,
-    toDisplay: raw => (raw / 1000).toFixed(3),
-  });
-  bindCheckbox('cursorActive', 'cursorActive');
-  bindCheckbox('trailEnabled', 'trailEnabled');
-
-  document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tool = btn.dataset.tool;
-      if (!tool) return;
-      document
-        .querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]')
-        .forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const brushCtrls = $('brush-ctrls');
-      if (brushCtrls) {
-        brushCtrls.style.display = tool === 'brush' ? '' : 'none';
-      }
-    });
-  });
-  const brushCtrlsEl = $('brush-ctrls');
-  if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
-
-  bindSliderEx('brushRadius', 'cursorSize', {
-    toParam: raw => raw,
-    toDisplay: raw => String(raw),
-  });
-  $('brushStrength')?.addEventListener('input', e => {
-    const v = parseInt((e.target as HTMLInputElement).value, 10);
-    setDispVal('brushStrength-val', (v / 100).toFixed(1));
-  });
-
-  let zoom = 1;
-  const updateZoom = () => {
-    const zv = $('zoom-val');
-    if (zv) zv.textContent = `${Math.round(zoom * 100)}%`;
-  };
-  $('btn-zoom-in')?.addEventListener('click', () => {
-    zoom = Math.min(4, zoom * 1.25);
-    updateZoom();
-  });
-  $('btn-zoom-out')?.addEventListener('click', () => {
-    zoom = Math.max(0.25, zoom / 1.25);
-    updateZoom();
-  });
-  $('btn-zoom-reset')?.addEventListener('click', () => {
-    zoom = 1;
-    updateZoom();
-  });
-
-  mapInteraction = new MapInteraction(canvas);
-  mapInteraction.bindEvents();
-
-  const handleResize = () => {
-    if (!renderer) return;
-    renderer.resize(window.innerWidth, window.innerHeight);
-    render();
-  };
-  handleResize();
-  window.addEventListener('resize', handleResize);
-
-  document.addEventListener('keydown', e => {
-    const t = e.target as HTMLElement;
-    if (
-      t instanceof HTMLInputElement ||
-      t instanceof HTMLTextAreaElement ||
-      t instanceof HTMLSelectElement
-    )
-      return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      generateMap();
-    } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+    $('btn-generate')?.addEventListener('click', () => generateMap());
+    $('btn-random')?.addEventListener('click', () => {
       const seed = String(Math.floor(Math.random() * 99999));
       setParam('seedStr', seed);
       const seedInput = $<HTMLInputElement>('seedStr');
       if (seedInput) seedInput.value = seed;
       generateMap();
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      panel?.classList.toggle('panel-open');
-      panel?.classList.toggle('panel-closed');
-    } else if (e.key === 'Escape') {
-      clearSelection();
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-      e.preventDefault();
-    } else if (
-      (e.ctrlKey || e.metaKey) &&
-      (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
-    ) {
-      e.preventDefault();
-    } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      const toolMap: Record<string, string> = {
-        v: 'idle',
-        b: 'brush',
-        m: 'vector-line',
-        p: 'vector-poly',
-        d: 'drag-plate',
-        a: 'annotate',
-      };
-      const tool = toolMap[e.key.toLowerCase()];
-      if (tool) {
-        const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);
-        btn?.click();
-      }
-    }
-  });
+    });
+    $('btn-random-seed')?.addEventListener('click', () => {
+      const seed = String(Math.floor(Math.random() * 99999));
+      setParam('seedStr', seed);
+      const seedInput = $<HTMLInputElement>('seedStr');
+      if (seedInput) seedInput.value = seed;
+      generateMap();
+    });
+    $('btn-undo')?.addEventListener('click', () => {});
+    $('btn-redo')?.addEventListener('click', () => {});
+    $('btn-export')?.addEventListener('click', () => bus.emit('export.request'));
+    $('btn-clear-selection')?.addEventListener('click', () => clearSelection());
+    $('btn-toggle-names')?.addEventListener('click', () => {
+      namesVisible = !namesVisible;
+      $('btn-toggle-names')?.classList.toggle('active', namesVisible);
+    });
 
-  generateMap();
+    $('seedStr')?.addEventListener('change', e => {
+      setParam('seedStr', (e.target as HTMLInputElement).value);
+    });
+
+    const wInput = $<HTMLInputElement>('mapWidth');
+    const hInput = $<HTMLInputElement>('mapHeight');
+    const onSizeChange = (): void => {
+      const w = parseInt(wInput?.value || '512', 10);
+      const h = parseInt(hInput?.value || '512', 10);
+      patchParams({ mapWidth: w, mapHeight: h });
+      document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
+      updateSizeInfo();
+    };
+    wInput?.addEventListener('change', () => {
+      onSizeChange();
+      generateMap();
+    });
+    hInput?.addEventListener('change', () => {
+      onSizeChange();
+      generateMap();
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const w = parseInt(btn.dataset.w || '512', 10);
+        const h = parseInt(btn.dataset.h || '512', 10);
+        document
+          .querySelectorAll<HTMLButtonElement>('.sz-btn')
+          .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        patchParams({ mapWidth: w, mapHeight: h });
+        if (wInput) wInput.value = String(w);
+        if (hInput) hInput.value = String(h);
+        updateSizeInfo();
+        generateMap();
+      });
+    });
+
+    bindSliderEx('octaves', 'octaves', {
+      toParam: raw => raw,
+      toDisplay: raw => String(raw),
+      autoGen: true,
+    });
+    bindSliderEx('lacunarity', 'lacunarity', {
+      toParam: raw => raw,
+      toDisplay: raw => raw.toFixed(1),
+      autoGen: true,
+    });
+    bindSliderEx('persistence', 'persistence', {
+      toParam: raw => raw,
+      toDisplay: raw => raw.toFixed(2),
+      autoGen: true,
+    });
+    bindSliderEx('plateCount', 'plateCount', {
+      toParam: raw => raw,
+      toDisplay: raw => String(raw),
+      autoGen: true,
+    });
+    bindSliderEx('landmass', 'landmass', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => raw + '%',
+      autoGen: true,
+    });
+    bindSliderEx('mountainFold', 'mountainFold', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(2),
+      autoGen: true,
+    });
+    bindSliderEx('coastDetail', 'coastDetail', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(2),
+      autoGen: true,
+    });
+
+    bindCheckbox('enableOceanCurrents', 'enableOceanCurrents', true);
+    bindCheckbox('enableIceSheet', 'enableIceSheet', true);
+    bindCheckbox('enableMonsoon', 'enableMonsoon', true);
+    bindCheckbox('enableContinentality', 'enableContinentality', true);
+    bindCheckbox('enableHadleyEnhancement', 'enableHadleyEnhancement', true);
+
+    bindSliderEx('seaLevel', 'seaLevel', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(2),
+      autoGen: true,
+    });
+    bindSliderEx('erosionStrength', 'erosionStrength', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(1),
+      autoGen: true,
+    });
+    bindSliderEx('erosionIterations', 'erosionIterations', {
+      toParam: raw => raw,
+      toDisplay: raw => String(raw),
+      autoGen: true,
+    });
+    bindSliderEx('lakeDensity', 'lakeDensity', {
+      toParam: raw => raw / 1000,
+      toDisplay: raw => (raw / 1000).toFixed(3),
+      autoGen: true,
+    });
+
+    bindSliderEx('tempOffset', 'tempOffset', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(2),
+      autoGen: true,
+    });
+    bindSliderEx('snowLine', 'snowLine', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(2),
+      autoGen: true,
+    });
+    bindSliderEx('rainStrength', 'rainStrength', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(1),
+      autoGen: true,
+    });
+    bindSliderEx('windDirX', 'windDirX', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(1),
+      autoGen: true,
+    });
+    bindSliderEx('windDirY', 'windDirY', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(1),
+      autoGen: true,
+    });
+
+    bindSliderEx('riverCount', 'riverCount', {
+      toParam: raw => raw,
+      toDisplay: raw => String(raw),
+      autoGen: true,
+    });
+
+    bindSelect('noiseType', 'noiseType', true);
+    bindSelect('fbmType', 'fbmType', true);
+    bindSelect('style', 'style');
+
+    bindCheckbox('showBoundaries', 'showBoundaries');
+    bindSliderEx('boundaryWidth', 'boundaryWidth', {
+      toParam: raw => raw / 10,
+      toDisplay: raw => (raw / 10).toFixed(1),
+    });
+    bindCheckbox('showRivers', 'showRivers');
+    bindCheckbox('showContours', 'showContours');
+    bindCheckbox('showTerrain', 'showTerrain');
+    bindCheckbox('showSelection', 'showSelection');
+    bindCheckbox('showClimate', 'showClimate');
+    bindSliderEx('lightAngle', 'lightAngle', {
+      toParam: raw => raw / 100,
+      toDisplay: raw => (raw / 100).toFixed(2),
+    });
+    bindCheckbox('pointLightEnabled', 'pointLightEnabled');
+    bindCheckbox('glowEnabled', 'glowEnabled');
+    bindCheckbox('laserActive', 'laserActive');
+    bindCheckbox('laserSelection', 'laserSelection');
+    bindSliderEx('laserWidth', 'laserWidth', {
+      toParam: raw => raw / 1000,
+      toDisplay: raw => (raw / 1000).toFixed(3),
+    });
+    bindCheckbox('cursorActive', 'cursorActive');
+    bindCheckbox('trailEnabled', 'trailEnabled');
+
+    document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tool = btn.dataset.tool;
+        if (!tool) return;
+        document
+          .querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]')
+          .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const brushCtrls = $('brush-ctrls');
+        if (brushCtrls) {
+          brushCtrls.style.display = tool === 'brush' ? '' : 'none';
+        }
+      });
+    });
+    const brushCtrlsEl = $('brush-ctrls');
+    if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
+
+    bindSliderEx('brushRadius', 'cursorSize', {
+      toParam: raw => raw,
+      toDisplay: raw => String(raw),
+    });
+    $('brushStrength')?.addEventListener('input', e => {
+      const v = parseInt((e.target as HTMLInputElement).value, 10);
+      setDispVal('brushStrength-val', (v / 100).toFixed(1));
+    });
+
+    let zoom = 1;
+    const updateZoom = (): void => {
+      const zv = $('zoom-val');
+      if (zv) zv.textContent = `${Math.round(zoom * 100)}%`;
+    };
+    $('btn-zoom-in')?.addEventListener('click', () => {
+      zoom = Math.min(4, zoom * 1.25);
+      updateZoom();
+    });
+    $('btn-zoom-out')?.addEventListener('click', () => {
+      zoom = Math.max(0.25, zoom / 1.25);
+      updateZoom();
+    });
+    $('btn-zoom-reset')?.addEventListener('click', () => {
+      zoom = 1;
+      updateZoom();
+    });
+
+    mapInteraction = new MapInteraction(canvas);
+    mapInteraction.bindEvents();
+
+    const handleResize = (): void => {
+      if (!renderer) return;
+      renderer.resize(window.innerWidth, window.innerHeight);
+      render();
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    document.addEventListener('keydown', e => {
+      const t = e.target as HTMLElement;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement
+      )
+        return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        generateMap();
+      } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+        const seed = String(Math.floor(Math.random() * 99999));
+        setParam('seedStr', seed);
+        const seedInput = $<HTMLInputElement>('seedStr');
+        if (seedInput) seedInput.value = seed;
+        generateMap();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        panel?.classList.toggle('panel-open');
+        panel?.classList.toggle('panel-closed');
+      } else if (e.key === 'Escape') {
+        clearSelection();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
+      ) {
+        e.preventDefault();
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const toolMap: Record<string, string> = {
+          v: 'idle',
+          b: 'brush',
+          m: 'vector-line',
+          p: 'vector-poly',
+          d: 'drag-plate',
+          a: 'annotate',
+        };
+        const tool = toolMap[e.key.toLowerCase()];
+        if (tool) {
+          const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);
+          btn?.click();
+        }
+      }
+    });
+
+    generateMap();
+  })();
 });

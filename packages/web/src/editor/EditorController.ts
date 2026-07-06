@@ -65,11 +65,11 @@ export class EditorController extends Colleague {
     this.canvas = canvas;
 
     // capture 阶段拦截，确保编辑器在 MapInteraction（bubble）之前处理
-    const down = (e: MouseEvent) => this.onMouseDown(e);
-    const move = (e: MouseEvent) => this.onMouseMove(e);
-    const up = (e: MouseEvent) => this.onMouseUp(e);
-    const dbl = (e: MouseEvent) => this.onDoubleClick(e);
-    const key = (e: KeyboardEvent) => this.onKeyDown(e);
+    const down = (e: MouseEvent): void => this.onMouseDown(e);
+    const move = (e: MouseEvent): void => this.onMouseMove(e);
+    const up = (e: MouseEvent): void => this.onMouseUp(e);
+    const dbl = (e: MouseEvent): void => this.onDoubleClick(e);
+    const key = (e: KeyboardEvent): void => this.onKeyDown(e);
 
     canvas.addEventListener('mousedown', down, true);
     window.addEventListener('mousemove', move, true);
@@ -158,7 +158,8 @@ export class EditorController extends Colleague {
 
   /** 地图像素 → 屏幕坐标（用于名称命中检测） */
   private mapToScreen(mx: number, my: number): [number, number] {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const rect = this.canvas.getBoundingClientRect();
     const scale = Math.min(rect.width / md.width, rect.height / md.height);
     const dW = md.width * scale;
@@ -170,29 +171,34 @@ export class EditorController extends Colleague {
 
   // ── 通道提取/回写 ──
   private extractElev(): Float32Array {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const arr = new Float32Array(md.width * md.height);
     for (let i = 0; i < arr.length; i++) arr[i] = md.elevTex[i * 4];
     return arr;
   }
   private writeElev(arr: Float32Array): void {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     for (let i = 0; i < arr.length; i++) md.elevTex[i * 4] = arr[i];
   }
   private extractPlateId(): Float32Array {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const pc = state.params.plateCount;
     const arr = new Float32Array(md.width * md.height);
     for (let i = 0; i < arr.length; i++) arr[i] = Math.round(md.plateTex[i * 4] * pc);
     return arr;
   }
   private writePlateId(arr: Float32Array): void {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const inv = 1 / state.params.plateCount;
     for (let i = 0; i < arr.length; i++) md.plateTex[i * 4] = arr[i] * inv;
   }
   private plateIdAt(x: number, y: number): number {
-    const md = state.mapData!;
+    const md = state.mapData;
+    if (!md) throw new Error('No map data');
     const pc = state.params.plateCount;
     const i4 = (y * md.width + x) * 4;
     return Math.max(0, Math.min(pc - 1, Math.round(md.plateTex[i4] * pc)));
@@ -395,8 +401,8 @@ export class EditorController extends Colleague {
     const channel = this.snapshotChannel;
     const writeBack =
       channel === 0
-        ? (arr: Float32Array) => this.writeElev(arr)
-        : (arr: Float32Array) => this.writePlateId(arr);
+        ? (arr: Float32Array): void => this.writeElev(arr)
+        : (arr: Float32Array): void => this.writePlateId(arr);
     this.stack.push({
       kind: 'brush',
       redo: () => writeBack(after),

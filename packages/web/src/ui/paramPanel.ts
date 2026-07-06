@@ -12,7 +12,7 @@ function hexToRgb(hex: string): number[] {
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
-  const h = (v: number) =>
+  const h = (v: number): string =>
     Math.round(v * 255)
       .toString(16)
       .padStart(2, '0');
@@ -127,7 +127,7 @@ export class ParamPanel extends Colleague {
       } else if (el.type === 'checkbox') {
         el.checked = Boolean(value);
       } else if (el.type === 'color' && Array.isArray(value)) {
-        el.value = rgbToHex(value[0], value[1], value[2]);
+        el.value = rgbToHex(Number(value[0]), Number(value[1]), Number(value[2]));
       } else if (el.type === 'text') {
         el.value = String(value);
       }
@@ -155,7 +155,7 @@ export class ParamPanel extends Colleague {
     this.drawerScope()
       .querySelectorAll<HTMLInputElement>('input[type="range"]')
       .forEach(input => {
-        const handler = () => {
+        const handler = (): void => {
           this.updateRangeDisplay(input);
           if (input.id === 'pointLightPosX' || input.id === 'pointLightPosY') {
             const x = parseFloat(
@@ -179,7 +179,7 @@ export class ParamPanel extends Colleague {
         this.unsub.push(() => input.removeEventListener('input', handler));
 
         if (GENERATION_TRIGGER_PARAMS.has(input.id)) {
-          const changeHandler = () => {
+          const changeHandler = (): void => {
             commitParams();
             if (useMediator) {
               this.send('generate.request');
@@ -197,7 +197,7 @@ export class ParamPanel extends Colleague {
     this.drawerScope()
       .querySelectorAll<HTMLSelectElement>('select')
       .forEach(select => {
-        const handler = () => {
+        const handler = (): void => {
           const key = select.id as keyof UIParams;
           const num = Number(select.value);
           const val = Number.isNaN(num) ? select.value : num;
@@ -226,7 +226,7 @@ export class ParamPanel extends Colleague {
     this.drawerScope()
       .querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
       .forEach(input => {
-        const handler = () => {
+        const handler = (): void => {
           const key = input.id as keyof UIParams;
           setTypedParam(key, input.checked);
           if (GENERATION_TRIGGER_CHECKBOXES.has(input.id)) {
@@ -253,7 +253,7 @@ export class ParamPanel extends Colleague {
     this.drawerScope()
       .querySelectorAll<HTMLInputElement>('input[type="color"]')
       .forEach(input => {
-        const handler = () => {
+        const handler = (): void => {
           const key = input.id as keyof UIParams;
           setTypedParam(key, hexToRgb(input.value));
           if (useMediator) {
@@ -270,7 +270,7 @@ export class ParamPanel extends Colleague {
   private bindSeed(): void {
     const el = byId('seedStr') as HTMLInputElement | null;
     if (!el) return;
-    const handler = () => setTypedParam('seedStr', el.value);
+    const handler = (): void => setTypedParam('seedStr', el.value);
     el.addEventListener('input', handler);
     this.unsub.push(() => el.removeEventListener('input', handler));
   }
@@ -279,7 +279,9 @@ export class ParamPanel extends Colleague {
     this.drawerScope()
       .querySelectorAll<HTMLElement>('.md-card-title')
       .forEach(title => {
-        const handler = () => title.classList.toggle('collapsed');
+        const handler = (): void => {
+          title.classList.toggle('collapsed');
+        };
         title.addEventListener('click', handler);
         this.unsub.push(() => title.removeEventListener('click', handler));
       });
@@ -289,7 +291,7 @@ export class ParamPanel extends Colleague {
     this.drawerScope()
       .querySelectorAll<HTMLInputElement>('input[name="laserMode"]')
       .forEach(input => {
-        const handler = () => {
+        const handler = (): void => {
           if (input.checked) {
             if (useMediator) {
               this.send('laser.mode.set', input.value);
@@ -304,7 +306,7 @@ export class ParamPanel extends Colleague {
   }
 
   private bindLaserActiveVisibility(useMediator: boolean): void {
-    const update = () => {
+    const update = (): void => {
       const group = byId('laser-mode-group');
       if (group) group.style.display = state.params.laserActive ? '' : 'none';
     };

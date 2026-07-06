@@ -97,7 +97,8 @@ function computeFlowAccumulation(
   }
 
   while (queue.length > 0) {
-    const idx = queue.shift()!;
+    const idx = queue.shift();
+    if (idx === undefined) continue;
     const dir = flowDir[idx];
     if (dir < 0) continue;
     const x = idx % width;

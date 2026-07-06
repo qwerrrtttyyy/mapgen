@@ -109,7 +109,7 @@ export class Storage {
   async readConfigFile(id: string): Promise<unknown> {
     const filePath = join(this.mapgenDir, CONFIGS_DIR, `${id}.json`);
     const raw = await readFile(filePath, 'utf-8');
-    return JSON.parse(raw);
+    return JSON.parse(raw) as unknown;
   }
 
   /** Write a single config file */

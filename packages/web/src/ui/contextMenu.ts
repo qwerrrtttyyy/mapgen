@@ -41,7 +41,7 @@ export class ContextMenu extends Colleague {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
 
-    const emit = (event: string, payload?: unknown) => {
+    const emit = (event: string, payload?: unknown): void => {
       if (this.mediator) {
         this.send(event as never, payload as never);
       } else {

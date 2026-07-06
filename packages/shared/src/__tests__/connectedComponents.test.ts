@@ -163,8 +163,10 @@ describe('ConnectedComponents 连通域标记', () => {
       const stats = computeComponentStats(W, H, labels);
       const component1 = stats.get(1);
 
-      expect(component1?.sumX / component1!.area).toBeCloseTo(startX + width / 2 - 0.5, 1);
-      expect(component1?.sumY / component1!.area).toBeCloseTo(startY + height / 2 - 0.5, 1);
+      expect(component1).toBeDefined();
+      if (!component1) return;
+      expect(component1.sumX / component1.area).toBeCloseTo(startX + width / 2 - 0.5, 1);
+      expect(component1.sumY / component1.area).toBeCloseTo(startY + height / 2 - 0.5, 1);
     });
 
     it('多连通域统计', () => {

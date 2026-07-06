@@ -254,6 +254,9 @@ function getArg(args: string[], flag: string): string | undefined {
 }
 
 function parseParams(args: string[]): MapgenParams {
+  const size = getArg(args, '--size');
+  const width = getArg(args, '--width');
+  const height = getArg(args, '--height');
   return {
     seedStr: getArg(args, '--seed') ?? 'default',
     plateCount: parseInt(getArg(args, '--plates') ?? '10', 10),
@@ -261,9 +264,9 @@ function parseParams(args: string[]): MapgenParams {
     noiseType: getArg(args, '--noise') ?? 'perlin',
     fbmType: getArg(args, '--fbm') ?? 'standard',
     mapAspect: getArg(args, '--aspect'),
-    mapSize: getArg(args, '--size') ? parseInt(getArg(args, '--size')!, 10) : undefined,
-    mapWidth: getArg(args, '--width') ? parseInt(getArg(args, '--width')!, 10) : undefined,
-    mapHeight: getArg(args, '--height') ? parseInt(getArg(args, '--height')!, 10) : undefined,
+    mapSize: size ? parseInt(size, 10) : undefined,
+    mapWidth: width ? parseInt(width, 10) : undefined,
+    mapHeight: height ? parseInt(height, 10) : undefined,
   };
 }
 
@@ -283,6 +286,6 @@ function parseParamsPartial(args: string[]): Partial<MapgenParams> {
 }
 
 main().catch(err => {
-  console.error(`✗ ${err.message}`);
+  console.error(`✗ ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

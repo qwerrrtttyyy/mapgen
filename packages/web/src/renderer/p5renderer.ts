@@ -21,6 +21,8 @@ export class P5Renderer {
   private p5Instance: p5 | null = null;
   private mapData: MapData | null = null;
   private imageData: ImageData | null = null;
+  private mapImage: p5.Element | null = null;
+  private thumbImage: p5.Element | null = null;
   private particles: P5Particle[] = [];
   private transitionProgress = 1.0;
   private animFrameId: number | null = null;
@@ -46,8 +48,8 @@ export class P5Renderer {
     const P5 = p5Module.default;
     const canvas = this.canvas;
 
-    const sketch = (p: p5) => {
-      p.setup = () => {
+    const sketch = (p: p5): void => {
+      p.setup = (): void => {
         p.createCanvas(canvas.width, canvas.height);
         p.pixelDensity(1);
         p.noStroke();
@@ -57,11 +59,11 @@ export class P5Renderer {
         this._readyResolve = null;
       };
 
-      p.draw = () => {
+      p.draw = (): void => {
         this._draw(p);
       };
 
-      p.mouseMoved = () => {
+      p.mouseMoved = (): void => {
         if (!this.mapData) return;
         const rect = canvas.getBoundingClientRect();
         const mx = p.mouseX - rect.width / 2;
@@ -80,7 +82,7 @@ export class P5Renderer {
         }
       };
 
-      p.mouseClicked = () => {
+      p.mouseClicked = (): void => {
         if (!this.mapData || !state.params.cursorActive) return;
         const rect = canvas.getBoundingClientRect();
         const mapW = this.mapData.width;
@@ -165,9 +167,8 @@ export class P5Renderer {
     p.push();
     p.tint(255, tAlpha);
 
-    const img = (p as any)._mapImage;
-    if (img) {
-      p.image(img, sx, sy, scaledW, scaledH);
+    if (this.mapImage) {
+      p.image(this.mapImage, sx, sy, scaledW, scaledH);
     } else {
       p.fill(40, 40, 50);
       p.rect(sx, sy, scaledW, scaledH);
@@ -273,11 +274,8 @@ export class P5Renderer {
     p.noFill();
     p.rect(thumbX, thumbY, thumbSize, thumbSize, 4);
 
-    if (this.imageData) {
-      const thumbImg = (p as any)._thumbImage;
-      if (thumbImg) {
-        p.image(thumbImg, thumbX, thumbY, thumbSize, thumbSize);
-      }
+    if (this.imageData && this.thumbImage) {
+      p.image(this.thumbImage, thumbX, thumbY, thumbSize, thumbSize);
     }
     p.pop();
 
@@ -419,12 +417,12 @@ export class P5Renderer {
       dst[i] = src[i];
     }
     gfx.updatePixels();
-    (p as any)._mapImage = gfx;
+    this.mapImage = gfx;
 
     const thumb = p.createGraphics(80, 80);
     thumb.pixelDensity(1);
     thumb.image(gfx, 0, 0, 80, 80);
-    (p as any)._thumbImage = thumb;
+    this.thumbImage = thumb;
   }
 
   render(): void {

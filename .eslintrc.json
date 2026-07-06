@@ -20,7 +20,15 @@
   "plugins": ["@typescript-eslint"],
   "rules": {
     "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/explicit-function-return-type": "warn",
+    "@typescript-eslint/explicit-function-return-type": [
+      "warn",
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true,
+        "allowHigherOrderFunctions": true,
+        "allowDirectConstAssertionInArrowFunctions": true
+      }
+    ],
     "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/no-unsafe-member-access": "warn",
@@ -35,5 +43,21 @@
     "prefer-const": "error",
     "no-var": "error"
   },
+  "overrides": [
+    {
+      "files": ["packages/web/src/core/logger.ts"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      "files": ["packages/manager/src/cli.ts", "packages/server/src/index.ts"],
+      "rules": { "no-console": "off" }
+    },
+    {
+      "files": ["packages/*/src/**/*.test.ts"],
+      "rules": {
+        "@typescript-eslint/explicit-function-return-type": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["dist", "node_modules", "*.config.js", "*.config.ts"]
 }

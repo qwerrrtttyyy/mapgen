@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { ServerConfig } from '../config.js';
 
-export function createHealthRoute(config: ServerConfig) {
+export function createHealthRoute(config: ServerConfig): Hono {
   const app = new Hono();
   app.get('/health', c => {
     return c.json({

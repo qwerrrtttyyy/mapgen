@@ -2,7 +2,7 @@ import { generateMap } from '@mapgen/core';
 import { serializeMapData } from '@mapgen/shared-types';
 import type { Job } from './jobQueue.js';
 
-export async function executeGenerationJob(job: Job): Promise<void> {
+export function executeGenerationJob(job: Job): void {
   try {
     const { mapData, checkpoints } = generateMap(job.params, (progress, phaseName) => {
       job.progress = progress;

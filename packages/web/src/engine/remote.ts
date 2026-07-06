@@ -34,8 +34,8 @@ export class RemoteProvider implements MapGenEngine {
     try {
       const res = await fetch(`${this.baseUrl}${path}`, init);
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        return err(body.error || { code: 'NETWORK_ERROR', message: `HTTP ${res.status}` });
+        const body = (await res.json().catch(() => ({}))) as { error?: MapGenError };
+        return err(body.error ?? { code: 'NETWORK_ERROR', message: `HTTP ${res.status}` });
       }
       return ok((await res.json()) as T);
     } catch (e) {
@@ -67,19 +67,22 @@ export class RemoteProvider implements MapGenEngine {
       }
 
       es.addEventListener('progress', event => {
-        const data = JSON.parse(event.data) as GenerationProgress;
+        const data = JSON.parse(event.data as string) as GenerationProgress;
         if (onProgress) onProgress(data);
       });
 
       es.addEventListener('completed', event => {
         es.close();
-        const data = JSON.parse(event.data) as { jobId: string; result: GenerationResult };
+        const data = JSON.parse(event.data as string) as {
+          jobId: string;
+          result: GenerationResult;
+        };
         resolve(ok(data.result));
       });
 
       es.addEventListener('failed', event => {
         es.close();
-        const data = JSON.parse(event.data) as { jobId: string; error: MapGenError };
+        const data = JSON.parse(event.data as string) as { jobId: string; error: MapGenError };
         resolve(err(data.error));
       });
 

@@ -2,10 +2,10 @@ import { Hono } from 'hono';
 import { jobQueue } from '../services/jobQueue.js';
 import type { GenerationProgress, GenerationResult, MapGenError } from '@mapgen/shared-types';
 
-export function createJobsRoute() {
+export function createJobsRoute(): Hono {
   const app = new Hono();
 
-  app.get('/jobs/:id', async c => {
+  app.get('/jobs/:id', c => {
     const id = c.req.param('id');
     const accept = c.req.header('accept') || '';
     const job = jobQueue.get(id);
@@ -19,7 +19,7 @@ export function createJobsRoute() {
         new ReadableStream({
           start(controller) {
             const encoder = new TextEncoder();
-            const send = (event: string, data: unknown) => {
+            const send = (event: string, data: unknown): void => {
               controller.enqueue(
                 encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
               );

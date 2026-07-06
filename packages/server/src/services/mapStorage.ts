@@ -51,7 +51,7 @@ export class MapStorage {
         width: r.width,
         height: r.height,
         createdAt: r.createdAt,
-        tags: JSON.parse(r.tags || '[]'),
+        tags: JSON.parse(r.tags || '[]') as string[],
       })),
       total,
     };

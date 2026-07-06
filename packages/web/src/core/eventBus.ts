@@ -66,7 +66,7 @@ export class EventBus {
   }
 
   once<T>(event: string, handler: EventHandler<T>): () => void {
-    const wrap = (payload: T) => {
+    const wrap = (payload: T): void => {
       this.off(event, wrap as EventHandler<T>);
       handler(payload);
     };

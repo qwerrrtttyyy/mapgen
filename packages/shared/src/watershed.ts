@@ -188,7 +188,7 @@ function partitionBasins(
   let basinCount = 0;
   const basinOutlets: Array<{ basinId: number; x: number; y: number }> = [];
   const queue: number[] = [];
-  const basinOfOutlet: number[] = new Array(outlets.length);
+  const basinOfOutlet: number[] = new Array<number>(outlets.length);
 
   for (let i = 0; i < outlets.length; i++) {
     const idx = outlets[i];
@@ -283,7 +283,7 @@ function computeStrahlerOrder(
   if (!riverMask) return order;
 
   // 仅河道像素参与计算
-  const isRiver = (i: number) => riverMask[i] > 0.2 && elevation[i] > seaLevel;
+  const isRiver = (i: number): boolean => riverMask[i] > 0.2 && elevation[i] > seaLevel;
 
   // 拓扑序：先计算入度（上游河道数），入度=0 为源头
   const inDegree = new Int32Array(size);

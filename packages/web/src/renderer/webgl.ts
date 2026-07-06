@@ -34,7 +34,7 @@ export class WebGLRenderer {
     this.gl = gl;
   }
 
-  async initShaders(fragSrc: string): Promise<void> {
+  initShaders(fragSrc: string): Promise<void> {
     const gl = this.gl;
     const vs = this._compile(
       gl.VERTEX_SHADER,
@@ -61,7 +61,7 @@ export class WebGLRenderer {
     this.program = prog;
     gl.useProgram(prog);
 
-    const numUniforms = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
+    const numUniforms = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS) as number;
     for (let i = 0; i < numUniforms; i++) {
       const info = gl.getActiveUniform(prog, i);
       if (info) {
@@ -100,6 +100,7 @@ export class WebGLRenderer {
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
+    return Promise.resolve();
   }
 
   private _compile(type: number, src: string): WebGLShader {
@@ -304,7 +305,8 @@ export class WebGLRenderer {
     this.setUniform('u_mapSize', [this.mapWidth, this.mapHeight]);
 
     for (const [key, value] of Object.entries(params)) {
-      this.setUniform(key, value);
+      if (value === undefined) continue;
+      this.setUniform(key, value as UniformValue);
     }
 
     if (this.wireframeMode) {

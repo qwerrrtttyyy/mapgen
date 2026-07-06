@@ -150,14 +150,14 @@ export class DebugPanel extends Colleague {
 
     const closeBtn = document.getElementById('dp-close');
     if (closeBtn) {
-      const handler = () => this.emit('debug.toggle');
+      const handler = (): void => this.emit('debug.toggle');
       closeBtn.addEventListener('click', handler);
       this.listeners.push(() => closeBtn.removeEventListener('click', handler));
     }
 
     const wireframeEl = document.getElementById('dp-wireframe') as HTMLInputElement | null;
     if (wireframeEl) {
-      const handler = (e: Event) => {
+      const handler = (e: Event): void => {
         const checked = (e.target as HTMLInputElement).checked;
         coreDebug.setShowWireframe(checked);
         this.emit('debug.wireframe.changed', { enabled: checked });
@@ -168,7 +168,7 @@ export class DebugPanel extends Colleague {
 
     const normalsEl = document.getElementById('dp-normals') as HTMLInputElement | null;
     if (normalsEl) {
-      const handler = (e: Event) => {
+      const handler = (e: Event): void => {
         const checked = (e.target as HTMLInputElement).checked;
         coreDebug.setShowNormals(checked);
         this.emit('debug.normals.changed', { enabled: checked });
@@ -179,7 +179,7 @@ export class DebugPanel extends Colleague {
 
     const overlayEl = document.getElementById('dp-overlay') as HTMLInputElement | null;
     if (overlayEl) {
-      const handler = (e: Event) => {
+      const handler = (e: Event): void => {
         coreDebug.setShowOverlay((e.target as HTMLInputElement).checked);
       };
       overlayEl.addEventListener('change', handler);
@@ -188,7 +188,7 @@ export class DebugPanel extends Colleague {
 
     const logLevelEl = document.getElementById('dp-loglevel') as HTMLSelectElement | null;
     if (logLevelEl) {
-      const handler = (e: Event) => {
+      const handler = (e: Event): void => {
         const level = (e.target as HTMLSelectElement).value as 'debug' | 'info' | 'warn' | 'error';
         coreDebug.setLogLevel(level);
         logger.info(`Log level changed to ${level}`);
@@ -199,7 +199,7 @@ export class DebugPanel extends Colleague {
 
     const resetBtn = document.getElementById('dp-reset');
     if (resetBtn) {
-      const handler = () => {
+      const handler = (): void => {
         coreDebug.resetMetrics();
         this.updateTimings();
       };
@@ -209,7 +209,7 @@ export class DebugPanel extends Colleague {
 
     const exportBtn = document.getElementById('dp-export');
     if (exportBtn) {
-      const handler = () => this.exportDebugInfo();
+      const handler = (): void => this.exportDebugInfo();
       exportBtn.addEventListener('click', handler);
       this.listeners.push(() => exportBtn.removeEventListener('click', handler));
     }

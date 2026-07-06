@@ -23,7 +23,9 @@ export class NameOverlay extends Colleague {
     this.host = container;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'name-overlay';
-    this.ctx = this.canvas.getContext('2d')!;
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) throw new Error('2D context not supported');
+    this.ctx = ctx;
     container.appendChild(this.canvas);
   }
 

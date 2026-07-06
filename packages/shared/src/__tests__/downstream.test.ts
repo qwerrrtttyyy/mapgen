@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { runDownstreamPipeline, applyDownstreamToMapData } from '../downstream.js';
-import type { DownstreamInput, MapData } from '../downstream.js';
+import type { DownstreamInput } from '../downstream.js';
+import type { MapData } from '../index.js';
 
 describe('Downstream 下游管线', () => {
   const W = 32,
@@ -84,7 +85,7 @@ describe('Downstream 下游管线', () => {
 
   describe('applyDownstreamToMapData 应用到地图数据', () => {
     it('写回河流、区域、海岸字段', () => {
-      const md = {
+      const md: MapData = {
         width: W,
         height: H,
         plateTex: new Float32Array(size * 4),
@@ -97,7 +98,7 @@ describe('Downstream 下游管线', () => {
         rivers: [],
         names: { plates: [], regions: [], volcanoes: [] },
         seed: 1,
-      } as unknown as MapData;
+      };
 
       const downstreamResult = runDownstreamPipeline(makeInput());
       applyDownstreamToMapData(md, downstreamResult, 42);
