@@ -1,6 +1,5 @@
 import type { MapData } from '@mapgen/core';
 import type { RenderParams, UniformValue } from './renderParams.js';
-import { perfMonitor } from '../core/performance.js';
 import { bus } from '../core/eventBus.js';
 
 export type { RenderParams } from './renderParams.js';

@@ -19,7 +19,8 @@
       "@mapgen/core": ["../shared/dist/index.d.ts"]
     },
     "incremental": true,
-    "tsBuildInfoFile": "./node_modules/.cache/tsc/web.tsbuildinfo"
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/web.tsbuildinfo",
+    "types": []
   },
   "include": ["src"]
 }

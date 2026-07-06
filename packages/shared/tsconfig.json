@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
-    "tsBuildInfoFile": "./node_modules/.cache/tsc/shared.tsbuildinfo"
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/shared.tsbuildinfo",
+    "types": []
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts", "vitest.config.ts"]
