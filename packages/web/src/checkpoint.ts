@@ -216,7 +216,7 @@ export class CheckpointManager {
       name,
       phase,
       time: Date.now(),
-      seed: (params.seedStr as string) || '',
+      seed: params.seedStr || '',
       mapWidth: mapData.width,
       mapHeight: mapData.height,
       thumbnail: generateThumbnail(mapData),
@@ -228,9 +228,11 @@ export class CheckpointManager {
           moistTex: packFloat(mapData.moistTex, mapData.width, mapData.height)!,
           riverTex: packFloat(mapData.riverTex, mapData.width, mapData.height)!,
           tempTex: packFloat(mapData.tempTex, mapData.width, mapData.height)!,
-          currentTex: packFloat(mapData.currentTex ?? null, mapData.width, mapData.height) ?? undefined,
+          currentTex:
+            packFloat(mapData.currentTex ?? null, mapData.width, mapData.height) ?? undefined,
           iceTex: packFloat(mapData.iceTex ?? null, mapData.width, mapData.height) ?? undefined,
-          coastDist: packFloat(mapData.coastDist ?? null, mapData.width, mapData.height) ?? undefined,
+          coastDist:
+            packFloat(mapData.coastDist ?? null, mapData.width, mapData.height) ?? undefined,
         },
         tectonic: {
           plates: mapData.plates as unknown[],

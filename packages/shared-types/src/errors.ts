@@ -15,9 +15,7 @@ export interface MapGenError {
 }
 
 /** Result 类型 - 强制调用方处理错误 */
-export type Result<T, E = MapGenError> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+export type Result<T, E = MapGenError> = { ok: true; value: T } | { ok: false; error: E };
 
 export function ok<T>(value: T): Result<T> {
   return { ok: true, value };

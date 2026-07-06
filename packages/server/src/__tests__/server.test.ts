@@ -1,11 +1,14 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import app from '../index.js';
 
 describe('server', () => {
   it('returns health status', async () => {
     const res = await app.request('/api/v1/health');
     expect(res.status).toBe(200);
-    const body = await res.json() as { status: string; capabilities: { supportsPersistence: boolean } };
+    const body = (await res.json()) as {
+      status: string;
+      capabilities: { supportsPersistence: boolean };
+    };
     expect(body.status).toBe('ok');
     expect(body.capabilities.supportsPersistence).toBe(true);
   });
@@ -36,7 +39,7 @@ describe('server', () => {
       }),
     });
     expect(res.status).toBe(202);
-    const body = await res.json() as { jobId: string };
+    const body = (await res.json()) as { jobId: string };
     expect(body.jobId).toBeDefined();
   });
 });

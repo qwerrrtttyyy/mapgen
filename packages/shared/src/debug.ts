@@ -41,12 +41,14 @@ declare const globalThis: {
 } & Record<string, unknown>;
 
 function getConsole(): ConsoleLike {
-  return globalThis.console ?? {
-    debug: () => {},
-    info: () => {},
-    warn: () => {},
-    error: () => {},
-  };
+  return (
+    globalThis.console ?? {
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+    }
+  );
 }
 
 function getPerformance(): PerformanceLike {

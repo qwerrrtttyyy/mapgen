@@ -1,41 +1,131 @@
 export { hashSeed, createNoise, NoiseEngine, type NoiseType, type FbmType } from './noise.js';
-export { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate, type BoundaryType } from './tectonic.js';
+export {
+  generatePlates,
+  assignPlates,
+  computeBoundaries,
+  computeBoundaryTypes,
+  type Plate,
+  type BoundaryType,
+} from './tectonic.js';
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
-export { analyzeRegions, computeClimate, type Region, type ClimateData, type ClimateEnhanceOptions } from './regions.js';
-export { generateNames, regenerateNames, type NameManifest, type NameablePlate, type NameableRegion, type NamedPlate, type NamedRegion, type PlateKind, type TerrainType } from './naming.js';
-export { detectTerrainRegions, type DetectedRegion, type TerrainDetectOptions, CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, recomputePlateGeometry, type BrushTarget, type VectorTarget } from './editor.js';
+export {
+  analyzeRegions,
+  computeClimate,
+  type Region,
+  type ClimateData,
+  type ClimateEnhanceOptions,
+} from './regions.js';
+export {
+  generateNames,
+  regenerateNames,
+  type NameManifest,
+  type NameablePlate,
+  type NameableRegion,
+  type NamedPlate,
+  type NamedRegion,
+  type PlateKind,
+  type TerrainType,
+} from './naming.js';
+export {
+  detectTerrainRegions,
+  type DetectedRegion,
+  type TerrainDetectOptions,
+  CommandStack,
+  type Command,
+  applyBrushStroke,
+  applyVectorMountain,
+  applyVectorPolygon,
+  movePlate,
+  recomputePlateGeometry,
+  type BrushTarget,
+  type VectorTarget,
+} from './editor.js';
 export { computeSlope } from './slope.js';
-export { classifyBiome, extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures, packElevTex, packCurrentTex, packIceTex, packBiomeTex, packWatershedTex, packVolcanismTex, packSeasonTex, type TexturePackParams } from './texturePack.js';
-export { runDownstreamPipeline, applyDownstreamToMapData, type DownstreamInput, type DownstreamResult } from './downstream.js';
+export {
+  classifyBiome,
+  extractChannel,
+  extractPlateId,
+  packAllTextures,
+  packClimateRiverTextures,
+  packElevTex,
+  packCurrentTex,
+  packIceTex,
+  packBiomeTex,
+  packWatershedTex,
+  packVolcanismTex,
+  packSeasonTex,
+  type TexturePackParams,
+} from './texturePack.js';
+export {
+  runDownstreamPipeline,
+  applyDownstreamToMapData,
+  type DownstreamInput,
+  type DownstreamResult,
+} from './downstream.js';
 export { computeCoastDistance, continentalityFactor } from './coastline.js';
-export { computeOceanCurrents, type OceanCurrentInput, type OceanCurrentResult } from './oceanCurrents.js';
+export {
+  computeOceanCurrents,
+  type OceanCurrentInput,
+  type OceanCurrentResult,
+} from './oceanCurrents.js';
 export { computeIceSheet, type IceInput, type IceResult } from './ice.js';
-export { computeDetailPatch, detectDetailPeaks, type ViewportRegion, type DetailPatch, type DetailPeak } from './lazyGen.js';
-export { classifyBiomes, biomeNormalize, getBiomeInfo, type BiomeId, type BiomeInfo, type BiomeClassifyInput, type BiomeResult, BIOME_INFO, BIOME_COUNT } from './biomes.js';
+export {
+  computeDetailPatch,
+  detectDetailPeaks,
+  type ViewportRegion,
+  type DetailPatch,
+  type DetailPeak,
+} from './lazyGen.js';
+export {
+  classifyBiomes,
+  biomeNormalize,
+  getBiomeInfo,
+  type BiomeId,
+  type BiomeInfo,
+  type BiomeClassifyInput,
+  type BiomeResult,
+  BIOME_INFO,
+  BIOME_COUNT,
+} from './biomes.js';
 export { computeWatershed, type WatershedInput, type WatershedResult } from './watershed.js';
-export { computeVolcanism, type VolcanismInput, type VolcanismResult, type VolcanoSite, type Hotspot } from './volcanism.js';
-export { computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonInput, type SeasonResult } from './seasons.js';
-export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming } from './debug.js';
-export { t, getPreferredLocale, createTranslator, translations, type Locale } from './i18n/index.js';
+export {
+  computeVolcanism,
+  type VolcanismInput,
+  type VolcanismResult,
+  type VolcanoSite,
+  type Hotspot,
+} from './volcanism.js';
+export {
+  computeSeasonalVariation,
+  decodeSeasonDelta,
+  type Season,
+  type SeasonInput,
+  type SeasonResult,
+} from './seasons.js';
+export {
+  debug,
+  setupDebugGlobal,
+  getDebug,
+  type DebugState,
+  type DebugMetrics,
+  type DebugTiming,
+} from './debug.js';
+export {
+  t,
+  getPreferredLocale,
+  createTranslator,
+  translations,
+  type Locale,
+} from './i18n/index.js';
 export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
 
 import { hashSeed } from './noise.js';
-import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
-import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
-import { generateRivers, type River } from './rivers.js';
-import { analyzeRegions, computeClimate, type Region } from './regions.js';
-import { generateNames, type NameablePlate, type NameableRegion, type NameManifest } from './naming.js';
-import { detectTerrainRegions } from './editor.js';
-import { classifyBiome } from './texturePack.js';
-import { computeCoastDistance } from './coastline.js';
-import { computeOceanCurrents } from './oceanCurrents.js';
-import { computeIceSheet } from './ice.js';
-import { computeSlope } from './slope.js';
-import { classifyBiomes, getBiomeInfo } from './biomes.js';
-import { computeWatershed } from './watershed.js';
-import { computeVolcanism, type VolcanoSite, type Hotspot } from './volcanism.js';
-import { computeSeasonalVariation } from './seasons.js';
+import type { Plate } from './tectonic.js';
+import type { River } from './rivers.js';
+import type { Region } from './regions.js';
+import type { NameManifest } from './naming.js';
+import type { VolcanoSite, Hotspot } from './volcanism.js';
 import type { NoiseType, FbmType } from './noise.js';
 import {
   runTectonicStage,
@@ -46,7 +136,13 @@ import {
   runPackingStage,
 } from './pipeline/index.js';
 
-const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
+const ASPECT_MAP: Record<string, number> = {
+  '1:1': 1,
+  '4:3': 4 / 3,
+  '16:9': 16 / 9,
+  '2:1': 2,
+  '3:2': 3 / 2,
+};
 
 export interface MapParams {
   seedStr: string;
@@ -132,7 +228,10 @@ export interface MapData {
 
 export type ProgressCallback = (progress: number, phaseName: string) => void;
 
-export function generateMap(params: MapParams, onProgress?: ProgressCallback): { mapData: MapData; checkpoints: Record<string, unknown> } {
+export function generateMap(
+  params: MapParams,
+  onProgress?: ProgressCallback
+): { mapData: MapData; checkpoints: Record<string, unknown> } {
   const seed = hashSeed(params.seedStr);
   let width: number, height: number;
   if (params.mapWidth && params.mapHeight) {
@@ -198,7 +297,16 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const regionState = runRegionStage(width, height, seed, params, tectonic, climate, riverState);
 
   advance('packing');
-  const mapData = runPackingStage(width, height, seed, params, tectonic, climate, riverState, regionState);
+  const mapData = runPackingStage(
+    width,
+    height,
+    seed,
+    params,
+    tectonic,
+    climate,
+    riverState,
+    regionState
+  );
 
   return {
     mapData,

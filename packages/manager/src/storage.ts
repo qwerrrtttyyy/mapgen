@@ -99,7 +99,7 @@ export class Storage {
     const configsDir = join(this.mapgenDir, CONFIGS_DIR);
     try {
       const files = await readdir(configsDir);
-      return files.filter((f) => f.endsWith('.json'));
+      return files.filter(f => f.endsWith('.json'));
     } catch {
       return [];
     }

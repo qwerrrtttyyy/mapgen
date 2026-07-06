@@ -6,7 +6,12 @@
  */
 
 import { MapgenManager } from './manager.js';
-import type { CreateConfigOptions, UpdateConfigOptions, ListFilter, MapgenParams } from './types.js';
+import type {
+  CreateConfigOptions,
+  UpdateConfigOptions,
+  ListFilter,
+  MapgenParams,
+} from './types.js';
 
 const manager = new MapgenManager();
 
@@ -30,7 +35,7 @@ function printTable(items: Record<string, unknown>[], columns: string[]): void {
     return;
   }
   for (const item of items) {
-    const parts = columns.map((col) => `${col}=${String(item[col] ?? '')}`);
+    const parts = columns.map(col => `${col}=${String(item[col] ?? '')}`);
     console.log(`  ${parts.join('  |  ')}`);
   }
 }
@@ -56,7 +61,9 @@ async function main(): Promise<void> {
     case 'create': {
       const name = args[1];
       if (!name) {
-        console.error('✗ Usage: mapgen create <name> [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>] [--noise <type>] [--fbm <type>]');
+        console.error(
+          '✗ Usage: mapgen create <name> [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>] [--noise <type>] [--fbm <type>]'
+        );
         process.exit(1);
       }
       const opts: CreateConfigOptions = {
@@ -99,7 +106,9 @@ async function main(): Promise<void> {
     case 'update': {
       const nameOrId = args[1];
       if (!nameOrId) {
-        console.error('✗ Usage: mapgen update <name-or-id> [--name <new-name>] [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>]');
+        console.error(
+          '✗ Usage: mapgen update <name-or-id> [--name <new-name>] [--desc <description>] [--seed <seed>] [--plates <n>] [--landmass <0-1>]'
+        );
         process.exit(1);
       }
       const updates: UpdateConfigOptions = {};
@@ -134,10 +143,14 @@ async function main(): Promise<void> {
           const result = await manager.listVersions();
           if (result.success) {
             console.log(`✓ ${result.message}`);
-            const data = result.data as { versions: { tag: string; createdAt: number; description?: string }[] };
+            const data = result.data as {
+              versions: { tag: string; createdAt: number; description?: string }[];
+            };
             for (const v of data.versions) {
               const marker = v.tag === (result.data as { current: string }).current ? ' *' : '';
-              console.log(`  ${v.tag}${marker}  (${new Date(v.createdAt).toISOString()})${v.description ? `  - ${v.description}` : ''}`);
+              console.log(
+                `  ${v.tag}${marker}  (${new Date(v.createdAt).toISOString()})${v.description ? `  - ${v.description}` : ''}`
+              );
             }
           } else {
             print(result);
@@ -269,7 +282,7 @@ function parseParamsPartial(args: string[]): Partial<MapgenParams> {
   return params;
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error(`✗ ${err.message}`);
   process.exit(1);
 });

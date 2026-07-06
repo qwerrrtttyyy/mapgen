@@ -12,7 +12,12 @@ export class Shortcuts extends Colleague {
   bind(): void {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      )
+        return;
 
       switch (e.key.toLowerCase()) {
         case 'g':

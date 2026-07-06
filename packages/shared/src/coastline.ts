@@ -16,8 +16,10 @@
  * @returns coastDist 陆地为正（向内陆增大），海洋为负（向远海减小），海岸为 0
  */
 export function computeCoastDistance(
-  width: number, height: number,
-  elevation: Float32Array, seaLevel: number,
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number
 ): Float32Array {
   const size = width * height;
   const coastDist = new Float32Array(size).fill(Infinity);
@@ -33,17 +35,29 @@ export function computeCoastDistance(
       if (x < width - 1) {
         const right = elevation[idx + 1] > seaLevel;
         if (isLand !== right) {
-          if (coastDist[idx] !== 0) { coastDist[idx] = 0; queue.push(idx); }
+          if (coastDist[idx] !== 0) {
+            coastDist[idx] = 0;
+            queue.push(idx);
+          }
           const ni = idx + 1;
-          if (coastDist[ni] !== 0) { coastDist[ni] = 0; queue.push(ni); }
+          if (coastDist[ni] !== 0) {
+            coastDist[ni] = 0;
+            queue.push(ni);
+          }
         }
       }
       if (y < height - 1) {
         const down = elevation[idx + width] > seaLevel;
         if (isLand !== down) {
-          if (coastDist[idx] !== 0) { coastDist[idx] = 0; queue.push(idx); }
+          if (coastDist[idx] !== 0) {
+            coastDist[idx] = 0;
+            queue.push(idx);
+          }
           const ni = idx + width;
-          if (coastDist[ni] !== 0) { coastDist[ni] = 0; queue.push(ni); }
+          if (coastDist[ni] !== 0) {
+            coastDist[ni] = 0;
+            queue.push(ni);
+          }
         }
       }
     }
@@ -56,14 +70,15 @@ export function computeCoastDistance(
     const cur = coastDist[idx];
     const sign = cur >= 0 ? 1 : -1; // 海岸 0 视为两侧都能扩散（陆地侧下一步+1，海洋侧下一步-1）
     const next = cur + sign;
-    const x = idx % width, y = (idx / width) | 0;
+    const x = idx % width,
+      y = (idx / width) | 0;
     // 4-邻接
     if (x > 0) {
       const ni = idx - 1;
       if (coastDist[ni] === Infinity) {
         const niLand = elevation[ni] > seaLevel;
         // 0（海岸）两侧均可扩散；非零则仅同侧扩散
-        if (cur === 0 || (sign > 0) === niLand) {
+        if (cur === 0 || sign > 0 === niLand) {
           coastDist[ni] = niLand ? Math.abs(next) : -Math.abs(next);
           queue.push(ni);
         }
@@ -73,7 +88,7 @@ export function computeCoastDistance(
       const ni = idx + 1;
       if (coastDist[ni] === Infinity) {
         const niLand = elevation[ni] > seaLevel;
-        if (cur === 0 || (sign > 0) === niLand) {
+        if (cur === 0 || sign > 0 === niLand) {
           coastDist[ni] = niLand ? Math.abs(next) : -Math.abs(next);
           queue.push(ni);
         }
@@ -83,7 +98,7 @@ export function computeCoastDistance(
       const ni = idx - width;
       if (coastDist[ni] === Infinity) {
         const niLand = elevation[ni] > seaLevel;
-        if (cur === 0 || (sign > 0) === niLand) {
+        if (cur === 0 || sign > 0 === niLand) {
           coastDist[ni] = niLand ? Math.abs(next) : -Math.abs(next);
           queue.push(ni);
         }
@@ -93,7 +108,7 @@ export function computeCoastDistance(
       const ni = idx + width;
       if (coastDist[ni] === Infinity) {
         const niLand = elevation[ni] > seaLevel;
-        if (cur === 0 || (sign > 0) === niLand) {
+        if (cur === 0 || sign > 0 === niLand) {
           coastDist[ni] = niLand ? Math.abs(next) : -Math.abs(next);
           queue.push(ni);
         }
@@ -121,7 +136,10 @@ export function continentalityFactor(coastDist: Float32Array, maxDist: number): 
   const invMax = 1 / maxDist;
   for (let i = 0; i < size; i++) {
     const d = coastDist[i];
-    if (d <= 0) { out[i] = 0; continue; }
+    if (d <= 0) {
+      out[i] = 0;
+      continue;
+    }
     out[i] = Math.min(1, d * invMax);
   }
   return out;

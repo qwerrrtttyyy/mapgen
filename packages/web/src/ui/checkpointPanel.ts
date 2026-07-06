@@ -20,7 +20,7 @@ export class CheckpointPanel extends Colleague {
   bind(mgr: CheckpointManager): void {
     this.mgr = mgr;
 
-    this.list?.addEventListener('click', (e) => this.handleListClick(e));
+    this.list?.addEventListener('click', e => this.handleListClick(e));
 
     if (this.mediator) {
       this.bindWithMediator();
@@ -52,7 +52,7 @@ export class CheckpointPanel extends Colleague {
 
   private handleListClick(e: MouseEvent): void {
     const target = e.target as HTMLElement;
-    const item = target.closest('.checkpoint-item') as HTMLElement | null;
+    const item = target.closest<HTMLElement>('.checkpoint-item');
     if (!item || !this.mgr) return;
     const id = Number(item.dataset.id);
     if (Number.isNaN(id)) return;
@@ -78,7 +78,7 @@ export class CheckpointPanel extends Colleague {
     if (!this.mgr) return;
     const ckpt = this.mgr.checkpoints[id];
     if (!ckpt) return;
-    const nameEl = item.querySelector('.ck-name') as HTMLElement | null;
+    const nameEl = item.querySelector('.ck-name');
     if (!nameEl) return;
     const newName = prompt('重命名检查点:', ckpt.name);
     if (!newName || newName === ckpt.name) return;
@@ -92,7 +92,7 @@ export class CheckpointPanel extends Colleague {
     if (!ckpt) return;
     if (!confirm(`确定删除检查点 "${ckpt.name}"?`)) return;
 
-    const item = this.list.querySelector(`.checkpoint-item[data-id="${id}"]`) as HTMLElement | null;
+    const item = this.list.querySelector(`.checkpoint-item[data-id="${id}"]`);
     if (!item) {
       this.doDelete(id);
       return;

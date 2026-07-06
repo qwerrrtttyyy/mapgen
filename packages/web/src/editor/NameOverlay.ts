@@ -3,7 +3,10 @@ import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import { computeDetailPatch, detectDetailPeaks, type DetailPeak } from '@mapgen/core';
 
-interface VectorPreview { points: number[][]; mode: string; }
+interface VectorPreview {
+  points: number[][];
+  mode: string;
+}
 
 export class NameOverlay extends Colleague {
   private host: HTMLElement;
@@ -42,7 +45,10 @@ export class NameOverlay extends Colleague {
         this.vectorPreview = v;
         this.draw();
       }),
-      this.subscribe('overlay.toggle', (vis: boolean) => { this.visible = vis; this.draw(); }),
+      this.subscribe('overlay.toggle', (vis: boolean) => {
+        this.visible = vis;
+        this.draw();
+      })
     );
   }
 
@@ -56,7 +62,10 @@ export class NameOverlay extends Colleague {
         this.vectorPreview = v;
         this.draw();
       }),
-      bus.on('overlay.toggle', (vis: boolean) => { this.visible = vis; this.draw(); }),
+      bus.on('overlay.toggle', (vis: boolean) => {
+        this.visible = vis;
+        this.draw();
+      })
     );
   }
 
@@ -65,7 +74,8 @@ export class NameOverlay extends Colleague {
     const rect = this.host.getBoundingClientRect();
     if (rect.width === 0 || !md) return null;
     if (this.canvas.width !== Math.floor(rect.width)) this.canvas.width = Math.floor(rect.width);
-    if (this.canvas.height !== Math.floor(rect.height)) this.canvas.height = Math.floor(rect.height);
+    if (this.canvas.height !== Math.floor(rect.height))
+      this.canvas.height = Math.floor(rect.height);
     const scale = Math.min(rect.width / md.width, rect.height / md.height);
     const dW = md.width * scale;
     const dH = md.height * scale;
@@ -74,7 +84,13 @@ export class NameOverlay extends Colleague {
     return { scale, ox, oy };
   }
 
-  private mapToScreen(mx: number, my: number, scale: number, ox: number, oy: number): [number, number] {
+  private mapToScreen(
+    mx: number,
+    my: number,
+    scale: number,
+    ox: number,
+    oy: number
+  ): [number, number] {
     return [ox + mx * scale, oy + my * scale];
   }
 
@@ -89,10 +105,7 @@ export class NameOverlay extends Colleague {
     const { scale, ox, oy } = geo;
 
     const showPlates = true;
-    const regionMinArea = scale < 1.5 ? Infinity
-      : scale < 3 ? 200
-      : scale < 6 ? 80
-      : 20;
+    const regionMinArea = scale < 1.5 ? Infinity : scale < 3 ? 200 : scale < 6 ? 80 : 20;
     const showTypeColor = scale >= 6;
 
     const names = md.names;
@@ -112,7 +125,9 @@ export class NameOverlay extends Colleague {
       for (const r of names.regions) {
         if (r.area < regionMinArea) continue;
         const [sx, sy] = this.mapToScreen(r.centroid[0], r.centroid[1], scale, ox, oy);
-        const colors = showTypeColor ? this.typeColors(r.type) : { bg: 'rgba(40,30,20,0.5)', fg: '#fff7e6' };
+        const colors = showTypeColor
+          ? this.typeColors(r.type)
+          : { bg: 'rgba(40,30,20,0.5)', fg: '#fff7e6' };
         this.drawLabel(sx, sy, r.name, colors.bg, colors.fg);
       }
     }
@@ -147,9 +162,17 @@ export class NameOverlay extends Colleague {
       const outW = Math.min(96, Math.round(rw));
       const outH = Math.min(96, Math.round(rh));
       const patch = computeDetailPatch(
-        baseElev, mw, mh,
+        baseElev,
+        mw,
+        mh,
         { x: rx, y: ry, w: rw, h: rh, outW, outH },
-        md.seed, 'perlin', 'standard', 2.0, 0.5, 0.04, 3,
+        md.seed,
+        'perlin',
+        'standard',
+        2.0,
+        0.5,
+        0.04,
+        3
       );
       this.cachedPeaks = detectDetailPeaks(patch, state.params.seaLevel, 0.025, 6);
     }
@@ -173,21 +196,31 @@ export class NameOverlay extends Colleague {
 
   private typeColors(type: string): { bg: string; fg: string } {
     switch (type) {
-      case 'glacier':     return { bg: 'rgba(180,210,240,0.6)', fg: '#0a1a30' };
-      case 'volcano':     return { bg: 'rgba(200,60,30,0.6)',   fg: '#fff0e8' };
-      case 'delta':       return { bg: 'rgba(80,120,60,0.55)',  fg: '#f0fff0' };
-      case 'archipelago': return { bg: 'rgba(40,80,140,0.6)',   fg: '#e0f0ff' };
-      case 'mountain':    return { bg: 'rgba(80,60,40,0.55)',   fg: '#fff7e6' };
-      case 'desert':      return { bg: 'rgba(180,150,80,0.55)', fg: '#3a2a10' };
-      case 'forest':      return { bg: 'rgba(30,70,30,0.55)',   fg: '#e8ffe8' };
-      case 'basin':       return { bg: 'rgba(60,70,90,0.55)',   fg: '#e8f0ff' };
-      default:            return { bg: 'rgba(40,30,20,0.5)',    fg: '#fff7e6' };
+      case 'glacier':
+        return { bg: 'rgba(180,210,240,0.6)', fg: '#0a1a30' };
+      case 'volcano':
+        return { bg: 'rgba(200,60,30,0.6)', fg: '#fff0e8' };
+      case 'delta':
+        return { bg: 'rgba(80,120,60,0.55)', fg: '#f0fff0' };
+      case 'archipelago':
+        return { bg: 'rgba(40,80,140,0.6)', fg: '#e0f0ff' };
+      case 'mountain':
+        return { bg: 'rgba(80,60,40,0.55)', fg: '#fff7e6' };
+      case 'desert':
+        return { bg: 'rgba(180,150,80,0.55)', fg: '#3a2a10' };
+      case 'forest':
+        return { bg: 'rgba(30,70,30,0.55)', fg: '#e8ffe8' };
+      case 'basin':
+        return { bg: 'rgba(60,70,90,0.55)', fg: '#e8f0ff' };
+      default:
+        return { bg: 'rgba(40,30,20,0.5)', fg: '#fff7e6' };
     }
   }
 
   private drawLabel(x: number, y: number, text: string, bg: string, fg: string): void {
     const ctx = this.ctx;
-    const padX = 4, padY = 2;
+    const padX = 4,
+      padY = 2;
     const m = ctx.measureText(text);
     const w = m.width + padX * 2;
     const h = (parseInt(ctx.font, 10) || 12) + padY * 2;
@@ -207,7 +240,8 @@ export class NameOverlay extends Colleague {
     ctx.beginPath();
     for (let i = 0; i < pts.length; i++) {
       const [sx, sy] = this.mapToScreen(pts[i][0], pts[i][1], scale, ox, oy);
-      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
     }
     if (this.vectorPreview.mode === 'vector-poly' && pts.length > 2) ctx.closePath();
     ctx.stroke();

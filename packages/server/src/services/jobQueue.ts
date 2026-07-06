@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { MapParams, GenerationResult, GenerationProgress, MapGenError } from '@mapgen/shared-types';
+import type {
+  MapParams,
+  GenerationResult,
+  GenerationProgress,
+  MapGenError,
+} from '@mapgen/shared-types';
 
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 

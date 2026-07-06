@@ -19,7 +19,8 @@ function makePlateId(width: number, height: number): Float32Array {
       pid[idx] = left ? 0 : 1;
       const cx = left ? 0.3 : 0.7;
       const cy = 0.5;
-      const dx = x / width - cx, dy = y / height - cy;
+      const dx = x / width - cx,
+        dy = y / height - cy;
       plateDist[idx] = Math.sqrt(dx * dx + dy * dy);
     }
   }
@@ -34,7 +35,8 @@ function makePlateDist(width: number, height: number): Float32Array {
       const left = x / width < 0.5;
       const cx = left ? 0.3 : 0.7;
       const cy = 0.5;
-      const dx = x / width - cx, dy = y / height - cy;
+      const dx = x / width - cx,
+        dy = y / height - cy;
       plateDist[idx] = Math.sqrt(dx * dx + dy * dy);
     }
   }
@@ -43,14 +45,28 @@ function makePlateDist(width: number, height: number): Float32Array {
 
 describe('板块边界平滑 (AC-4.1)', () => {
   it('边界处高程过渡单调（大陆-海洋交界不跳变）', () => {
-    const W = 64, H = 64;
+    const W = 64,
+      H = 64;
     const plates = makePlates();
     const plateId = makePlateId(W, H);
     const plateDist = makePlateDist(W, H);
     const tectonicForce = new Float32Array(W * H); // 无构造力，纯过渡
     const { elevation } = generateElevation(
-      W, H, 42, plateId, plates, plateDist, tectonicForce,
-      'simplex', 'standard', 4, 2, 0.5, 0.45, 0.3, 0.5
+      W,
+      H,
+      42,
+      plateId,
+      plates,
+      plateDist,
+      tectonicForce,
+      'simplex',
+      'standard',
+      4,
+      2,
+      0.5,
+      0.45,
+      0.3,
+      0.5
     );
     // 在中线 x=32 附近取一行，检查相邻像素高程差不超过 0.3
     const midY = Math.floor(H / 2);
@@ -63,7 +79,8 @@ describe('板块边界平滑 (AC-4.1)', () => {
   });
 
   it('汇聚边界生成山脉（有构造力时边界高程高于无构造力）', () => {
-    const W = 64, H = 64;
+    const W = 64,
+      H = 64;
     const plates = makePlates();
     const plateId = makePlateId(W, H);
     const plateDist = makePlateDist(W, H);
@@ -71,8 +88,21 @@ describe('板块边界平滑 (AC-4.1)', () => {
     // 无构造力
     const noForce = new Float32Array(W * H);
     const { elevation: elevNo } = generateElevation(
-      W, H, 42, plateId, plates, plateDist, noForce,
-      'simplex', 'standard', 4, 2, 0.5, 0.45, 0.5, 0.5
+      W,
+      H,
+      42,
+      plateId,
+      plates,
+      plateDist,
+      noForce,
+      'simplex',
+      'standard',
+      4,
+      2,
+      0.5,
+      0.45,
+      0.5,
+      0.5
     );
 
     // 有汇聚构造力
@@ -83,13 +113,27 @@ describe('板块边界平滑 (AC-4.1)', () => {
       }
     }
     const { elevation: elevYes } = generateElevation(
-      W, H, 42, plateId, plates, plateDist, force,
-      'simplex', 'standard', 4, 2, 0.5, 0.45, 0.5, 0.5
+      W,
+      H,
+      42,
+      plateId,
+      plates,
+      plateDist,
+      force,
+      'simplex',
+      'standard',
+      4,
+      2,
+      0.5,
+      0.45,
+      0.5,
+      0.5
     );
 
     // 边界列最大高程：有构造力应高于无构造力
     const midY = Math.floor(H / 2);
-    let maxNo = -Infinity, maxYes = -Infinity;
+    let maxNo = -Infinity,
+      maxYes = -Infinity;
     for (let x = 28; x < 36; x++) {
       maxNo = Math.max(maxNo, elevNo[midY * W + x]);
       maxYes = Math.max(maxYes, elevYes[midY * W + x]);

@@ -30,16 +30,33 @@ export function runElevationStage(
   }
 
   const elevResult = generateElevation(
-    width, height, seed,
-    tectonic.plateId, tectonic.plates, tectonic.plateDist, tectonic.tectonicForce,
-    params.noiseType, params.fbmType, params.octaves,
-    params.lacunarity, params.persistence, params.seaLevel,
-    params.mountainFold, params.coastDetail
+    width,
+    height,
+    seed,
+    tectonic.plateId,
+    tectonic.plates,
+    tectonic.plateDist,
+    tectonic.tectonicForce,
+    params.noiseType,
+    params.fbmType,
+    params.octaves,
+    params.lacunarity,
+    params.persistence,
+    params.seaLevel,
+    params.mountainFold,
+    params.coastDetail
   );
 
   let elevation = elevResult.elevation;
   if (params.erosionIterations > 0 && params.erosionStrength > 0) {
-    elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength, 0.01);
+    elevation = hydraulicErosion(
+      width,
+      height,
+      elevation,
+      params.erosionIterations,
+      params.erosionStrength,
+      0.01
+    );
   }
 
   return {

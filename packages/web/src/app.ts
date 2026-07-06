@@ -1,4 +1,4 @@
-import type { MapData, debug as coreDebug } from '@mapgen/core';
+import type { MapData } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -8,7 +8,6 @@ import { logger } from './core/logger.js';
 import { state, patchParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
 import { generate as generateMap, setParam, clearSelection } from './core/actions.js';
-import { getEngineProvider } from './engine/factory.js';
 import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
 import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';
@@ -60,7 +59,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 let dragStartW = 0;
 let dragStartH = 0;
-let currentTool = 'idle';
 let namesVisible = true;
 let debugPanel: DebugPanel | null = null;
 
@@ -112,7 +110,7 @@ function updateSizeInfo(): void {
 }
 
 function setSliderVal(id: string, rawVal: number): void {
-  const el = $(id) as HTMLInputElement | null;
+  const el = $<HTMLInputElement>(id);
   if (el) el.value = String(rawVal);
 }
 
@@ -123,19 +121,19 @@ function setDispVal(id: string, text: string): void {
 
 function syncUIFromParams(): void {
   const p = state.params;
-  const seedInput = $('seedStr') as HTMLInputElement | null;
+  const seedInput = $<HTMLInputElement>('seedStr');
   if (seedInput) seedInput.value = p.seedStr;
-  const wInput = $('mapWidth') as HTMLInputElement | null;
-  const hInput = $('mapHeight') as HTMLInputElement | null;
+  const wInput = $<HTMLInputElement>('mapWidth');
+  const hInput = $<HTMLInputElement>('mapHeight');
   if (wInput) wInput.value = String(p.mapWidth);
   if (hInput) hInput.value = String(p.mapHeight);
   updateSizeInfo();
 
-  const noiseSel = $('noiseType') as HTMLSelectElement | null;
+  const noiseSel = $<HTMLSelectElement>('noiseType');
   if (noiseSel) noiseSel.value = p.noiseType;
-  const fbmSel = $('fbmType') as HTMLSelectElement | null;
+  const fbmSel = $<HTMLSelectElement>('fbmType');
   if (fbmSel) fbmSel.value = p.fbmType;
-  const styleSel = $('style') as HTMLSelectElement | null;
+  const styleSel = $<HTMLSelectElement>('style');
   if (styleSel) styleSel.value = String(p.style);
 
   setSliderVal('octaves', p.octaves);
@@ -160,7 +158,7 @@ function syncUIFromParams(): void {
   setDispVal('coastDetail-val', p.coastDetail.toFixed(2));
 
   const setCheck = (id: string, val: boolean) => {
-    const el = $(id) as HTMLInputElement | null;
+    const el = $<HTMLInputElement>(id);
     if (el) el.checked = val;
   };
   setCheck('enableOceanCurrents', p.enableOceanCurrents);
@@ -247,14 +245,14 @@ function updateStyleDots(): void {
   if (!container) return;
   container.innerHTML = '';
   const styles = RENDER_STYLES.slice(0, 6);
-  styles.forEach((s) => {
+  styles.forEach(s => {
     const dot = document.createElement('button');
     dot.className = 'sd' + (s.style === state.params.style ? ' active' : '');
     dot.appendChild(createSvgIcon(s.icon, 16));
     dot.title = s.name;
     dot.addEventListener('click', () => {
       setParam('style', s.style);
-      const sel = $('style') as HTMLSelectElement | null;
+      const sel = $<HTMLSelectElement>('style');
       if (sel) sel.value = String(s.style);
       updateStyleDots();
       scheduleRender();
@@ -264,8 +262,8 @@ function updateStyleDots(): void {
 }
 
 function updateUndoRedo(): void {
-  const undoBtn = $('btn-undo') as HTMLButtonElement | null;
-  const redoBtn = $('btn-redo') as HTMLButtonElement | null;
+  const undoBtn = $<HTMLButtonElement>('btn-undo');
+  const redoBtn = $<HTMLButtonElement>('btn-redo');
   if (undoBtn) undoBtn.disabled = true;
   if (redoBtn) redoBtn.disabled = true;
 }
@@ -319,12 +317,31 @@ function drawMinimap(): void {
       const di = (y * w + x) * 4;
 
       let r: number, g: number, b: number;
-      if (e < seaLevel - 0.15) { r = 20; g = 50; b = 100; }
-      else if (e < seaLevel) { r = 40; g = 80; b = 140; }
-      else if (e < seaLevel + 0.05) { r = 194; g = 178; b = 128; }
-      else if (e < snowLine - 0.1) { r = 60; g = 120; b = 50; }
-      else if (e < snowLine) { r = 100; g = 90; b = 70; }
-      else { r = 240; g = 245; b = 255; }
+      if (e < seaLevel - 0.15) {
+        r = 20;
+        g = 50;
+        b = 100;
+      } else if (e < seaLevel) {
+        r = 40;
+        g = 80;
+        b = 140;
+      } else if (e < seaLevel + 0.05) {
+        r = 194;
+        g = 178;
+        b = 128;
+      } else if (e < snowLine - 0.1) {
+        r = 60;
+        g = 120;
+        b = 50;
+      } else if (e < snowLine) {
+        r = 100;
+        g = 90;
+        b = 70;
+      } else {
+        r = 240;
+        g = 245;
+        b = 255;
+      }
 
       data[di] = r;
       data[di + 1] = g;
@@ -341,7 +358,7 @@ function buildPresetGrid(): void {
   grid.innerHTML = '';
   const themeGroup = PRESET_GROUPS.find(g => g.category === 'theme');
   if (!themeGroup) return;
-  themeGroup.presets.forEach((preset) => {
+  themeGroup.presets.forEach(preset => {
     const card = document.createElement('button');
     card.className = 'preset-card' + (state.currentPreset === preset.id ? ' active' : '');
     const iconWrap = document.createElement('span');
@@ -391,7 +408,7 @@ interface SliderBinding {
 }
 
 function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBinding): void {
-  const el = $(id) as HTMLInputElement | null;
+  const el = $<HTMLInputElement>(id);
   const dispId = id + '-val';
   if (!el) return;
   el.addEventListener('input', () => {
@@ -402,7 +419,20 @@ function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBindi
     if (paramKey === 'windDirX' || paramKey === 'windDirY') {
       updateWindArrow();
     }
-    const renderOnlyKeys = ['style', 'showBoundaries', 'boundaryWidth', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'lightAngle', 'pointLightEnabled', 'glowEnabled', 'cursorSize'];
+    const renderOnlyKeys = [
+      'style',
+      'showBoundaries',
+      'boundaryWidth',
+      'showRivers',
+      'showContours',
+      'showTerrain',
+      'showSelection',
+      'showClimate',
+      'lightAngle',
+      'pointLightEnabled',
+      'glowEnabled',
+      'cursorSize',
+    ];
     if (renderOnlyKeys.includes(paramKey as string)) {
       scheduleRender();
     }
@@ -413,11 +443,24 @@ function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBindi
 }
 
 function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $(id) as HTMLInputElement | null;
+  const el = $<HTMLInputElement>(id);
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.checked as never);
-    const renderOnlyKeys = ['showBoundaries', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'pointLightEnabled', 'glowEnabled', 'laserActive', 'cursorActive', 'trailEnabled', 'laserSelection'];
+    const renderOnlyKeys = [
+      'showBoundaries',
+      'showRivers',
+      'showContours',
+      'showTerrain',
+      'showSelection',
+      'showClimate',
+      'pointLightEnabled',
+      'glowEnabled',
+      'laserActive',
+      'cursorActive',
+      'trailEnabled',
+      'laserSelection',
+    ];
     if (renderOnlyKeys.includes(paramKey as string)) {
       scheduleRender();
     }
@@ -426,7 +469,7 @@ function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): vo
 }
 
 function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $(id) as HTMLSelectElement | null;
+  const el = $<HTMLSelectElement>(id);
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.value as never);
@@ -441,7 +484,7 @@ function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void
 function bindSizeHandle(): void {
   const handle = $('size-handle');
   if (!handle) return;
-  handle.addEventListener('mousedown', (e) => {
+  handle.addEventListener('mousedown', e => {
     isDraggingSize = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -449,7 +492,7 @@ function bindSizeHandle(): void {
     dragStartH = state.params.mapHeight;
     e.preventDefault();
   });
-  document.addEventListener('mousemove', (e) => {
+  document.addEventListener('mousemove', e => {
     if (!isDraggingSize) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
@@ -457,12 +500,14 @@ function bindSizeHandle(): void {
     const newH = Math.max(64, Math.min(2048, dragStartH + Math.round(dy / 2) * 2));
     if (newW !== state.params.mapWidth || newH !== state.params.mapHeight) {
       patchParams({ mapWidth: newW, mapHeight: newH });
-      const wInput = $('mapWidth') as HTMLInputElement | null;
-      const hInput = $('mapHeight') as HTMLInputElement | null;
+      const wInput = $<HTMLInputElement>('mapWidth');
+      const hInput = $<HTMLInputElement>('mapHeight');
       if (wInput) wInput.value = String(newW);
       if (hInput) hInput.value = String(newH);
       updateSizeInfo();
-      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.sz-btn')
+        .forEach(b => b.classList.remove('active'));
     }
   });
   document.addEventListener('mouseup', () => {
@@ -499,7 +544,7 @@ function bindEventBus(): void {
       for (let i = 0; i < total; i++) {
         if (elev[i * 4] >= state.params.seaLevel) landCount++;
       }
-      wiStatsVal.textContent = `${Math.round(landCount / total * 100)}% 陆地`;
+      wiStatsVal.textContent = `${Math.round((landCount / total) * 100)}% 陆地`;
     }
   });
   bus.on('generating.failed', (err: string) => {
@@ -511,9 +556,9 @@ function bindEventBus(): void {
     scheduleRender();
   });
   bus.on('export.request', () => {
-    const c = $('glCanvas') as HTMLCanvasElement | null;
+    const c = $<HTMLCanvasElement>('glCanvas');
     if (!c) return;
-    c.toBlob((blob) => {
+    c.toBlob(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -545,8 +590,8 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const canvas = $('glCanvas') as HTMLCanvasElement | null;
-  const minimap = $('minimap') as HTMLCanvasElement | null;
+  const canvas = $<HTMLCanvasElement>('glCanvas');
+  const minimap = $<HTMLCanvasElement>('minimap');
   if (!canvas) {
     logger.error('#glCanvas not found');
     return;
@@ -584,7 +629,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     tab.addEventListener('click', () => {
       const target = tab.dataset.tab;
       if (!target) return;
-      document.querySelectorAll<HTMLElement>('.panel-tab').forEach(t => t.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLElement>('.panel-tab')
+        .forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
         s.classList.toggle('active', s.dataset.section === target);
@@ -596,14 +643,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-random')?.addEventListener('click', () => {
     const seed = String(Math.floor(Math.random() * 99999));
     setParam('seedStr', seed);
-    const seedInput = $('seedStr') as HTMLInputElement | null;
+    const seedInput = $<HTMLInputElement>('seedStr');
     if (seedInput) seedInput.value = seed;
     generateMap();
   });
   $('btn-random-seed')?.addEventListener('click', () => {
     const seed = String(Math.floor(Math.random() * 99999));
     setParam('seedStr', seed);
-    const seedInput = $('seedStr') as HTMLInputElement | null;
+    const seedInput = $<HTMLInputElement>('seedStr');
     if (seedInput) seedInput.value = seed;
     generateMap();
   });
@@ -616,12 +663,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('btn-toggle-names')?.classList.toggle('active', namesVisible);
   });
 
-  $('seedStr')?.addEventListener('change', (e) => {
+  $('seedStr')?.addEventListener('change', e => {
     setParam('seedStr', (e.target as HTMLInputElement).value);
   });
 
-  const wInput = $('mapWidth') as HTMLInputElement | null;
-  const hInput = $('mapHeight') as HTMLInputElement | null;
+  const wInput = $<HTMLInputElement>('mapWidth');
+  const hInput = $<HTMLInputElement>('mapHeight');
   const onSizeChange = () => {
     const w = parseInt(wInput?.value || '512', 10);
     const h = parseInt(hInput?.value || '512', 10);
@@ -629,14 +676,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
     updateSizeInfo();
   };
-  wInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
-  hInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
+  wInput?.addEventListener('change', () => {
+    onSizeChange();
+    generateMap();
+  });
+  hInput?.addEventListener('change', () => {
+    onSizeChange();
+    generateMap();
+  });
 
   document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const w = parseInt(btn.dataset.w || '512', 10);
       const h = parseInt(btn.dataset.h || '512', 10);
-      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.sz-btn')
+        .forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       patchParams({ mapWidth: w, mapHeight: h });
       if (wInput) wInput.value = String(w);
@@ -774,8 +829,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => {
       const tool = btn.dataset.tool;
       if (!tool) return;
-      currentTool = tool;
-      document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]')
+        .forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const brushCtrls = $('brush-ctrls');
       if (brushCtrls) {
@@ -783,14 +839,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
   });
-  const brushCtrlsEl = $('brush-ctrls') as HTMLElement | null;
+  const brushCtrlsEl = $('brush-ctrls');
   if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
 
   bindSliderEx('brushRadius', 'cursorSize', {
     toParam: raw => raw,
     toDisplay: raw => String(raw),
   });
-  $('brushStrength')?.addEventListener('input', (e) => {
+  $('brushStrength')?.addEventListener('input', e => {
     const v = parseInt((e.target as HTMLInputElement).value, 10);
     setDispVal('brushStrength-val', (v / 100).toFixed(1));
   });
@@ -800,9 +856,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const zv = $('zoom-val');
     if (zv) zv.textContent = `${Math.round(zoom * 100)}%`;
   };
-  $('btn-zoom-in')?.addEventListener('click', () => { zoom = Math.min(4, zoom * 1.25); updateZoom(); });
-  $('btn-zoom-out')?.addEventListener('click', () => { zoom = Math.max(0.25, zoom / 1.25); updateZoom(); });
-  $('btn-zoom-reset')?.addEventListener('click', () => { zoom = 1; updateZoom(); });
+  $('btn-zoom-in')?.addEventListener('click', () => {
+    zoom = Math.min(4, zoom * 1.25);
+    updateZoom();
+  });
+  $('btn-zoom-out')?.addEventListener('click', () => {
+    zoom = Math.max(0.25, zoom / 1.25);
+    updateZoom();
+  });
+  $('btn-zoom-reset')?.addEventListener('click', () => {
+    zoom = 1;
+    updateZoom();
+  });
 
   mapInteraction = new MapInteraction(canvas);
   mapInteraction.bindEvents();
@@ -815,16 +880,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   handleResize();
   window.addEventListener('resize', handleResize);
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     const t = e.target as HTMLElement;
-    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      t instanceof HTMLSelectElement
+    )
+      return;
     if (e.code === 'Space') {
       e.preventDefault();
       generateMap();
     } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
       const seed = String(Math.floor(Math.random() * 99999));
       setParam('seedStr', seed);
-      const seedInput = $('seedStr') as HTMLInputElement | null;
+      const seedInput = $<HTMLInputElement>('seedStr');
       if (seedInput) seedInput.value = seed;
       generateMap();
     } else if (e.key === 'Tab') {
@@ -835,10 +905,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearSelection();
     } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault();
-    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+    } else if (
+      (e.ctrlKey || e.metaKey) &&
+      (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
+    ) {
       e.preventDefault();
     } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      const toolMap: Record<string, string> = { v: 'idle', b: 'brush', m: 'vector-line', p: 'vector-poly', d: 'drag-plate', a: 'annotate' };
+      const toolMap: Record<string, string> = {
+        v: 'idle',
+        b: 'brush',
+        m: 'vector-line',
+        p: 'vector-poly',
+        d: 'drag-plate',
+        a: 'annotate',
+      };
       const tool = toolMap[e.key.toLowerCase()];
       if (tool) {
         const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);

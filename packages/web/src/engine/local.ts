@@ -1,8 +1,17 @@
-import type { MapGenEngine, MapParams, GenerationResult, GenerationProgress, Result, SavedMapRef, SavedMapSummary, SerializedMapData, MapMeta, MapFilter, EngineCapabilities } from '@mapgen/shared-types';
-import { ok, err } from '@mapgen/shared-types';
+import type {
+  MapGenEngine,
+  MapParams,
+  GenerationResult,
+  GenerationProgress,
+  Result,
+  SavedMapRef,
+  SavedMapSummary,
+  SerializedMapData,
+  MapMeta,
+  EngineCapabilities,
+} from '@mapgen/shared-types';
+import { ok, err, serializeMapData } from '@mapgen/shared-types';
 import { mapGenWorker } from '../core/mapGenWorker.js';
-import type { MapData } from '@mapgen/core';
-import { serializeMapData } from '@mapgen/shared-types';
 
 export class LocalProvider implements MapGenEngine {
   async generate(
@@ -25,7 +34,7 @@ export class LocalProvider implements MapGenEngine {
       }
       const result: GenerationResult = {
         jobId,
-        mapData: serializeMapData(mapData as MapData),
+        mapData: serializeMapData(mapData),
         checkpoints,
       };
       return ok(result);
@@ -96,7 +105,17 @@ export class LocalProvider implements MapGenEngine {
       maxResolution: 0,
       supportsPersistence: true,
       supportsAbort: true,
-      features: ['oceanCurrents', 'iceSheet', 'monsoon', 'continentality', 'hadley', 'advancedBiomes', 'watershed', 'volcanism', 'seasons'],
+      features: [
+        'oceanCurrents',
+        'iceSheet',
+        'monsoon',
+        'continentality',
+        'hadley',
+        'advancedBiomes',
+        'watershed',
+        'volcanism',
+        'seasons',
+      ],
     };
   }
 

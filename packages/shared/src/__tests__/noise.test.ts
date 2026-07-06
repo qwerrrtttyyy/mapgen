@@ -10,7 +10,14 @@ describe('FBM 自然体系 fbmNatural (AC-1.1, AC-1.2)', () => {
       const field = new Float32Array(size * size);
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
-          field[y * size + x] = n.fbmNatural(x / size * freq, y / size * freq, 5, 2, 0.5, 'standard');
+          field[y * size + x] = n.fbmNatural(
+            (x / size) * freq,
+            (y / size) * freq,
+            5,
+            2,
+            0.5,
+            'standard'
+          );
         }
       }
       const diffs: number[] = [];
@@ -31,7 +38,14 @@ describe('FBM 自然体系 fbmNatural (AC-1.1, AC-1.2)', () => {
       const field = new Float32Array(size * size);
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
-          field[y * size + x] = n.fbmNatural(x / size * freq, y / size * freq, 5, 2, 0.5, 'standard');
+          field[y * size + x] = n.fbmNatural(
+            (x / size) * freq,
+            (y / size) * freq,
+            5,
+            2,
+            0.5,
+            'standard'
+          );
         }
       }
       let max = 0;
@@ -53,7 +67,12 @@ describe('FBM 自然体系 fbmNatural (AC-1.1, AC-1.2)', () => {
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
           field[y * size + x] = n.fbmNatural(
-            x / size * freq, y / size * freq, 5, 2, 0.5, 'ridged',
+            (x / size) * freq,
+            (y / size) * freq,
+            5,
+            2,
+            0.5,
+            'ridged',
             { ridgeAngle: 0, anisotropy: 0.6 }
           );
         }
@@ -88,17 +107,28 @@ describe('FBM 自然体系 fbmNatural (AC-1.1, AC-1.2)', () => {
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
           horizontal[y * size + x] = n.fbmNatural(
-            x / size * freq, y / size * freq, 4, 2, 0.5, 'ridged',
+            (x / size) * freq,
+            (y / size) * freq,
+            4,
+            2,
+            0.5,
+            'ridged',
             { ridgeAngle: 0, anisotropy: 0.7 }
           );
           vertical[y * size + x] = n.fbmNatural(
-            x / size * freq, y / size * freq, 4, 2, 0.5, 'ridged',
+            (x / size) * freq,
+            (y / size) * freq,
+            4,
+            2,
+            0.5,
+            'ridged',
             { ridgeAngle: Math.PI / 2, anisotropy: 0.7 }
           );
         }
       }
       // 水平各向异性：行内方差应小于列内方差
-      let rowVar = 0, colVar = 0;
+      let rowVar = 0,
+        colVar = 0;
       const mid = Math.floor(size / 2);
       for (let i = 0; i < size - 1; i++) {
         rowVar += Math.abs(horizontal[mid * size + i + 1] - horizontal[mid * size + i]);
@@ -114,8 +144,11 @@ describe('FBM 自然体系 fbmNatural (AC-1.1, AC-1.2)', () => {
       const a = createNoise(555, 'simplex');
       const b = createNoise(555, 'simplex');
       for (let i = 0; i < 20; i++) {
-        const x = i * 0.37, y = i * 0.91;
-        expect(a.fbmNatural(x, y, 5, 2, 0.5, 'standard')).toBe(b.fbmNatural(x, y, 5, 2, 0.5, 'standard'));
+        const x = i * 0.37,
+          y = i * 0.91;
+        expect(a.fbmNatural(x, y, 5, 2, 0.5, 'standard')).toBe(
+          b.fbmNatural(x, y, 5, 2, 0.5, 'standard')
+        );
       }
     });
   });

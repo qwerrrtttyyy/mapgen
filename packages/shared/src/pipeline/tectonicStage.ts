@@ -1,4 +1,10 @@
-import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from '../tectonic.js';
+import {
+  generatePlates,
+  assignPlates,
+  computeBoundaries,
+  computeBoundaryTypes,
+  type Plate,
+} from '../tectonic.js';
 import type { MapParams } from '../index.js';
 import { f32 } from './typedArrays.js';
 
@@ -23,11 +29,14 @@ export function runTectonicStage(
   let plateId: Float32Array;
   let plateDist: Float32Array;
   let boundary: Float32Array;
-  let tectonicForce = f32(size);
-  let boundaryTypeArr = f32(size);
+  const tectonicForce = f32(size);
+  const boundaryTypeArr = f32(size);
 
   if (isBlank) {
-    plates = generatePlates(seed, params.plateCount, width, height, 0).map(p => ({ ...p, type: 'ocean' as const }));
+    plates = generatePlates(seed, params.plateCount, width, height, 0).map(p => ({
+      ...p,
+      type: 'ocean' as const,
+    }));
     const assigned = assignPlates(width, height, plates);
     plateId = assigned.plateId;
     plateDist = assigned.plateDist;
@@ -42,7 +51,12 @@ export function runTectonicStage(
     plateId = assigned.plateId;
     plateDist = assigned.plateDist;
     boundary = computeBoundaries(width, height, plateId);
-    const { boundaryType, boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
+    const { boundaryType, boundaryIntensity } = computeBoundaryTypes(
+      width,
+      height,
+      plateId,
+      plates
+    );
     for (let i = 0; i < size; i++) boundaryTypeArr[i] = boundaryType[i];
     for (let i = 0; i < size; i++) {
       if (boundary[i] === 0) continue;

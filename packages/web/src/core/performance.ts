@@ -40,20 +40,20 @@ export class PerformanceMonitor {
 
   beginFrame(): void {
     const now = performance.now();
-    
+
     if (this.lastFrameTime > 0) {
       const delta = now - this.lastFrameTime;
       this.frameTimes.push(delta);
-      
+
       if (this.frameTimes.length > 60) {
         this.frameTimes.shift();
       }
-      
+
       this.renderCount++;
     }
-    
+
     this.lastFrameTime = now;
-    
+
     if (this.enabled && now - this.lastStatsUpdate > this.statsUpdateInterval) {
       this.updateStats();
       this.lastStatsUpdate = now;
@@ -62,15 +62,15 @@ export class PerformanceMonitor {
 
   private updateStats(): void {
     if (this.frameTimes.length === 0) return;
-    
+
     const sum = this.frameTimes.reduce((a, b) => a + b, 0);
     const avg = sum / this.frameTimes.length;
     const min = Math.min(...this.frameTimes);
     const max = Math.max(...this.frameTimes);
     const fps = 1000 / avg;
-    
+
     this.currentFps = fps;
-    
+
     const stats: FrameStats = {
       fps: Math.round(fps * 10) / 10,
       frameTime: Math.round(avg * 100) / 100,
@@ -79,7 +79,7 @@ export class PerformanceMonitor {
       avgFrameTime: Math.round(avg * 100) / 100,
       renderCount: this.renderCount,
     };
-    
+
     bus.emit('perf.stats', stats);
   }
 
@@ -94,10 +94,10 @@ export class PerformanceMonitor {
         renderCount: 0,
       };
     }
-    
+
     const sum = this.frameTimes.reduce((a, b) => a + b, 0);
     const avg = sum / this.frameTimes.length;
-    
+
     return {
       fps: Math.round((1000 / avg) * 10) / 10,
       frameTime: Math.round(avg * 100) / 100,

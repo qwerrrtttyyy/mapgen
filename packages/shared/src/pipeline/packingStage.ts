@@ -123,7 +123,7 @@ export function runPackingStage(
     const bInfo = getBiomeInfo(bId);
     biomeTex[i4 + 0] = bId * inv31;
     biomeTex[i4 + 1] = bInfo.isLand ? 1 : 0;
-    biomeTex[i4 + 2] = ['X','A','B','C','D','E','M'].indexOf(bInfo.koppen) * inv7;
+    biomeTex[i4 + 2] = ['X', 'A', 'B', 'C', 'D', 'E', 'M'].indexOf(bInfo.koppen) * inv7;
     biomeTex[i4 + 3] = streamOrder[i] * inv7;
 
     const b = basinId[i];
@@ -133,18 +133,28 @@ export function runPackingStage(
 
     volcanismTex[i4 + 0] = volcanoProb[i];
     volcanismTex[i4 + 1] = calderaMask[i] * 0.5;
-    volcanismTex[i4 + 2] = hotspots.length > 0
-      ? Math.max(...hotspots.map(h => h.strength)) * 0.5
-      : 0;
+    volcanismTex[i4 + 2] =
+      hotspots.length > 0 ? Math.max(...hotspots.map(h => h.strength)) * 0.5 : 0;
     volcanismTex[i4 + 3] = 0;
   }
 
   const mapData: MapData = {
-    width, height,
-    plateTex, elevTex, moistTex, riverTex, tempTex,
-    currentTex, iceTex, coastDist: climate.coastDist,
-    biomeTex, watershedTex, volcanismTex, seasonTex,
-    volcanoSites, hotspots,
+    width,
+    height,
+    plateTex,
+    elevTex,
+    moistTex,
+    riverTex,
+    tempTex,
+    currentTex,
+    iceTex,
+    coastDist: climate.coastDist,
+    biomeTex,
+    watershedTex,
+    volcanismTex,
+    seasonTex,
+    volcanoSites,
+    hotspots,
     plates: tectonic.plates,
     regions: regionState.regions,
     rivers: riverState.rivers,

@@ -57,16 +57,41 @@ export function runRiverStage(
 
   if (isBlank) {
     return {
-      lakes, rivers, riverMask, riverWidth, riverDepth,
-      biomeId, biomeNormalized, basinId, isDivide, streamOrder,
-      volcanoProb, calderaMask, seasonTex, volcanoSites, hotspots,
+      lakes,
+      rivers,
+      riverMask,
+      riverWidth,
+      riverDepth,
+      biomeId,
+      biomeNormalized,
+      basinId,
+      isDivide,
+      streamOrder,
+      volcanoProb,
+      calderaMask,
+      seasonTex,
+      volcanoSites,
+      hotspots,
     };
   }
 
-  lakes = generateLakes(width, height, climate.elevation, params.seaLevel, params.lakeDensity, seed);
+  lakes = generateLakes(
+    width,
+    height,
+    climate.elevation,
+    params.seaLevel,
+    params.lakeDensity,
+    seed
+  );
   const riverCount = params.riverCount ?? Math.floor(width * height * 0.0005);
   const riverResult = generateRivers(
-    width, height, climate.elevation, climate.moisture, params.seaLevel, riverCount, seed
+    width,
+    height,
+    climate.elevation,
+    climate.moisture,
+    params.seaLevel,
+    riverCount,
+    seed
   );
   rivers = riverResult.rivers;
   riverMask = riverResult.riverMask;
@@ -75,10 +100,17 @@ export function runRiverStage(
 
   if (params.enableAdvancedBiomes !== false) {
     const biomes = classifyBiomes({
-      elevation: climate.elevation, temperature: climate.temperature, rainfall: climate.rainfall,
-      moisture: climate.moisture, seaLevel: params.seaLevel, snowLine: params.snowLine,
-      coastDist: climate.coastDist, riverMask, lakeMask: lakes,
-      landIce: climate.landIce, seaIce: climate.seaIce,
+      elevation: climate.elevation,
+      temperature: climate.temperature,
+      rainfall: climate.rainfall,
+      moisture: climate.moisture,
+      seaLevel: params.seaLevel,
+      snowLine: params.snowLine,
+      coastDist: climate.coastDist,
+      riverMask,
+      lakeMask: lakes,
+      landIce: climate.landIce,
+      seaIce: climate.seaIce,
     });
     biomeId = biomes.biomeId;
     biomeNormalized = biomes.biomeNormalized;
@@ -86,8 +118,13 @@ export function runRiverStage(
 
   if (params.enableWatershed !== false) {
     const ws = computeWatershed({
-      width, height, elevation: climate.elevation, seaLevel: params.seaLevel,
-      riverMask, lakeMask: lakes, minBasinArea: 30,
+      width,
+      height,
+      elevation: climate.elevation,
+      seaLevel: params.seaLevel,
+      riverMask,
+      lakeMask: lakes,
+      minBasinArea: 30,
     });
     basinId = ws.basinId;
     isDivide = ws.isDivide;
@@ -96,10 +133,17 @@ export function runRiverStage(
 
   if (params.enableVolcanism !== false) {
     const volc = computeVolcanism({
-      width, height, elevation: climate.elevation, seaLevel: params.seaLevel,
-      plateId: tectonic.plateId, plates: tectonic.plates,
-      boundary: tectonic.boundary, boundaryType: tectonic.boundaryTypeArr,
-      hotspotCount: 3, intensity: 1, seed,
+      width,
+      height,
+      elevation: climate.elevation,
+      seaLevel: params.seaLevel,
+      plateId: tectonic.plateId,
+      plates: tectonic.plates,
+      boundary: tectonic.boundary,
+      boundaryType: tectonic.boundaryTypeArr,
+      hotspotCount: 3,
+      intensity: 1,
+      seed,
     });
     volcanoProb = volc.volcanoProb;
     calderaMask = volc.calderaMask;
@@ -109,15 +153,32 @@ export function runRiverStage(
 
   if (params.enableSeasons !== false) {
     const seas = computeSeasonalVariation({
-      width, height, elevation: climate.elevation, seaLevel: params.seaLevel,
-      temperature: climate.temperature, rainfall: climate.rainfall, coastDist: climate.coastDist,
+      width,
+      height,
+      elevation: climate.elevation,
+      seaLevel: params.seaLevel,
+      temperature: climate.temperature,
+      rainfall: climate.rainfall,
+      coastDist: climate.coastDist,
     });
     seasonTex = seas.seasonTex;
   }
 
   return {
-    lakes, rivers, riverMask, riverWidth, riverDepth,
-    biomeId, biomeNormalized, basinId, isDivide, streamOrder,
-    volcanoProb, calderaMask, seasonTex, volcanoSites, hotspots,
+    lakes,
+    rivers,
+    riverMask,
+    riverWidth,
+    riverDepth,
+    biomeId,
+    biomeNormalized,
+    basinId,
+    isDivide,
+    streamOrder,
+    volcanoProb,
+    calderaMask,
+    seasonTex,
+    volcanoSites,
+    hotspots,
   };
 }

@@ -1,5 +1,13 @@
 import type { MapParams } from './params.js';
-import type { GenerationResult, EngineCapabilities, SavedMapRef, SavedMapSummary, MapMeta, MapFilter, GenerationProgress } from './engine.js';
+import type {
+  GenerationResult,
+  EngineCapabilities,
+  SavedMapRef,
+  SavedMapSummary,
+  MapMeta,
+  MapFilter,
+  GenerationProgress,
+} from './engine.js';
 import type { MapGenError } from './errors.js';
 import type { SerializedMapData } from './map.js';
 

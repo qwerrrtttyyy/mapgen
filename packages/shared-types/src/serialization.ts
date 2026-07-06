@@ -62,13 +62,25 @@ export function deserializeMapData(serialized: SerializedMapData): MapData {
     moistTex: base64ToFloat32(serialized.textures.moistTex),
     riverTex: base64ToFloat32(serialized.textures.riverTex),
     tempTex: base64ToFloat32(serialized.textures.tempTex),
-    currentTex: serialized.textures.currentTex ? base64ToFloat32(serialized.textures.currentTex) : undefined,
+    currentTex: serialized.textures.currentTex
+      ? base64ToFloat32(serialized.textures.currentTex)
+      : undefined,
     iceTex: serialized.textures.iceTex ? base64ToFloat32(serialized.textures.iceTex) : undefined,
-    coastDist: serialized.textures.coastDist ? base64ToFloat32(serialized.textures.coastDist) : undefined,
-    biomeTex: serialized.textures.biomeTex ? base64ToFloat32(serialized.textures.biomeTex) : undefined,
-    watershedTex: serialized.textures.watershedTex ? base64ToFloat32(serialized.textures.watershedTex) : undefined,
-    volcanismTex: serialized.textures.volcanismTex ? base64ToFloat32(serialized.textures.volcanismTex) : undefined,
-    seasonTex: serialized.textures.seasonTex ? base64ToFloat32(serialized.textures.seasonTex) : undefined,
+    coastDist: serialized.textures.coastDist
+      ? base64ToFloat32(serialized.textures.coastDist)
+      : undefined,
+    biomeTex: serialized.textures.biomeTex
+      ? base64ToFloat32(serialized.textures.biomeTex)
+      : undefined,
+    watershedTex: serialized.textures.watershedTex
+      ? base64ToFloat32(serialized.textures.watershedTex)
+      : undefined,
+    volcanismTex: serialized.textures.volcanismTex
+      ? base64ToFloat32(serialized.textures.volcanismTex)
+      : undefined,
+    seasonTex: serialized.textures.seasonTex
+      ? base64ToFloat32(serialized.textures.seasonTex)
+      : undefined,
     volcanoSites: serialized.volcanoSites,
     hotspots: serialized.hotspots,
   };

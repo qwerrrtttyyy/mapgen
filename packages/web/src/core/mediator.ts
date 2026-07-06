@@ -66,7 +66,7 @@ export interface MediatorEventPayload {
   'generating.started': void;
   'generating.completed': { mapData: MapData; checkpoints?: number[] };
   'generating.failed': string;
-  'progress': { fraction: number; label: string };
+  progress: { fraction: number; label: string };
   'params.changed': { key: keyof UIParams; value: UIParams[keyof UIParams] };
   'params.committed': UIParams;
   'selection.changed': { plates: number[]; regions: number[] };
@@ -89,7 +89,14 @@ export interface MediatorEventPayload {
   'laser.mode.set': string;
   'laser.toggle': void;
   'laser.selection.done': { plates: number[] };
-  'picker.update': { px: number; py: number; plateId: number; elevation: number; temperature: number; moisture: number };
+  'picker.update': {
+    px: number;
+    py: number;
+    plateId: number;
+    elevation: number;
+    temperature: number;
+    moisture: number;
+  };
   'debug.toggle': void;
   'debug.open': void;
   'debug.close': void;

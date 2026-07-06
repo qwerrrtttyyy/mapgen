@@ -22,10 +22,9 @@ class MapGenWorkerManager {
     if (this.worker) return true;
 
     try {
-      this.worker = new Worker(
-        new URL('../workers/mapgen.worker.ts', import.meta.url),
-        { type: 'module' }
-      );
+      this.worker = new Worker(new URL('../workers/mapgen.worker.ts', import.meta.url), {
+        type: 'module',
+      });
       this.worker.onmessage = (e: MessageEvent) => this.handleMessage(e.data);
       this.worker.onerror = (e: ErrorEvent) => {
         this.initError = e.message;
@@ -125,7 +124,7 @@ class MapGenWorkerManager {
       const req: PendingRequest = {
         params,
         resolve,
-        reject: (msg: string) => {
+        reject: (_msg: string) => {
           this.destroyWorker();
           this.initError = null;
           this.ensureWorker();

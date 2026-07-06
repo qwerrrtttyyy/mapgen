@@ -8,7 +8,12 @@ export async function executeGenerationJob(job: Job): Promise<void> {
       job.progress = progress;
       job.phase = phaseName;
       if (job.onProgress) {
-        job.onProgress({ jobId: job.id, phase: phaseName, fraction: progress, phaseLabel: phaseName });
+        job.onProgress({
+          jobId: job.id,
+          phase: phaseName,
+          fraction: progress,
+          phaseLabel: phaseName,
+        });
       }
     });
 

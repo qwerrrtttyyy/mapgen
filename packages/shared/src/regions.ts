@@ -42,8 +42,6 @@ const TYPE_DESERT = 4;
 const TYPE_WETLAND = 5;
 const TYPE_FOREST = 6;
 const TYPE_PLAIN = 7;
-const TYPE_BASIN = 8;
-const NUM_TYPES = 9;
 
 function classifyRegionTypeId(elev: number, moist: number, temp: number): number {
   if (elev > 0.7) return TYPE_MOUNTAIN;
@@ -56,21 +54,35 @@ function classifyRegionTypeId(elev: number, moist: number, temp: number): number
   return TYPE_PLAIN;
 }
 
-const TYPE_NAMES: string[] = ['mountain', 'plateau', 'hill', 'tundra', 'desert', 'wetland', 'forest', 'plain', 'basin'];
-
-function classifyRegionType(elev: number, moist: number, temp: number): string {
-  return TYPE_NAMES[classifyRegionTypeId(elev, moist, temp)];
-}
+const TYPE_NAMES: string[] = [
+  'mountain',
+  'plateau',
+  'hill',
+  'tundra',
+  'desert',
+  'wetland',
+  'forest',
+  'plain',
+];
 
 export function analyzeRegions(
-  width: number, height: number, elevation: Float32Array, moisture: Float32Array,
-  temperature: Float32Array, plateId: Float32Array, seaLevel: number, _seed: number
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  moisture: Float32Array,
+  temperature: Float32Array,
+  plateId: Float32Array,
+  seaLevel: number,
+  _seed: number
 ): Region[] {
   const size = width * height;
   const visited = new Uint8Array(size);
   const typeMap = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
-    typeMap[i] = elevation[i] > seaLevel ? classifyRegionTypeId(elevation[i], moisture[i], temperature[i]) : 255;
+    typeMap[i] =
+      elevation[i] > seaLevel
+        ? classifyRegionTypeId(elevation[i], moisture[i], temperature[i])
+        : 255;
   }
 
   const regions: Region[] = [];
@@ -88,7 +100,11 @@ export function analyzeRegions(
       const pid = plateId[idx];
       const seedMoist = moisture[idx];
 
-      let sumElev = 0, sumMoist = 0, sumTemp = 0, sumX = 0, sumY = 0;
+      let sumElev = 0,
+        sumMoist = 0,
+        sumTemp = 0,
+        sumX = 0,
+        sumY = 0;
       let area = 0;
 
       let top = 0;
@@ -108,7 +124,8 @@ export function analyzeRegions(
         sumX += cx;
         sumY += cy;
 
-        let nx = cx - 1, ny = cy;
+        let nx = cx - 1,
+          ny = cy;
         if (nx >= 0) {
           const ni = ci - 1;
           if (!visited[ni] && elevation[ni] > seaLevel && plateId[ni] === pid) {
@@ -192,12 +209,16 @@ export interface ClimateEnhanceOptions {
 }
 
 export function computeClimate(
-  width: number, height: number, elevation: Float32Array, seaLevel: number,
-  tempOffset: number, snowLine: number,
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number,
+  tempOffset: number,
+  snowLine: number,
   windDirectionX: number = 1,
   windDirectionY: number = 0,
   rainStrength: number = 1,
-  enhance?: ClimateEnhanceOptions,
+  enhance?: ClimateEnhanceOptions
 ): ClimateData {
   const size = width * height;
   const temperature = new Float32Array(size);
@@ -252,19 +273,23 @@ export function computeClimate(
     let wbx: number, wby: number;
     if (absLat < 0.33) {
       // 信风：吹向赤道（向 y 中心），从东来
-      wbx = -1; wby = sign; // 北半球 (-1,+1) 南半球 (-1,-1)
+      wbx = -1;
+      wby = sign; // 北半球 (-1,+1) 南半球 (-1,-1)
     } else if (absLat < 0.66) {
       // 西风带：从西来，吹向极地
-      wbx = 1; wby = -sign;
+      wbx = 1;
+      wby = -sign;
     } else {
       // 极地东风：从东来，吹向赤道
-      wbx = -1; wby = sign;
+      wbx = -1;
+      wby = sign;
     }
     // 叠加用户风向偏置
     wbx += windDirectionX;
     wby += windDirectionY;
     const mag = Math.sqrt(wbx * wbx + wby * wby) || 1;
-    wbx /= mag; wby /= mag;
+    wbx /= mag;
+    wby /= mag;
     const row = y * width;
     for (let x = 0; x < width; x++) {
       const idx = row + x;
@@ -316,7 +341,10 @@ export function computeClimate(
         if (elevation[idx] > mountainThreshold) {
           const elevAbove = elevation[idx] - mountainThreshold;
           const baseRate = Math.min(0.4, elevAbove * 0.8);
-          const upwindElev = (uxC >= 0 && uxC < width && uyC >= 0 && uyC < height) ? elevation[uyC * width + uxC] : elevation[idx];
+          const upwindElev =
+            uxC >= 0 && uxC < width && uyC >= 0 && uyC < height
+              ? elevation[uyC * width + uxC]
+              : elevation[idx];
           const elevDiff = Math.max(0, elevation[idx] - upwindElev);
           const slopeBonus = Math.min(0.4, elevDiff * 0.6);
           const totalRate = Math.min(0.85, baseRate + slopeBonus);
@@ -349,9 +377,15 @@ export function computeClimate(
   // ── 行星级增强（可选）──
   if (enhance) {
     applyClimateEnhancements(
-      width, height, elevation, seaLevel,
-      temperature, tempZone, moisture, rainfall,
-      enhance,
+      width,
+      height,
+      elevation,
+      seaLevel,
+      temperature,
+      tempZone,
+      moisture,
+      rainfall,
+      enhance
     );
   }
 
@@ -366,12 +400,16 @@ export function computeClimate(
  *   4. 季风：热带沿海陆地增湿增雨（海陆热力差驱动，简化为常驻增湿）
  */
 function applyClimateEnhancements(
-  width: number, height: number, elevation: Float32Array, seaLevel: number,
-  temperature: Float32Array, tempZone: Float32Array,
-  moisture: Float32Array, rainfall: Float32Array,
-  enhance: ClimateEnhanceOptions,
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number,
+  temperature: Float32Array,
+  tempZone: Float32Array,
+  moisture: Float32Array,
+  rainfall: Float32Array,
+  enhance: ClimateEnhanceOptions
 ): void {
-  const size = width * height;
   const invH = 1 / height;
   const hasCoast = !!enhance.coastDist;
   const hasCurrent = !!enhance.currentTempDelta;
@@ -412,7 +450,7 @@ function applyClimateEnhancements(
           const itczStrength = 1 - absLat / 0.15;
           moisture[idx] = Math.min(1, moisture[idx] + itczStrength * 0.3);
           rainfall[idx] = Math.min(1, rainfall[idx] + itczStrength * 0.25);
-        } else if (absLat > 0.30 && absLat < 0.45) {
+        } else if (absLat > 0.3 && absLat < 0.45) {
           // 副热带高压带：减湿减雨（沙漠成因）
           // 距离 30°/45° 中点越近越干旱
           const desertStrength = 1 - Math.abs(absLat - 0.375) / 0.075;

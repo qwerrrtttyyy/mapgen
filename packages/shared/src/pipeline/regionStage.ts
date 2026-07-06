@@ -22,8 +22,14 @@ export function runRegionStage(
   riverState: RiverState
 ): RegionState {
   const regions = analyzeRegions(
-    width, height, climate.elevation, climate.moisture, climate.temperature,
-    tectonic.plateId, params.seaLevel, seed
+    width,
+    height,
+    climate.elevation,
+    climate.moisture,
+    climate.temperature,
+    tectonic.plateId,
+    params.seaLevel,
+    seed
   );
 
   const plateSumX = new Float64Array(tectonic.plates.length);
@@ -40,12 +46,21 @@ export function runRegionStage(
   const nameablePlates: NameablePlate[] = tectonic.plates.map((p, i) => ({
     plateId: i,
     type: p.type === 'continent' ? 'continent' : 'ocean',
-    centroid: plateCount[i] > 0 ? [plateSumX[i] / plateCount[i], plateSumY[i] / plateCount[i]] : [width * 0.5, height * 0.5],
+    centroid:
+      plateCount[i] > 0
+        ? [plateSumX[i] / plateCount[i], plateSumY[i] / plateCount[i]]
+        : [width * 0.5, height * 0.5],
   }));
 
   const detectedRegions = detectTerrainRegions(
-    width, height, climate.elevation, climate.slope, climate.moisture,
-    params.seaLevel, params.snowLine, 30,
+    width,
+    height,
+    climate.elevation,
+    climate.slope,
+    climate.moisture,
+    params.seaLevel,
+    params.snowLine,
+    30,
     {
       landIce: climate.landIce,
       coastDist: climate.coastDist,

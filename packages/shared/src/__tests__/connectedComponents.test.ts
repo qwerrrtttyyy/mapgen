@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { labelComponents, computeComponentStats } from '../connectedComponents.js';
 
 describe('ConnectedComponents 连通域标记', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
 
   function maskToPredicates(mask: Uint8Array) {
     return {
@@ -14,7 +15,12 @@ describe('ConnectedComponents 连通域标记', () => {
   describe('labelComponents 连通域标记', () => {
     it('单一连通域', () => {
       const mask = new Uint8Array(W * H).fill(1);
-      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
+      const { labels } = labelComponents(
+        W,
+        H,
+        maskToPredicates(mask).shouldLabel,
+        maskToPredicates(mask).areConnected
+      );
 
       // 全图应为同一标签
       const uniqueLabels = new Set(labels);
@@ -36,7 +42,12 @@ describe('ConnectedComponents 连通域标记', () => {
         }
       }
 
-      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
+      const { labels } = labelComponents(
+        W,
+        H,
+        maskToPredicates(mask).shouldLabel,
+        maskToPredicates(mask).areConnected
+      );
       const uniqueLabels = new Set(labels.filter(l => l > 0));
 
       expect(uniqueLabels.size).toBe(2);
@@ -68,7 +79,12 @@ describe('ConnectedComponents 连通域标记', () => {
         }
       }
 
-      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
+      const { labels } = labelComponents(
+        W,
+        H,
+        maskToPredicates(mask).shouldLabel,
+        maskToPredicates(mask).areConnected
+      );
       const uniqueLabels = new Set(labels.filter(l => l > 0));
 
       expect(uniqueLabels.size).toBe(4);
@@ -76,7 +92,12 @@ describe('ConnectedComponents 连通域标记', () => {
 
     it('零值区域标签为零', () => {
       const mask = new Uint8Array(W * H).fill(0);
-      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
+      const { labels } = labelComponents(
+        W,
+        H,
+        maskToPredicates(mask).shouldLabel,
+        maskToPredicates(mask).areConnected
+      );
 
       expect(labels.every(l => l === 0)).toBe(true);
     });
@@ -100,7 +121,12 @@ describe('ConnectedComponents 连通域标记', () => {
         }
       }
 
-      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
+      const { labels } = labelComponents(
+        W,
+        H,
+        maskToPredicates(mask).shouldLabel,
+        maskToPredicates(mask).areConnected
+      );
       const uniqueLabels = Array.from(new Set(labels.filter(l => l > 0))).sort((a, b) => a - b);
 
       expect(uniqueLabels).toEqual([1, 2, 3]);
@@ -123,8 +149,10 @@ describe('ConnectedComponents 连通域标记', () => {
 
     it('计算质心', () => {
       const labels = new Int32Array(W * H);
-      const startX = 10, startY = 10;
-      const width = 5, height = 5;
+      const startX = 10,
+        startY = 10;
+      const width = 5,
+        height = 5;
 
       for (let y = startY; y < startY + height; y++) {
         for (let x = startX; x < startX + width; x++) {

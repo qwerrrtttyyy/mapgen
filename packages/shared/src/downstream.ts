@@ -96,13 +96,21 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
   const useCurrents = input.enableOceanCurrents !== false;
   const currents = useCurrents
     ? computeOceanCurrents({
-        width, height, elevation, seaLevel,
-        coastDist, windDirX: input.windDirX, windDirY: input.windDirY,
-        rainStrength: input.rainStrength, seed: input.seed,
+        width,
+        height,
+        elevation,
+        seaLevel,
+        coastDist,
+        windDirX: input.windDirX,
+        windDirY: input.windDirY,
+        rainStrength: input.rainStrength,
+        seed: input.seed,
       })
     : {
-        vx: new Float32Array(size), vy: new Float32Array(size),
-        tempDelta: new Float32Array(size), speed: new Float32Array(size),
+        vx: new Float32Array(size),
+        vy: new Float32Array(size),
+        tempDelta: new Float32Array(size),
+        speed: new Float32Array(size),
       };
 
   // 3. 气候（含世界式增强）
@@ -115,9 +123,16 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
     enableMonsoon: input.enableMonsoon !== false,
   };
   const climate = computeClimate(
-    width, height, elevation, seaLevel,
-    input.tempOffset, input.snowLine, input.windDirX, input.windDirY, input.rainStrength,
-    enhance,
+    width,
+    height,
+    elevation,
+    seaLevel,
+    input.tempOffset,
+    input.snowLine,
+    input.windDirX,
+    input.windDirY,
+    input.rainStrength,
+    enhance
   );
 
   // 4. 冰盖 + 冰川侵蚀（侵蚀改写 elevationAfter，不污染输入）
@@ -129,26 +144,52 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
     // 复制 elevation 以免就地改写输入
     elevationAfter = new Float32Array(elevation);
     ice = computeIceSheet({
-      width, height, elevation: elevationAfter, seaLevel,
-      temperature: climate.temperature, snowLine: input.snowLine, seed: input.seed,
+      width,
+      height,
+      elevation: elevationAfter,
+      seaLevel,
+      temperature: climate.temperature,
+      snowLine: input.snowLine,
+      seed: input.seed,
     });
     slopeAfter = computeSlope(width, height, elevationAfter);
   } else {
     ice = {
-      landIce: new Float32Array(size), seaIce: new Float32Array(size),
-      glacierVx: new Float32Array(size), glacierVy: new Float32Array(size),
+      landIce: new Float32Array(size),
+      seaIce: new Float32Array(size),
+      glacierVx: new Float32Array(size),
+      glacierVy: new Float32Array(size),
     };
     slopeAfter = computeSlope(width, height, elevationAfter);
   }
 
   // 5. 湖泊 + 河流 + 区域（用侵蚀后高程）
-  const lakes = generateLakes(width, height, elevationAfter, seaLevel, input.lakeDensity, input.seed);
+  const lakes = generateLakes(
+    width,
+    height,
+    elevationAfter,
+    seaLevel,
+    input.lakeDensity,
+    input.seed
+  );
   const riverResult = generateRivers(
-    width, height, elevationAfter, climate.moisture, seaLevel, input.riverCount, input.seed,
+    width,
+    height,
+    elevationAfter,
+    climate.moisture,
+    seaLevel,
+    input.riverCount,
+    input.seed
   );
   const regions = analyzeRegions(
-    width, height, elevationAfter, climate.moisture, climate.temperature,
-    input.plateId, seaLevel, input.seed,
+    width,
+    height,
+    elevationAfter,
+    climate.moisture,
+    climate.temperature,
+    input.plateId,
+    seaLevel,
+    input.seed
   );
 
   // ── v2 新增阶段 ──
@@ -156,11 +197,17 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
   let biomes: BiomeResult | undefined;
   if (input.enableAdvancedBiomes !== false) {
     biomes = classifyBiomes({
-      elevation: elevationAfter, temperature: climate.temperature,
-      rainfall: climate.rainfall, moisture: climate.moisture,
-      seaLevel, snowLine: input.snowLine,
-      coastDist, riverMask: riverResult.riverMask, lakeMask: lakes,
-      landIce: ice.landIce, seaIce: ice.seaIce,
+      elevation: elevationAfter,
+      temperature: climate.temperature,
+      rainfall: climate.rainfall,
+      moisture: climate.moisture,
+      seaLevel,
+      snowLine: input.snowLine,
+      coastDist,
+      riverMask: riverResult.riverMask,
+      lakeMask: lakes,
+      landIce: ice.landIce,
+      seaIce: ice.seaIce,
     });
   }
 
@@ -168,8 +215,12 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
   let watershed: WatershedResult | undefined;
   if (input.enableWatershed !== false) {
     watershed = computeWatershed({
-      width, height, elevation: elevationAfter, seaLevel,
-      riverMask: riverResult.riverMask, lakeMask: lakes,
+      width,
+      height,
+      elevation: elevationAfter,
+      seaLevel,
+      riverMask: riverResult.riverMask,
+      lakeMask: lakes,
       minBasinArea: 30,
     });
   }
@@ -178,10 +229,17 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
   let volcanism: VolcanismResult | undefined;
   if (input.enableVolcanism !== false && input.plates && input.boundary) {
     volcanism = computeVolcanism({
-      width, height, elevation: elevationAfter, seaLevel,
-      plateId: input.plateId, plates: input.plates,
-      boundary: input.boundary, boundaryType: input.boundaryType,
-      hotspotCount: 3, intensity: 1, seed: input.seed,
+      width,
+      height,
+      elevation: elevationAfter,
+      seaLevel,
+      plateId: input.plateId,
+      plates: input.plates,
+      boundary: input.boundary,
+      boundaryType: input.boundaryType,
+      hotspotCount: 3,
+      intensity: 1,
+      seed: input.seed,
     });
   }
 
@@ -189,8 +247,12 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
   let seasons: SeasonResult | undefined;
   if (input.enableSeasons !== false) {
     seasons = computeSeasonalVariation({
-      width, height, elevation: elevationAfter, seaLevel,
-      temperature: climate.temperature, rainfall: climate.rainfall,
+      width,
+      height,
+      elevation: elevationAfter,
+      seaLevel,
+      temperature: climate.temperature,
+      rainfall: climate.rainfall,
       coastDist,
     });
   }
@@ -219,7 +281,11 @@ export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult 
 }
 
 /** 将下游结果写回 MapData 的河流/区域/海岸/洋流/冰盖字段（纹理打包由调用方用 texturePack 处理）。 */
-export function applyDownstreamToMapData(md: MapData, result: DownstreamResult, seed: number): void {
+export function applyDownstreamToMapData(
+  md: MapData,
+  result: DownstreamResult,
+  seed: number
+): void {
   md.rivers = result.rivers;
   md.regions = result.regions;
   md.seed = seed;

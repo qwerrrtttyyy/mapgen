@@ -192,10 +192,13 @@ describe('TerrainCache', () => {
 describe('memoize', () => {
   it('should cache function results', () => {
     let callCount = 0;
-    const fn = memoize((x: number) => {
-      callCount++;
-      return x * 2;
-    }, { maxSize: 10 });
+    const fn = memoize(
+      (x: number) => {
+        callCount++;
+        return x * 2;
+      },
+      { maxSize: 10 }
+    );
 
     expect(fn(5)).toBe(10);
     expect(fn(5)).toBe(10);
@@ -204,10 +207,13 @@ describe('memoize', () => {
 
   it('should cache different arguments separately', () => {
     let callCount = 0;
-    const fn = memoize((x: number, y: number) => {
-      callCount++;
-      return x + y;
-    }, { maxSize: 10 });
+    const fn = memoize(
+      (x: number, y: number) => {
+        callCount++;
+        return x + y;
+      },
+      { maxSize: 10 }
+    );
 
     expect(fn(1, 2)).toBe(3);
     expect(fn(3, 4)).toBe(7);

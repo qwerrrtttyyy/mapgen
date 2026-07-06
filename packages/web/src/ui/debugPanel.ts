@@ -36,7 +36,7 @@ export class DebugPanel extends Colleague {
       this.subscribe('debug.toggle', () => this.toggle()),
       this.subscribe('debug.open', () => this.open()),
       this.subscribe('debug.close', () => this.close()),
-      this.subscribe('render.frame', (data) => {
+      this.subscribe('render.frame', data => {
         coreDebug.updateMetrics({ drawCalls: data.drawCalls, textureCount: data.textureCount });
       })
     );
@@ -215,7 +215,15 @@ export class DebugPanel extends Colleague {
     }
   }
 
-  private emit(event: 'debug.toggle' | 'debug.open' | 'debug.close' | 'debug.wireframe.changed' | 'debug.normals.changed', payload?: unknown): void {
+  private emit(
+    event:
+      | 'debug.toggle'
+      | 'debug.open'
+      | 'debug.close'
+      | 'debug.wireframe.changed'
+      | 'debug.normals.changed',
+    payload?: unknown
+  ): void {
     if (this.mediator) {
       (this.mediator as { send: (sender: string, event: string, payload?: unknown) => void }).send(
         'debug',
@@ -301,7 +309,9 @@ export class DebugPanel extends Colleague {
     }
 
     if (this.memoryElement) {
-      const memory = (performance as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
+      const memory = (
+        performance as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }
+      ).memory;
       if (memory) {
         const usedMB = Math.round(memory.usedJSHeapSize / (1024 * 1024));
         const totalMB = Math.round(memory.totalJSHeapSize / (1024 * 1024));
@@ -331,7 +341,8 @@ export class DebugPanel extends Colleague {
     }
 
     this.timingsElement.innerHTML = entries
-      .map(([name, stat]) => `
+      .map(
+        ([name, stat]) => `
         <div class="dp-timing-item">
           <div class="dp-timing-name">${name}</div>
           <div class="dp-timing-values">
@@ -341,7 +352,8 @@ export class DebugPanel extends Colleague {
             <span>n: ${stat.count}</span>
           </div>
         </div>
-      `)
+      `
+      )
       .join('');
   }
 

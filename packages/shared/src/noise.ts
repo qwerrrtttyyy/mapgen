@@ -1,9 +1,18 @@
-import { lerp, clamp } from './utils.js';
+import { lerp } from './utils.js';
 
 const GRAD3: number[][] = [
-  [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
-  [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
-  [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
+  [1, 1, 0],
+  [-1, 1, 0],
+  [1, -1, 0],
+  [-1, -1, 0],
+  [1, 0, 1],
+  [-1, 0, 1],
+  [1, 0, -1],
+  [-1, 0, -1],
+  [0, 1, 1],
+  [0, -1, 1],
+  [0, 1, -1],
+  [0, -1, -1],
 ];
 
 /**
@@ -30,7 +39,9 @@ function seedPermutation(seed: number): Uint8Array {
  * @param t - 输入值 [0, 1]
  * @returns 平滑后的值
  */
-function fade(t: number): number { return t * t * t * (t * (t * 6 - 15) + 10); }
+function fade(t: number): number {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
 
 /**
  * 根据哈希值计算梯度点积
@@ -88,7 +99,9 @@ export class NoiseEngine {
   simplex2(x: number, y: number): number {
     const F2 = 0.5 * (Math.sqrt(3) - 1);
     const G2 = (3 - Math.sqrt(3)) / 6;
-    let n0 = 0, n1 = 0, n2 = 0;
+    let n0 = 0,
+      n1 = 0,
+      n2 = 0;
     const s = (x + y) * F2;
     const i = Math.floor(x + s);
     const j = Math.floor(y + s);
@@ -97,8 +110,15 @@ export class NoiseEngine {
     const Y0 = j - t;
     const x0 = x - X0;
     const y0 = y - Y0;
-    let i1 = 0, j1 = 0;
-    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+    let i1 = 0,
+      j1 = 0;
+    if (x0 > y0) {
+      i1 = 1;
+      j1 = 0;
+    } else {
+      i1 = 0;
+      j1 = 1;
+    }
     const x1 = x0 - i1 + G2;
     const y1 = y0 - j1 + G2;
     const x2 = x0 - 1 + 2 * G2;
@@ -137,17 +157,16 @@ export class NoiseEngine {
     const p = this.perm;
     const A = p[X] + Y;
     const B = p[X + 1] + Y;
-    return lerp(
-      lerp(p[A] / 255, p[B] / 255, u),
-      lerp(p[A + 1] / 255, p[B + 1] / 255, u),
-      v
-    ) * 2 - 1;
+    return (
+      lerp(lerp(p[A] / 255, p[B] / 255, u), lerp(p[A + 1] / 255, p[B + 1] / 255, u), v) * 2 - 1
+    );
   }
 
   private _worleyDistances(x: number, y: number): { f1: number; f2: number } {
     const X = Math.floor(x);
     const Y = Math.floor(y);
-    let f1 = 9999, f2 = 9999;
+    let f1 = 9999,
+      f2 = 9999;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const cx = X + dx;
@@ -156,9 +175,9 @@ export class NoiseEngine {
         let pts = this.worleyCache.get(key);
         if (!pts) {
           let s = this._hash(cx, cy);
-          const px = cx + (s / 2147483647);
+          const px = cx + s / 2147483647;
           s = (s * 16807) % 2147483647;
-          const py = cy + (s / 2147483647);
+          const py = cy + s / 2147483647;
           pts = [{ x: px, y: py }];
           this.worleyCache.set(key, pts);
           this.cacheInsertOrder.push(key);
@@ -171,8 +190,12 @@ export class NoiseEngine {
         const dx_ = x - px;
         const dy_ = y - py;
         const d = Math.sqrt(dx_ * dx_ + dy_ * dy_);
-        if (d < f1) { f2 = f1; f1 = d; }
-        else if (d < f2) { f2 = d; }
+        if (d < f1) {
+          f2 = f1;
+          f1 = d;
+        } else if (d < f2) {
+          f2 = d;
+        }
       }
     }
     return { f1, f2 };
@@ -200,7 +223,14 @@ export class NoiseEngine {
     return Math.abs(h) % 2147483647;
   }
 
-  fbm(x: number, y: number, octaves: number, lacunarity: number, persistence: number, type: FbmType = 'standard'): number {
+  fbm(
+    x: number,
+    y: number,
+    octaves: number,
+    lacunarity: number,
+    persistence: number,
+    type: FbmType = 'standard'
+  ): number {
     let total = 0;
     let amplitude = 1;
     let frequency = 1;
@@ -229,7 +259,11 @@ export class NoiseEngine {
    * - 各向异性（ridged）：沿 ridgeAngle 拉伸，山脊连续
    */
   fbmNatural(
-    x: number, y: number, octaves: number, lacunarity: number, persistence: number,
+    x: number,
+    y: number,
+    octaves: number,
+    lacunarity: number,
+    persistence: number,
     type: FbmType = 'standard',
     opts?: { warpStrength?: number; ridgeAngle?: number; anisotropy?: number }
   ): number {
@@ -238,7 +272,8 @@ export class NoiseEngine {
     const anisotropy = opts?.anisotropy ?? 0;
 
     // 域形变：用偏移坐标的独立低频噪声扰动采样点
-    let wx = x, wy = y;
+    let wx = x,
+      wy = y;
     if (warpStrength > 0) {
       const w1 = this.sample(x * 0.5 + 100.3, y * 0.5 + 100.3);
       const w2 = this.sample(x * 0.5 + 200.7, y * 0.5 + 200.7);
@@ -247,11 +282,13 @@ export class NoiseEngine {
     }
 
     // 各向异性：旋转到 ridge 局部坐标系，沿垂直方向拉伸使山脊沿 ridgeAngle 延伸
-    let sx = wx, sy = wy;
+    let sx = wx,
+      sy = wy;
     if (anisotropy > 0 && type === 'ridged') {
-      const cos = Math.cos(ridgeAngle), sin = Math.sin(ridgeAngle);
-      const xr = wx * cos + wy * sin;       // 沿山脊方向
-      const yr = -wx * sin + wy * cos;      // 垂直山脊方向
+      const cos = Math.cos(ridgeAngle),
+        sin = Math.sin(ridgeAngle);
+      const xr = wx * cos + wy * sin; // 沿山脊方向
+      const yr = -wx * sin + wy * cos; // 垂直山脊方向
       sx = xr;
       sy = yr * (1 + anisotropy);
     }
@@ -262,7 +299,7 @@ export class NoiseEngine {
     const oct = Math.max(1, octaves);
     for (let i = 0; i < oct; i++) {
       // 谱权重：高频衰减补偿
-      const spectral = oct > 1 ? (1 - 0.4 * i / (oct - 1)) : 1;
+      const spectral = oct > 1 ? 1 - (0.4 * i) / (oct - 1) : 1;
       const amplitude = Math.pow(persistence, i) * spectral;
       const n = this.sample(sx * frequency, sy * frequency);
       let v: number;

@@ -5,7 +5,7 @@ import type { GenerationProgress, GenerationResult, MapGenError } from '@mapgen/
 export function createJobsRoute() {
   const app = new Hono();
 
-  app.get('/jobs/:id', async (c) => {
+  app.get('/jobs/:id', async c => {
     const id = c.req.param('id');
     const accept = c.req.header('accept') || '';
     const job = jobQueue.get(id);
@@ -20,7 +20,9 @@ export function createJobsRoute() {
           start(controller) {
             const encoder = new TextEncoder();
             const send = (event: string, data: unknown) => {
-              controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+              controller.enqueue(
+                encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+              );
             };
 
             job.onProgress = (progress: GenerationProgress) => send('progress', progress);
@@ -44,7 +46,7 @@ export function createJobsRoute() {
           headers: {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
+            Connection: 'keep-alive',
           },
         }
       );

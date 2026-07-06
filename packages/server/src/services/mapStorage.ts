@@ -1,4 +1,10 @@
-import type { SerializedMapData, SavedMapSummary, MapMeta, SavedMapRef, MapFilter } from '@mapgen/shared-types';
+import type {
+  SerializedMapData,
+  SavedMapSummary,
+  MapMeta,
+  SavedMapRef,
+  MapFilter,
+} from '@mapgen/shared-types';
 import { encodeMapData, decodeMapData } from '../utils/serialization.js';
 import { randomUUID } from 'node:crypto';
 import type { InMemoryDatabase } from '../db/index.js';
@@ -35,9 +41,7 @@ export class MapStorage {
     const offset = filter?.offset ?? 0;
     const all = Array.from(this.db.maps.values());
     const total = all.length;
-    const rows = all
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(offset, offset + limit);
+    const rows = all.sort((a, b) => b.createdAt - a.createdAt).slice(offset, offset + limit);
 
     return {
       maps: rows.map(r => ({

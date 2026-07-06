@@ -3,7 +3,8 @@ import { runDownstreamPipeline, applyDownstreamToMapData } from '../downstream.j
 import type { DownstreamInput, MapData } from '../downstream.js';
 
 describe('Downstream 下游管线', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
   const size = W * H;
 
   function makeInput(overrides: Partial<DownstreamInput> = {}): DownstreamInput {
@@ -12,7 +13,14 @@ describe('Downstream 下游管线', () => {
       height: H,
       elevation: new Float32Array(size).fill(0.5),
       plateId: new Float32Array(size),
-      plates: [{ id: 0, type: 'ocean' as const, centroid: [W / 2, H / 2] as [number, number], drift: [0, 0] as [number, number] }],
+      plates: [
+        {
+          id: 0,
+          type: 'ocean' as const,
+          centroid: [W / 2, H / 2] as [number, number],
+          drift: [0, 0] as [number, number],
+        },
+      ],
       boundary: new Float32Array(size),
       boundaryType: new Float32Array(size),
       seaLevel: 0.45,
@@ -43,14 +51,16 @@ describe('Downstream 下游管线', () => {
     });
 
     it('独立关闭子系统', () => {
-      const result = runDownstreamPipeline(makeInput({
-        enableOceanCurrents: false,
-        enableIceSheet: false,
-        enableAdvancedBiomes: false,
-        enableWatershed: false,
-        enableVolcanism: false,
-        enableSeasons: false,
-      }));
+      const result = runDownstreamPipeline(
+        makeInput({
+          enableOceanCurrents: false,
+          enableIceSheet: false,
+          enableAdvancedBiomes: false,
+          enableWatershed: false,
+          enableVolcanism: false,
+          enableSeasons: false,
+        })
+      );
 
       // 关闭的子系统应返回零数组或 undefined
       expect(result.currents.vx.every(v => v === 0)).toBe(true);

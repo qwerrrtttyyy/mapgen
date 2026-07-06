@@ -16,16 +16,16 @@
 
 /** 32 类生物群系 ID 与名称（与 fs-map.frag BIOME_COLORS 对齐） */
 export type BiomeId =
-  | 0  // 深海
-  | 1  // 浅海
-  | 2  // 热带雨林 (Af)
-  | 3  // 热带季风 (Am)
-  | 4  // 热带草原 (Aw)
-  | 5  // 热带荒漠灌丛 (As)
-  | 6  // 热带沙漠 (BWh)
-  | 7  // 温带沙漠 (BWk)
-  | 8  // 半干旱草原 (BSh)
-  | 9  // 半干旱温带草原 (BSk)
+  | 0 // 深海
+  | 1 // 浅海
+  | 2 // 热带雨林 (Af)
+  | 3 // 热带季风 (Am)
+  | 4 // 热带草原 (Aw)
+  | 5 // 热带荒漠灌丛 (As)
+  | 6 // 热带沙漠 (BWh)
+  | 7 // 温带沙漠 (BWk)
+  | 8 // 半干旱草原 (BSh)
+  | 9 // 半干旱温带草原 (BSk)
   | 10 // 地中海夏旱 (Csa)
   | 11 // 地中海温带 (Csb)
   | 12 // 湿润亚热带 (Cfa)
@@ -47,8 +47,7 @@ export type BiomeId =
   | 28 // 冰川覆盖（landIce > 阈值）
   | 29 // 海冰覆盖
   | 30 // 湖泊水体
-  | 31 // 河口三角洲
-  ;
+  | 31; // 河口三角洲
 
 export const BIOME_COUNT = 32;
 const INV31 = 1 / 31;
@@ -64,38 +63,38 @@ export interface BiomeInfo {
 }
 
 export const BIOME_INFO: BiomeInfo[] = [
-  { id: 0,  name: '深海',       koppen: 'X', isLand: false },
-  { id: 1,  name: '浅海',       koppen: 'X', isLand: false },
-  { id: 2,  name: '热带雨林',   koppen: 'A', isLand: true  },
-  { id: 3,  name: '热带季风林', koppen: 'A', isLand: true  },
-  { id: 4,  name: '热带草原',   koppen: 'A', isLand: true  },
-  { id: 5,  name: '热带荒漠灌丛', koppen: 'B', isLand: true },
-  { id: 6,  name: '热带沙漠',   koppen: 'B', isLand: true  },
-  { id: 7,  name: '温带沙漠',   koppen: 'B', isLand: true  },
-  { id: 8,  name: '半干旱草原', koppen: 'B', isLand: true  },
-  { id: 9,  name: '半干旱温带草原', koppen: 'B', isLand: true },
+  { id: 0, name: '深海', koppen: 'X', isLand: false },
+  { id: 1, name: '浅海', koppen: 'X', isLand: false },
+  { id: 2, name: '热带雨林', koppen: 'A', isLand: true },
+  { id: 3, name: '热带季风林', koppen: 'A', isLand: true },
+  { id: 4, name: '热带草原', koppen: 'A', isLand: true },
+  { id: 5, name: '热带荒漠灌丛', koppen: 'B', isLand: true },
+  { id: 6, name: '热带沙漠', koppen: 'B', isLand: true },
+  { id: 7, name: '温带沙漠', koppen: 'B', isLand: true },
+  { id: 8, name: '半干旱草原', koppen: 'B', isLand: true },
+  { id: 9, name: '半干旱温带草原', koppen: 'B', isLand: true },
   { id: 10, name: '地中海夏旱林', koppen: 'C', isLand: true },
   { id: 11, name: '地中海温带林', koppen: 'C', isLand: true },
   { id: 12, name: '湿润亚热带林', koppen: 'C', isLand: true },
   { id: 13, name: '海洋性阔叶林', koppen: 'C', isLand: true },
-  { id: 14, name: '亚寒带雨林', koppen: 'C', isLand: true  },
+  { id: 14, name: '亚寒带雨林', koppen: 'C', isLand: true },
   { id: 15, name: '温带草原冬干', koppen: 'D', isLand: true },
   { id: 16, name: '温带草原湿润', koppen: 'D', isLand: true },
-  { id: 17, name: '寒带针叶林', koppen: 'D', isLand: true  },
+  { id: 17, name: '寒带针叶林', koppen: 'D', isLand: true },
   { id: 18, name: '寒带大陆性林', koppen: 'D', isLand: true },
-  { id: 19, name: '极地苔原',   koppen: 'E', isLand: true  },
-  { id: 20, name: '极地冰盖',   koppen: 'E', isLand: true  },
-  { id: 21, name: '高山苔原',   koppen: 'M', isLand: true  },
-  { id: 22, name: '高山灌丛',   koppen: 'M', isLand: true  },
-  { id: 23, name: '高山草甸',   koppen: 'M', isLand: true  },
-  { id: 24, name: '高山寒漠',   koppen: 'M', isLand: true  },
-  { id: 25, name: '红树林',     koppen: 'A', isLand: true  },
-  { id: 26, name: '河岸林地',   koppen: 'X', isLand: true  },
-  { id: 27, name: '盐沼湿地',   koppen: 'X', isLand: true  },
-  { id: 28, name: '冰川覆盖',   koppen: 'X', isLand: true  },
-  { id: 29, name: '海冰',       koppen: 'X', isLand: false },
-  { id: 30, name: '湖泊',       koppen: 'X', isLand: false },
-  { id: 31, name: '河口三角洲', koppen: 'X', isLand: true  },
+  { id: 19, name: '极地苔原', koppen: 'E', isLand: true },
+  { id: 20, name: '极地冰盖', koppen: 'E', isLand: true },
+  { id: 21, name: '高山苔原', koppen: 'M', isLand: true },
+  { id: 22, name: '高山灌丛', koppen: 'M', isLand: true },
+  { id: 23, name: '高山草甸', koppen: 'M', isLand: true },
+  { id: 24, name: '高山寒漠', koppen: 'M', isLand: true },
+  { id: 25, name: '红树林', koppen: 'A', isLand: true },
+  { id: 26, name: '河岸林地', koppen: 'X', isLand: true },
+  { id: 27, name: '盐沼湿地', koppen: 'X', isLand: true },
+  { id: 28, name: '冰川覆盖', koppen: 'X', isLand: true },
+  { id: 29, name: '海冰', koppen: 'X', isLand: false },
+  { id: 30, name: '湖泊', koppen: 'X', isLand: false },
+  { id: 31, name: '河口三角洲', koppen: 'X', isLand: true },
 ];
 
 export interface BiomeClassifyInput {
@@ -193,15 +192,23 @@ export function classifyBiomes(input: BiomeClassifyInput): BiomeResult {
       }
       // 4. 红树林（热带+海岸+潮间带）
       else if (
-        input.coastDist && input.coastDist[i] > 0 && input.coastDist[i] < 4 &&
-        temp > 0.55 && moist > 0.6
+        input.coastDist &&
+        input.coastDist[i] > 0 &&
+        input.coastDist[i] < 4 &&
+        temp > 0.55 &&
+        moist > 0.6
       ) {
         id = 25;
       }
       // 5. 盐沼湿地（温带+低海拔+海岸+高湿）
       else if (
-        input.coastDist && input.coastDist[i] > 0 && input.coastDist[i] < 6 &&
-        temp > 0.0 && temp < 0.5 && moist > 0.7 && elev < seaLevel + 0.1
+        input.coastDist &&
+        input.coastDist[i] > 0 &&
+        input.coastDist[i] < 6 &&
+        temp > 0.0 &&
+        temp < 0.5 &&
+        moist > 0.7 &&
+        elev < seaLevel + 0.1
       ) {
         id = 27;
       }
@@ -211,9 +218,12 @@ export function classifyBiomes(input: BiomeClassifyInput): BiomeResult {
       }
       // 7. 高山气候带（M）
       else if (elev > alpineThreshold) {
-        if (temp < -0.2) id = 24; // 高山寒漠
-        else if (temp < 0.0) id = 21; // 高山苔原
-        else if (moist > 0.5) id = 23; // 高山草甸
+        if (temp < -0.2)
+          id = 24; // 高山寒漠
+        else if (temp < 0.0)
+          id = 21; // 高山苔原
+        else if (moist > 0.5)
+          id = 23; // 高山草甸
         else id = 22; // 高山灌丛
       }
       // 8. Köppen 主分类
@@ -233,8 +243,8 @@ export function classifyBiomes(input: BiomeClassifyInput): BiomeResult {
 function koppenClassify(temp: number, rain: number, moist: number): number {
   // 温度阈值
   const TROPICAL = 0.55; // 18°C 等价
-  const TEMPERATE = 0.10; // 10°C 等价
-  const FREEZING = -0.30; // 0°C 等价
+  const TEMPERATE = 0.1; // 10°C 等价
+  const FREEZING = -0.3; // 0°C 等价
 
   // E 极地
   if (temp < FREEZING) {
@@ -244,7 +254,7 @@ function koppenClassify(temp: number, rain: number, moist: number): number {
   // 干旱度判断（B 带）：温度越高、降水越低越干旱
   // 干旱阈值曲线：炎热（T=0.6）时需 P<0.20；寒冷（T=0）时需 P<0.10
   const aridThreshold = 0.05 + Math.max(0, temp) * 0.25;
-  const semiAridThreshold = aridThreshold + 0.20;
+  const semiAridThreshold = aridThreshold + 0.2;
 
   if (rain < aridThreshold) {
     // 沙漠（BW）
@@ -259,7 +269,7 @@ function koppenClassify(temp: number, rain: number, moist: number): number {
   if (temp >= TROPICAL) {
     if (moist > 0.75) return 2; // Af 热带雨林
     if (moist > 0.55) return 3; // Am 热带季风
-    if (moist > 0.30) return 4; // Aw 热带草原
+    if (moist > 0.3) return 4; // Aw 热带草原
     return 5; // As 热带荒漠灌丛
   }
 

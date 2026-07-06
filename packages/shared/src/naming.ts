@@ -4,7 +4,17 @@
 import { detectTerrainRegions } from './editor.js';
 
 export type PlateKind = 'continent' | 'ocean';
-export type TerrainType = 'mountain' | 'plain' | 'plateau' | 'basin' | 'desert' | 'forest' | 'glacier' | 'delta' | 'volcano' | 'archipelago';
+export type TerrainType =
+  | 'mountain'
+  | 'plain'
+  | 'plateau'
+  | 'basin'
+  | 'desert'
+  | 'forest'
+  | 'glacier'
+  | 'delta'
+  | 'volcano'
+  | 'archipelago';
 
 export interface NameablePlate {
   plateId: number;
@@ -65,12 +75,64 @@ const TERRAIN_WORDS: Record<TerrainType, readonly string[]> = {
 
 // 专有名词库（≥ 50，确保大地图地形区专有名不重复）
 const PROPER_NAMES = [
-  '龙脊', '银沙', '苍穹', '碧落', '玄铁', '霜语', '烈焰', '深岚', '星陨', '月隐',
-  '风哭', '雷鸣', '雪啸', '云隐', '雾锁', '冰封', '岩心', '水晶', '琥珀', '翡翠',
-  '青铜', '赤金', '墨玉', '白霜', '紫电', '青风', '蓝潮', '红土', '黑石', '白银',
-  '飞鹰', '潜龙', '奔狼', '眠熊', '孤鹫', '游鳞', '隐豹', '怒象', '静鹿', '寒鸦',
-  '永恒', '破碎', '低语', '回响', '残辉', '暮色', '晨曦', '星河', '云海', '雾林',
-  '古战场', '神殿', '遗迹', '圣地', '荒原', '裂谷', '天堑', '玄关',
+  '龙脊',
+  '银沙',
+  '苍穹',
+  '碧落',
+  '玄铁',
+  '霜语',
+  '烈焰',
+  '深岚',
+  '星陨',
+  '月隐',
+  '风哭',
+  '雷鸣',
+  '雪啸',
+  '云隐',
+  '雾锁',
+  '冰封',
+  '岩心',
+  '水晶',
+  '琥珀',
+  '翡翠',
+  '青铜',
+  '赤金',
+  '墨玉',
+  '白霜',
+  '紫电',
+  '青风',
+  '蓝潮',
+  '红土',
+  '黑石',
+  '白银',
+  '飞鹰',
+  '潜龙',
+  '奔狼',
+  '眠熊',
+  '孤鹫',
+  '游鳞',
+  '隐豹',
+  '怒象',
+  '静鹿',
+  '寒鸦',
+  '永恒',
+  '破碎',
+  '低语',
+  '回响',
+  '残辉',
+  '暮色',
+  '晨曦',
+  '星河',
+  '云海',
+  '雾林',
+  '古战场',
+  '神殿',
+  '遗迹',
+  '圣地',
+  '荒原',
+  '裂谷',
+  '天堑',
+  '玄关',
 ] as const;
 
 // ── mulberry32 PRNG（轻量确定性）──
@@ -78,7 +140,7 @@ function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function () {
     a |= 0;
-    a = (a + 0x6D2B79F5) | 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -90,7 +152,8 @@ function mulberry32(seed: number): () => number {
  * 屏幕坐标 y 向下，atan2(dy, dx) 中 dy>0 表示南方。
  */
 function directionFor(centroid: [number, number], width: number, height: number): string {
-  const cx = width * 0.5, cy = height * 0.5;
+  const cx = width * 0.5,
+    cy = height * 0.5;
   const dx = centroid[0] - cx;
   const dy = centroid[1] - cy;
   // 接近中心 → 中央
@@ -99,7 +162,7 @@ function directionFor(centroid: [number, number], width: number, height: number)
   }
   const ang = Math.atan2(dy, dx); // -π..π，y 向下故 dy>0 = 南
   // 8 扇区，每扇 π/4，以东为 0 起始；+π/8 让扇区以正方向为中心
-  const sector = Math.floor(((ang + Math.PI / 8) / (Math.PI / 4) + 8)) % 8;
+  const sector = Math.floor((ang + Math.PI / 8) / (Math.PI / 4) + 8) % 8;
   return DIRECTION_8[sector];
 }
 
@@ -178,11 +241,23 @@ export function generateNames(
  * @param slope       预提取的坡度场（若未提供则从 elevTex 通道1 读取）
  */
 export function regenerateNames(
-  md: { width: number; height: number; elevTex: Float32Array; moistTex: Float32Array; plateTex: Float32Array; plates: { type: string }[]; names: NameManifest; seed: number; iceTex?: Float32Array; coastDist?: Float32Array; riverTex?: Float32Array },
+  md: {
+    width: number;
+    height: number;
+    elevTex: Float32Array;
+    moistTex: Float32Array;
+    plateTex: Float32Array;
+    plates: { type: string }[];
+    names: NameManifest;
+    seed: number;
+    iceTex?: Float32Array;
+    coastDist?: Float32Array;
+    riverTex?: Float32Array;
+  },
   seaLevel: number,
   snowLine: number,
   plateCount: number,
-  slope?: Float32Array,
+  slope?: Float32Array
 ): void {
   const { width, height } = md;
   const size = width * height;
@@ -215,7 +290,9 @@ export function regenerateNames(
     for (let x = 0; x < width; x++) {
       const pid = Math.round(md.plateTex[(y * width + x) * 4] * plateCount);
       if (pid >= 0 && pid < md.plates.length) {
-        plateSumX[pid] += x; plateSumY[pid] += y; plateCnt[pid]++;
+        plateSumX[pid] += x;
+        plateSumY[pid] += y;
+        plateCnt[pid]++;
       }
     }
   }
@@ -227,8 +304,23 @@ export function regenerateNames(
       : [width * 0.5, height * 0.5]) as [number, number],
   }));
   // 检测地形区（detectTerrainRegions 已在顶部静态导入，含世界式增强）
-  const detected = detectTerrainRegions(width, height, elevation, sl, moisture, seaLevel, snowLine, 30, terrainOpts);
-  const nameableRegions: NameableRegion[] = detected.map(r => ({ key: r.key, type: r.type, centroid: r.centroid, area: r.area }));
+  const detected = detectTerrainRegions(
+    width,
+    height,
+    elevation,
+    sl,
+    moisture,
+    seaLevel,
+    snowLine,
+    30,
+    terrainOpts
+  );
+  const nameableRegions: NameableRegion[] = detected.map(r => ({
+    key: r.key,
+    type: r.type,
+    centroid: r.centroid,
+    area: r.area,
+  }));
   const fresh = generateNames(md.seed, width, height, nameablePlates, nameableRegions);
   // 保留旧板块名（按 plateId，含用户改名）；地形区名随连通域变化而刷新
   const oldPlateNames = new Map(md.names.plates.map(p => [p.plateId, p.name]));

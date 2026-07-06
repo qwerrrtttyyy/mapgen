@@ -1,7 +1,13 @@
 import type { UIParams } from '../core/appState.js';
 import { patchParams, state } from '../core/appState.js';
 import { bus } from '../core/eventBus.js';
-import { findPreset, defaultSelection, PRESET_GROUPS, type PresetCategory, type PresetId } from './presets.js';
+import {
+  findPreset,
+  defaultSelection,
+  PRESET_GROUPS,
+  type PresetCategory,
+  type PresetId,
+} from './presets.js';
 import { createSvgIcon } from '../core/svgIcon.js';
 
 const SKIP_KEY = 'mapgen:skipLauncher';
@@ -31,7 +37,10 @@ export class Launcher {
   private hidden = false;
   private selection: Record<PresetCategory, PresetId> = this.loadSelection();
 
-  constructor(container: HTMLElement, private options: LauncherOptions = {}) {
+  constructor(
+    container: HTMLElement,
+    private options: LauncherOptions = {}
+  ) {
     this.root = document.createElement('div');
     this.root.id = 'launcher-overlay';
     this.root.className = 'launcher-overlay';
@@ -84,7 +93,7 @@ export class Launcher {
     this.startBtn = this.root.querySelector('#launcher-start') as HTMLButtonElement;
 
     // 启动器 logo（SVG 矢量图标）
-    const logoIcon = this.root.querySelector('.launcher-icon') as HTMLElement | null;
+    const logoIcon = this.root.querySelector('.launcher-icon');
     if (logoIcon) {
       // 山脉 + 地平线，扁平地图风格
       const svg = createSvgIcon('M3 20l4-8 4 4 3-6 4 5 3-3', 36, 1.5);
@@ -121,9 +130,9 @@ export class Launcher {
       if (!raw) return fallback;
       const parsed = JSON.parse(raw) as Record<string, string>;
       return {
-        theme: findPreset(parsed.theme ?? '') ? parsed.theme! : fallback.theme,
-        mode: findPreset(parsed.mode ?? '') ? parsed.mode! : fallback.mode,
-        type: findPreset(parsed.type ?? '') ? parsed.type! : fallback.type,
+        theme: findPreset(parsed.theme ?? '') ? parsed.theme : fallback.theme,
+        mode: findPreset(parsed.mode ?? '') ? parsed.mode : fallback.mode,
+        type: findPreset(parsed.type ?? '') ? parsed.type : fallback.type,
       };
     } catch {
       return fallback;
@@ -261,7 +270,7 @@ export class Launcher {
   setProgress(value: number, text?: string): void {
     const pct = Math.max(0, Math.min(1, value));
     this.progressBar.style.width = `${pct * 100}%`;
-    const indicator = this.root.querySelector('.launcher-progress-indicator') as SVGCircleElement | null;
+    const indicator = this.root.querySelector<SVGElement>('.launcher-progress-indicator');
     if (indicator) {
       const circumference = 2 * Math.PI * 16;
       indicator.style.strokeDasharray = `${circumference}`;
@@ -301,14 +310,18 @@ export class Launcher {
 
   waitForHide(): Promise<void> {
     if (this.hidden) return Promise.resolve();
-    return new Promise(r => { this.resolveHide = r; });
+    return new Promise(r => {
+      this.resolveHide = r;
+    });
   }
 
   waitForLaunch(): Promise<LaunchResult> {
     if (this.resolveLaunch) {
       return new Promise((_, reject) => reject(new Error('Launcher already running')));
     }
-    return new Promise(r => { this.resolveLaunch = r; });
+    return new Promise(r => {
+      this.resolveLaunch = r;
+    });
   }
 
   private launch(): void {

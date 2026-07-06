@@ -33,7 +33,7 @@ export interface IceInput {
  * 约定：y=0 南极（lat=-1）、y=H 北极（lat=+1）。
  */
 export function computeIceSheet(input: IceInput): IceResult {
-  const { width, height, elevation, seaLevel, temperature, snowLine, seed } = input;
+  const { width, height, elevation, seaLevel, temperature, snowLine } = input;
   const polarLatThreshold = input.polarLatThreshold ?? 0.7;
   const size = width * height;
   const invH = 1 / height;
@@ -59,7 +59,7 @@ export function computeIceSheet(input: IceInput): IceResult {
         if (temp < snowLine && elev > seaLevel + 0.1) {
           const coldness = Math.max(0, snowLine - temp);
           const altFactor = Math.max(0, elev - snowLine);
-          landIce[idx] = Math.min(1, (coldness * 0.8 + altFactor * 0.6));
+          landIce[idx] = Math.min(1, coldness * 0.8 + altFactor * 0.6);
         }
       } else if (isPolar && temp < -0.2) {
         // 海冰：极地 + 低温
@@ -92,10 +92,16 @@ export function computeIceSheet(input: IceInput): IceResult {
           if (elevation[ni] <= seaLevel) {
             // 流向海洋：海平面为基准
             const drop = elevHere - seaLevel;
-            if (drop > 0) { drops.push(drop); totalDrop += drop; }
+            if (drop > 0) {
+              drops.push(drop);
+              totalDrop += drop;
+            }
           } else {
             const drop = elevHere - elevation[ni];
-            if (drop > 0) { drops.push(drop); totalDrop += drop; }
+            if (drop > 0) {
+              drops.push(drop);
+              totalDrop += drop;
+            }
           }
         }
         if (totalDrop === 0) continue;
@@ -130,13 +136,19 @@ export function computeIceSheet(input: IceInput): IceResult {
       if (landIce[idx] < ERODE_THRESHOLD) continue;
       const elev = elevation[idx];
       // 8 邻接找最陡下降
-      let minE = elev, minDx = 0, minDy = 0;
+      let minE = elev,
+        minDx = 0,
+        minDy = 0;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
           const ni = idx + dy * width + dx;
           const ne = elevation[ni];
-          if (ne < minE) { minE = ne; minDx = dx; minDy = dy; }
+          if (ne < minE) {
+            minE = ne;
+            minDx = dx;
+            minDy = dy;
+          }
         }
       }
       glacierVx[idx] = minDx;
@@ -154,10 +166,12 @@ export function computeIceSheet(input: IceInput): IceResult {
     for (let x = 2; x < width - 2; x++) {
       const idx = y * width + x;
       if (landIce[idx] < ERODE_THRESHOLD) continue;
-      const gx = glacierVx[idx], gy = glacierVy[idx];
+      const gx = glacierVx[idx],
+        gy = glacierVy[idx];
       if (gx === 0 && gy === 0) continue;
       // 垂直方向（旋 90°）：(-gy, gx)
-      const px = -gy, py = gx;
+      const px = -gy,
+        py = gx;
       const n1 = idx + py * width + px;
       const n2 = idx - py * width - px;
       if (n1 < 0 || n1 >= size || n2 < 0 || n2 >= size) continue;

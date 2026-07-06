@@ -6,7 +6,7 @@ export interface EventMap {
   'render.request': void;
   'generate.request': void;
   'generating.started': void;
-  'progress': { fraction: number; label: string };
+  progress: { fraction: number; label: string };
   'generating.completed': { mapData: MapData };
   'generating.failed': string;
   'selection.changed': { plates: number[]; regions: number[] };
@@ -68,7 +68,7 @@ export class EventBus {
   once<T>(event: string, handler: EventHandler<T>): () => void {
     const wrap = (payload: T) => {
       this.off(event, wrap as EventHandler<T>);
-      (handler as EventHandler<T>)(payload);
+      handler(payload);
     };
     return this.on(event, wrap as EventHandler<T>);
   }

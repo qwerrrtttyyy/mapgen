@@ -48,7 +48,7 @@ export function runClimateStage(
   let seaIce = f32(size);
   let glacierVx = f32(size);
   let glacierVy = f32(size);
-  let elevation = elevationState.elevation;
+  const elevation = elevationState.elevation;
   let slope = elevationState.slope;
 
   if (!isBlank) {
@@ -56,9 +56,15 @@ export function runClimateStage(
 
     if (params.enableOceanCurrents !== false) {
       const currents = computeOceanCurrents({
-        width, height, elevation, seaLevel: params.seaLevel,
-        coastDist, windDirX: params.windDirX ?? 1, windDirY: params.windDirY ?? 0,
-        rainStrength: params.rainStrength ?? 1, seed,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        coastDist,
+        windDirX: params.windDirX ?? 1,
+        windDirY: params.windDirY ?? 0,
+        rainStrength: params.rainStrength ?? 1,
+        seed,
       });
       currentVx = currents.vx;
       currentVy = currents.vy;
@@ -79,8 +85,15 @@ export function runClimateStage(
     rainfall = f32(size);
   } else {
     const climate = computeClimate(
-      width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-      params.windDirX ?? 1, params.windDirY ?? 0, params.rainStrength ?? 1,
+      width,
+      height,
+      elevation,
+      params.seaLevel,
+      params.tempOffset,
+      params.snowLine,
+      params.windDirX ?? 1,
+      params.windDirY ?? 0,
+      params.rainStrength ?? 1,
       {
         coastDist,
         currentTempDelta,
@@ -88,7 +101,7 @@ export function runClimateStage(
         enableOceanCurrents: params.enableOceanCurrents !== false,
         enableHadleyEnhancement: params.enableHadleyEnhancement !== false,
         enableMonsoon: params.enableMonsoon !== false,
-      },
+      }
     );
     temperature = climate.temperature;
     tempZone = climate.tempZone;
@@ -97,8 +110,13 @@ export function runClimateStage(
 
     if (params.enableIceSheet !== false) {
       const ice = computeIceSheet({
-        width, height, elevation, seaLevel: params.seaLevel,
-        temperature, snowLine: params.snowLine, seed,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        temperature,
+        snowLine: params.snowLine,
+        seed,
       });
       landIce = ice.landIce;
       seaIce = ice.seaIce;
@@ -111,12 +129,18 @@ export function runClimateStage(
 
   return {
     coastDist,
-    currentVx, currentVy, currentTempDelta, currentSpeed,
+    currentVx,
+    currentVy,
+    currentTempDelta,
+    currentSpeed,
     temperature,
     tempZone,
     moisture,
     rainfall,
-    landIce, seaIce, glacierVx, glacierVy,
+    landIce,
+    seaIce,
+    glacierVx,
+    glacierVy,
     elevation,
     slope,
     ridge: elevationState.ridge,

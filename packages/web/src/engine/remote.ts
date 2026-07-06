@@ -1,6 +1,19 @@
-import type { MapGenEngine, MapParams, GenerationResult, GenerationProgress, Result, SavedMapRef, SavedMapSummary, SerializedMapData, MapMeta, MapFilter, EngineCapabilities, MapGenError } from '@mapgen/shared-types';
+import type {
+  MapGenEngine,
+  MapParams,
+  GenerationResult,
+  GenerationProgress,
+  Result,
+  SavedMapRef,
+  SavedMapSummary,
+  SerializedMapData,
+  MapMeta,
+  MapFilter,
+  EngineCapabilities,
+  MapGenError,
+} from '@mapgen/shared-types';
 import { ok, err } from '@mapgen/shared-types';
-import type { GenerateResponse, JobResponse, HealthResponse, ListMapsResponse } from '@mapgen/shared-types';
+import type { GenerateResponse, ListMapsResponse } from '@mapgen/shared-types';
 
 export interface RemoteProviderOptions {
   baseUrl: string;
@@ -24,7 +37,7 @@ export class RemoteProvider implements MapGenEngine {
         const body = await res.json().catch(() => ({}));
         return err(body.error || { code: 'NETWORK_ERROR', message: `HTTP ${res.status}` });
       }
-      return ok(await res.json() as T);
+      return ok((await res.json()) as T);
     } catch (e) {
       return err({ code: 'NETWORK_ERROR', message: String(e) });
     }
@@ -44,7 +57,7 @@ export class RemoteProvider implements MapGenEngine {
     if (!createRes.ok) return createRes;
 
     const { jobId } = createRes.value;
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const es = new EventSource(`${this.baseUrl}/api/v1/jobs/${jobId}`);
       if (signal) {
         signal.addEventListener('abort', () => {
@@ -53,18 +66,18 @@ export class RemoteProvider implements MapGenEngine {
         });
       }
 
-      es.addEventListener('progress', (event) => {
+      es.addEventListener('progress', event => {
         const data = JSON.parse(event.data) as GenerationProgress;
         if (onProgress) onProgress(data);
       });
 
-      es.addEventListener('completed', (event) => {
+      es.addEventListener('completed', event => {
         es.close();
         const data = JSON.parse(event.data) as { jobId: string; result: GenerationResult };
         resolve(ok(data.result));
       });
 
-      es.addEventListener('failed', (event) => {
+      es.addEventListener('failed', event => {
         es.close();
         const data = JSON.parse(event.data) as { jobId: string; error: MapGenError };
         resolve(err(data.error));

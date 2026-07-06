@@ -207,7 +207,7 @@ export function terrainCacheKey(
   width: number,
   height: number,
   phase: string,
-  params?: Record<string, unknown>,
+  params?: Record<string, unknown>
 ): string {
   let key = `${seed}:${width}:${height}:${phase}`;
   if (params) {
@@ -299,7 +299,7 @@ export class TerrainCache extends LRUCache<string, Float32Array> {
  */
 export function memoize<Args extends unknown[], R>(
   fn: (...args: Args) => R,
-  options: CacheOptions = {},
+  options: CacheOptions = {}
 ): (...args: Args) => R {
   const cache = new LRUCache<string, R>(options);
   return (...args: Args): R => {

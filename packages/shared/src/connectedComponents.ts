@@ -68,7 +68,7 @@ export function labelComponents(
   width: number,
   height: number,
   shouldLabel: (i: number) => boolean,
-  areConnected: (i: number, j: number) => boolean,
+  areConnected: (i: number, j: number) => boolean
 ): { labels: Int32Array; count: number } {
   const size = width * height;
   const labels = new Int32Array(size);
@@ -133,7 +133,7 @@ export function labelComponents(
 export function computeComponentStats(
   width: number,
   height: number,
-  labels: Int32Array,
+  labels: Int32Array
 ): Map<number, ComponentStats> {
   const stats = new Map<number, ComponentStats>();
   for (let y = 0; y < height; y++) {
@@ -144,8 +144,8 @@ export function computeComponentStats(
       if (lbl === 0) continue;
       let s = stats.get(lbl);
       if (!s) {
-            s = { id: lbl, area: 0, sumX: 0, sumY: 0, label: lbl };
-            stats.set(lbl, s);
+        s = { id: lbl, area: 0, sumX: 0, sumY: 0, label: lbl };
+        stats.set(lbl, s);
       }
       s.area++;
       s.sumX += x;
@@ -172,7 +172,7 @@ export function fastFloodFill(
   height: number,
   visited: Uint8Array,
   shouldVisit: (i: number) => boolean,
-  onVisit: (i: number, x: number, y: number) => void,
+  onVisit: (i: number, x: number, y: number) => void
 ): number {
   const size = width * height;
   const stack = new Int32Array(size);
