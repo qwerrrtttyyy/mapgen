@@ -8,6 +8,7 @@ import { logger } from './core/logger.js';
 import { state, patchParams, type UIParams } from './core/appState.js';
 import { bus } from './core/eventBus.js';
 import { generate as generateMap, setParam, clearSelection } from './core/actions.js';
+import { getEngineProvider } from './engine/factory.js';
 import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
 import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';

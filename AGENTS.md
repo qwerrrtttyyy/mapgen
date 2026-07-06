@@ -4,10 +4,10 @@
 
 Procedural noise & tectonic simulation tool rendering on WebGL with a Material Design 3 UI. Generates terrain/material maps in the browser.
 
-- **Latest:** `v0.0.2` (Monorepo: Turborepo + npm workspaces)
+- **Latest:** `v0.0.3-pre` (Monorepo: Turborepo + npm workspaces)
 - **Changelog:** CHANGELOG.md
 - **Language:** zh-CN primary
-- **Runtime:** Browser (pure frontend, no server required)
+- **Runtime:** Browser (pure frontend, no server required); optional Node.js reference backend
 - **Build / test / lint:** Turborepo tasks
 - **GitHub:** https://github.com/qwerrrtttyyy/mapgen
 
@@ -17,18 +17,31 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 # Install dependencies
 npm install
 
-# Development mode (all packages)
+# Development mode (frontend only)
 npm run dev
+
+# Development mode (frontend + backend)
+npm run dev:all
+
+# Backend only
+npm run dev:server
 
 # Build all packages
 npm run build
 
+# Build backend only
+npm run build:server
+
 # Type check all packages
 npm run typecheck
+
+# Run all tests
+npm test
 
 # Build specific package
 npm run build --workspace=@mapgen/core
 npm run build --workspace=@mapgen/web
+npm run build --workspace=@mapgen/server
 ```
 
 Development server runs at `http://127.0.0.1:3000` by default.
@@ -42,6 +55,7 @@ mapgen/
 ├── packages/
 │   ├── shared/          # Shared engine modules (TypeScript)
 │   │   ├── src/
+│   │   │   ├── pipeline/      # Generation pipeline stages
 │   │   │   ├── noise.ts       # Noise generation (Perlin, Simplex, Value, Worley)
 │   │   │   ├── tectonic.ts    # Plate tectonics
 │   │   │   ├── erosion.ts     # Erosion simulation
@@ -51,24 +65,49 @@ mapgen/
 │   │   ├── dist/              # Compiled output
 │   │   ├── package.json
 │   │   └── tsconfig.json
-│   └── web/             # Frontend application (TypeScript + Vite)
-│       ├── public/
-│       │   ├── index.html
-│       │   ├── style.css
-│       │   ├── shaders/
-│       │   │   ├── fs-map.frag
-│       │   │   └── vs-quad.vert
-│       │   └── favicon.svg
+│   ├── shared-types/    # Cross-boundary type contracts and serialization
+│   │   ├── src/
+│   │   │   ├── params.ts      # MapParams
+│   │   │   ├── map.ts         # MapData / SerializedMapData
+│   │   │   ├── engine.ts      # MapGenEngine interface
+│   │   │   ├── api.ts         # REST API types
+│   │   │   ├── errors.ts      # Result<T> / MapGenError
+│   │   │   └── serialization.ts # Base64 float32 codec
+│   │   ├── dist/
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── web/             # Frontend application (TypeScript + Vite)
+│   │   ├── public/
+│   │   │   ├── index.html
+│   │   │   ├── style.css
+│   │   │   ├── shaders/
+│   │   │   │   ├── fs-map.frag
+│   │   │   │   └── vs-quad.vert
+│   │   │   └── favicon.svg
+│   │   ├── src/
+│   │   │   ├── engine/          # MapGenEngine abstraction
+│   │   │   │   ├── provider.ts
+│   │   │   │   ├── local.ts     # LocalProvider (Web Worker)
+│   │   │   │   ├── remote.ts    # RemoteProvider (REST + SSE)
+│   │   │   │   └── factory.ts
+│   │   │   ├── app.ts           # Main application logic
+│   │   │   ├── checkpoint.ts    # Checkpoint management
+│   │   │   └── renderer/
+│   │   │       ├── webgl.ts     # WebGL renderer
+│   │   │       └── canvas2d.ts  # Canvas2D renderer
+│   │   ├── dist/                # Build output
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── vite.config.ts
+│   └── server/          # Optional reference backend (Hono + in-memory)
 │       ├── src/
-│       │   ├── app.ts           # Main application logic
-│       │   ├── checkpoint.ts    # Checkpoint management
-│       │   └── renderer/
-│       │       ├── webgl.ts     # WebGL renderer
-│       │       └── canvas2d.ts  # Canvas2D renderer
-│       ├── dist/                # Build output
+│       │   ├── routes/          # REST routes
+│       │   ├── services/        # Job queue, map engine, storage
+│       │   ├── db/              # In-memory database
+│       │   └── index.ts         # App entry
+│       ├── dist/
 │       ├── package.json
-│       ├── tsconfig.json
-│       └── vite.config.ts
+│       └── tsconfig.json
 ├── package.json         # Root config
 ├── turbo.json           # Turborepo config
 └── README.md
@@ -79,7 +118,9 @@ mapgen/
 | Package | Purpose | Dependencies |
 |---------|---------|--------------|
 | `@mapgen/core` | Core algorithms (noise, tectonic, erosion, rivers, regions) | None |
-| `@mapgen/web` | TypeScript + Vite frontend, WebGL/Canvas2D rendering | `@mapgen/core` |
+| `@mapgen/shared-types` | Cross-boundary type contracts and serialization | `msgpackr` |
+| `@mapgen/web` | TypeScript + Vite frontend, WebGL/Canvas2D rendering | `@mapgen/core`, `@mapgen/shared-types` |
+| `@mapgen/server` | Optional reference backend (Hono + in-memory storage) | `@mapgen/core`, `@mapgen/shared-types`, `hono` |
 
 ## Code conventions
 
@@ -91,9 +132,13 @@ mapgen/
 ## Commands
 
 ```bash
-npm run dev        # Start all packages in dev mode
-npm run build      # Build all packages
-npm run typecheck  # Type check all packages
+npm run dev          # Start frontend in dev mode
+npm run dev:server   # Start backend in dev mode
+npm run dev:all      # Start frontend + backend in dev mode
+npm run build        # Build all packages
+npm run build:server # Build backend only
+npm run typecheck    # Type check all packages
+npm test             # Run all tests
 ```
 
 ## Features
@@ -105,6 +150,9 @@ npm run typecheck  # Type check all packages
 - **Climate system:** Temperature, moisture, biomes
 - **Render styles:** Terrain, Plates, Parchment, Satellite, Low-poly, Biome, Contour, Relief, Azgaar
 - **Checkpoint system:** Save/restore generation state (localStorage)
+- **Pipeline architecture:** `generateMap` split into tectonic/elevation/climate/river/region/packing stages
+- **Backend abstraction:** `MapGenEngine` interface with `LocalProvider` and `RemoteProvider`
+- **Optional reference backend:** Hono + in-memory storage, REST + SSE
 - **Pure frontend:** No server required, runs entirely in browser
 
 ## Tech stack
@@ -114,6 +162,7 @@ npm run typecheck  # Type check all packages
 - **Styling:** Material Design 3 (CSS Custom Properties)
 - **Build tool:** Turborepo
 - **Package manager:** npm workspaces
+- **Backend (optional):** Hono + in-memory storage + REST + SSE
 
 ## License
 

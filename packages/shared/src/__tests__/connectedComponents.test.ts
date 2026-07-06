@@ -4,10 +4,17 @@ import { labelComponents, computeComponentStats } from '../connectedComponents.j
 describe('ConnectedComponents 连通域标记', () => {
   const W = 32, H = 32;
 
+  function maskToPredicates(mask: Uint8Array) {
+    return {
+      shouldLabel: (i: number) => mask[i] === 1,
+      areConnected: (_i: number, _j: number) => true,
+    };
+  }
+
   describe('labelComponents 连通域标记', () => {
     it('单一连通域', () => {
       const mask = new Uint8Array(W * H).fill(1);
-      const labels = labelComponents(W, H, mask);
+      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
 
       // 全图应为同一标签
       const uniqueLabels = new Set(labels);
@@ -29,7 +36,7 @@ describe('ConnectedComponents 连通域标记', () => {
         }
       }
 
-      const labels = labelComponents(W, H, mask);
+      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
       const uniqueLabels = new Set(labels.filter(l => l > 0));
 
       expect(uniqueLabels.size).toBe(2);
@@ -61,7 +68,7 @@ describe('ConnectedComponents 连通域标记', () => {
         }
       }
 
-      const labels = labelComponents(W, H, mask);
+      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
       const uniqueLabels = new Set(labels.filter(l => l > 0));
 
       expect(uniqueLabels.size).toBe(4);
@@ -69,7 +76,7 @@ describe('ConnectedComponents 连通域标记', () => {
 
     it('零值区域标签为零', () => {
       const mask = new Uint8Array(W * H).fill(0);
-      const labels = labelComponents(W, H, mask);
+      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
 
       expect(labels.every(l => l === 0)).toBe(true);
     });
@@ -93,7 +100,7 @@ describe('ConnectedComponents 连通域标记', () => {
         }
       }
 
-      const labels = labelComponents(W, H, mask);
+      const { labels } = labelComponents(W, H, maskToPredicates(mask).shouldLabel, maskToPredicates(mask).areConnected);
       const uniqueLabels = Array.from(new Set(labels.filter(l => l > 0))).sort((a, b) => a - b);
 
       expect(uniqueLabels).toEqual([1, 2, 3]);
@@ -102,20 +109,20 @@ describe('ConnectedComponents 连通域标记', () => {
 
   describe('computeComponentStats 连通域统计', () => {
     it('计算面积', () => {
-      const labels = new Uint8Array(W * H);
+      const labels = new Int32Array(W * H);
       const regionSize = 100;
       for (let i = 0; i < regionSize; i++) {
         labels[i] = 1;
       }
 
       const stats = computeComponentStats(W, H, labels);
-      const component1 = stats.find(s => s.label === 1);
+      const component1 = stats.get(1);
 
       expect(component1?.area).toBe(regionSize);
     });
 
     it('计算质心', () => {
-      const labels = new Uint8Array(W * H);
+      const labels = new Int32Array(W * H);
       const startX = 10, startY = 10;
       const width = 5, height = 5;
 
@@ -126,14 +133,14 @@ describe('ConnectedComponents 连通域标记', () => {
       }
 
       const stats = computeComponentStats(W, H, labels);
-      const component1 = stats.find(s => s.label === 1);
+      const component1 = stats.get(1);
 
-      expect(component1?.centroid[0]).toBeCloseTo(startX + width / 2, 1);
-      expect(component1?.centroid[1]).toBeCloseTo(startY + height / 2, 1);
+      expect(component1?.sumX / component1!.area).toBeCloseTo(startX + width / 2 - 0.5, 1);
+      expect(component1?.sumY / component1!.area).toBeCloseTo(startY + height / 2 - 0.5, 1);
     });
 
     it('多连通域统计', () => {
-      const labels = new Uint8Array(W * H);
+      const labels = new Int32Array(W * H);
 
       // 区域1：左上角
       for (let y = 0; y < 5; y++) {
@@ -151,9 +158,9 @@ describe('ConnectedComponents 连通域标记', () => {
 
       const stats = computeComponentStats(W, H, labels);
 
-      expect(stats.length).toBe(2);
-      expect(stats[0].label).toBe(1);
-      expect(stats[1].label).toBe(2);
+      expect(stats.size).toBe(2);
+      expect(stats.get(1)).toBeDefined();
+      expect(stats.get(2)).toBeDefined();
     });
   });
 });

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@mapgen/core": "*",
+    "@mapgen/shared-types": "*",
     "p5": "1.11"
   },
   "devDependencies": {

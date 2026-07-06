@@ -1,70 +1,25 @@
-export interface Plate {
-  id: number;
-  type: 'continent' | 'ocean';
-  centroid: [number, number];
-  drift: [number, number];
-}
+import type {
+  MapData as CoreMapData,
+  Plate as CorePlate,
+  Region as CoreRegion,
+  River as CoreRiver,
+  VolcanoSite as CoreVolcanoSite,
+  Hotspot as CoreHotspot,
+  NamedPlate as CoreNamedPlate,
+  NamedRegion as CoreNamedRegion,
+  NameManifest as CoreNameManifest,
+} from '@mapgen/core';
 
-export interface Region {
-  id: number;
-  type: string;
-  centroid: [number, number];
-  area: number;
-}
+export type Plate = CorePlate;
+export type Region = CoreRegion;
+export type River = CoreRiver;
+export type VolcanoSite = CoreVolcanoSite;
+export type Hotspot = CoreHotspot;
+export type NamedPlate = CoreNamedPlate;
+export type NamedRegion = CoreNamedRegion;
+export type NameManifest = CoreNameManifest;
 
-export interface RiverSegment {
-  x: number;
-  y: number;
-  width: number;
-}
-
-export interface River {
-  id: number;
-  segments: RiverSegment[];
-}
-
-export interface NameManifest {
-  plates: string[];
-  regions: string[];
-  volcanoes: string[];
-}
-
-export interface VolcanoSite {
-  x: number;
-  y: number;
-  name: string;
-  probability: number;
-}
-
-export interface Hotspot {
-  x: number;
-  y: number;
-  strength: number;
-}
-
-export interface MapData {
-  width: number;
-  height: number;
-  plateTex: Float32Array;
-  elevTex: Float32Array;
-  moistTex: Float32Array;
-  riverTex: Float32Array;
-  tempTex: Float32Array;
-  currentTex?: Float32Array;
-  iceTex?: Float32Array;
-  coastDist?: Float32Array;
-  biomeTex?: Float32Array;
-  watershedTex?: Float32Array;
-  volcanismTex?: Float32Array;
-  seasonTex?: Float32Array;
-  volcanoSites?: VolcanoSite[];
-  hotspots?: Hotspot[];
-  plates: Plate[];
-  regions: Region[];
-  rivers: River[];
-  names: NameManifest;
-  seed: number;
-}
+export type MapData = CoreMapData;
 
 export interface SerializedMapData {
   width: number;

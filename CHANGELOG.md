@@ -2,26 +2,29 @@
 
 All notable changes to the Material Map Generator.
 
-## v0.0.3-pre (2026-07-05)
+## v0.0.3-pre (2026-07-06)
 
-### 性能优化与图形实现精简
+### 后端抽象层与模块质量提升
 
-- **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
-- **底层优化**: 
-  - 使用 TypedArray 替代普通数组，减少内存分配
-  - 优化循环算法，减少对象创建
-  - 预计算常用值，避免重复计算
-  - 使用位运算替代除法运算
-- **图形实现修剪**:
-  - 移除冗余注释，代码更简洁
-  - 移除 AI 生成痕迹的过度注释
-  - 新增 `PerformanceMonitor` 类进行帧率检测
-  - WebGLRenderer / P5Renderer 集成性能监控
-  - FPS 统计通过 eventBus 实时上报
-- **代码质量验证**: 
-  - ✅ typecheck: 3/3 通过
-  - ✅ build: 2/2 通过（web 46 modules）
-  - ✅ tests: 72/72 通过
+- **新增 `@mapgen/shared-types`**: 跨边界类型契约、`Result<T>` 错误处理、`MapData` Base64 序列化
+- **新增 `@mapgen/server`**: 可选参考后端（Hono + in-memory 存储）
+  - REST API：`/api/v1/health`、`/api/v1/generate`、`/api/v1/jobs/:id`、`/api/v1/maps`、`/api/v1/presets`
+  - SSE 进度推送：`progress` / `completed` / `failed` 事件
+- **前端引擎抽象层**:
+  - `MapGenEngine` 统一接口：生成、保存、加载、列表、删除、能力查询
+  - `LocalProvider`: Web Worker 本地生成 + localStorage 持久化
+  - `RemoteProvider`: REST + SSE 远程生成 + 后端持久化
+  - `createEngineProvider` / `getEngineProvider` 工厂与缓存
+- **核心引擎重构**:
+  - `generateMap` 拆分为 pipeline 阶段：`tectonicStage` / `elevationStage` / `climateStage` / `riverStage` / `regionStage` / `packingStage`
+  - 新增 `packages/shared/src/pipeline/typedArrays.ts` 统一 TypedArray 创建，规避 TS 5.7+ 泛型不兼容
+- **测试修复与增强**:
+  - 修复 `connectedComponents`、`coastline`、`downstream`、`slope` 测试与当前实现不匹配
+  - 新增 `server.test.ts` 后端健康检查与任务创建测试
+- **代码质量验证**:
+  - ✅ typecheck: 5/5 通过
+  - ✅ build: 5/5 通过
+  - ✅ tests: 213/213 通过（core 185 + manager 25 + shared-types 1 + server 2）
 
 ### 项目结构概览
 

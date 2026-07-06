@@ -1,38 +1,20 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["package.json", "tsconfig.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
-      "inputs": [
-        "src/**",
-        "public/**",
-        "package.json",
-        "tsconfig.json",
-        "vite.config.ts",
-        "../shared/src/**",
-        "../shared/package.json",
-        "../shared/tsconfig.json"
-      ]
+      "outputs": ["dist/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "typecheck": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "src/**",
-        "package.json",
-        "tsconfig.json",
-        "../shared/src/**",
-        "../shared/package.json",
-        "../shared/tsconfig.json"
-      ]
+      "dependsOn": ["^build"]
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "package.json", "tsconfig.json", "vitest.config.ts"],
       "outputs": []
     }
   }

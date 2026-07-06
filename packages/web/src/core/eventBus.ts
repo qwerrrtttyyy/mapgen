@@ -1,4 +1,20 @@
 import { logger } from './logger.js';
+import type { MapData } from '@mapgen/core';
+import type { UIParams } from './appState.js';
+
+export interface EventMap {
+  'render.request': void;
+  'generate.request': void;
+  'generating.started': void;
+  'progress': { fraction: number; label: string };
+  'generating.completed': { mapData: MapData };
+  'generating.failed': string;
+  'selection.changed': { plates: number[]; regions: number[] };
+  'export.request': void;
+  'params.changed': { key: string; value: unknown };
+  'params.committed': UIParams;
+  'map.hover': number;
+}
 
 export type EventHandler<T = unknown> = (payload: T) => void;
 
