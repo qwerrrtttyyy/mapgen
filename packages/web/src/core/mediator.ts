@@ -20,7 +20,8 @@ export type ColleagueName =
   | 'shortcuts'
   | 'contextMenu'
   | 'laserController'
-  | 'p5renderer';
+  | 'p5renderer'
+  | 'debug';
 
 export type MediatorEvent =
   | 'render.request'
@@ -51,7 +52,13 @@ export type MediatorEvent =
   | 'laser.mode.set'
   | 'laser.toggle'
   | 'laser.selection.done'
-  | 'picker.update';
+  | 'picker.update'
+  | 'debug.toggle'
+  | 'debug.open'
+  | 'debug.close'
+  | 'debug.wireframe.changed'
+  | 'debug.normals.changed'
+  | 'render.frame';
 
 export interface MediatorEventPayload {
   'render.request': void;
@@ -83,6 +90,12 @@ export interface MediatorEventPayload {
   'laser.toggle': void;
   'laser.selection.done': { plates: number[] };
   'picker.update': { px: number; py: number; plateId: number; elevation: number; temperature: number; moisture: number };
+  'debug.toggle': void;
+  'debug.open': void;
+  'debug.close': void;
+  'debug.wireframe.changed': { enabled: boolean };
+  'debug.normals.changed': { enabled: boolean };
+  'render.frame': { drawCalls: number; textureCount: number };
 }
 
 export interface Mediator {

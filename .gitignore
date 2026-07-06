@@ -1,59 +1,50 @@
-```
-# Dependencies
-node_modules/
-
 # Build artifacts
 dist/
 build/
-target/
+*.d.ts
+*.js
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-.ENV
-.python-version
 
-# Logs
-*.log
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
 
-# Turborepo cache
-.turbo/
+# C/C++
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
 
-# Planning / verification artifacts
-.planning/
-
-# Environment variables
-.env
-.env.local
-.env.*
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-
-# Compressed files
+# Compression
 *.zip
 *.gz
 *.tar
@@ -76,4 +67,16 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
+
+# System
+.DS_Store
+Thumbs.db
+
+# Turbo cache
+.turbo/cache/
+
+# Dogfood test output
+dogfood-output/
+
+# Lock file conflict — using npm
+bun.lock

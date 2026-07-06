@@ -118,3 +118,17 @@ bun run typecheck  # Type check all packages
 ## License
 
 MIT
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked on GitHub Issues; external PRs are also triaged as a request surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five standard role strings are used as-is. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context layout — `CONTEXT-MAP.md` at root points to per-package `CONTEXT.md` files. See `docs/agents/domain.md`.

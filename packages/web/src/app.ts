@@ -1,4 +1,4 @@
-import type { MapData } from '@mapgen/core';
+import type { MapData, debug as coreDebug } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -16,6 +16,7 @@ import { NameOverlay } from './editor/NameOverlay.js';
 import { Toolbar } from './ui/toolbar.js';
 import { CheckpointPanel } from './ui/checkpointPanel.js';
 import { Launcher } from './launcher/launcher.js';
+import { DebugPanel } from './ui/debugPanel.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
   style: 'u_style',
@@ -70,6 +71,7 @@ let dragStartW = 0;
 let dragStartH = 0;
 let currentTool = 'idle';
 let namesVisible = true;
+let debugPanel: DebugPanel | null = null;
 
 function $<T extends HTMLElement = HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null;
@@ -625,6 +627,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   toolbar.bind();
   checkpointPanel = new CheckpointPanel();
   checkpointPanel.bind(checkpointMgr);
+  debugPanel = new DebugPanel();
+  debugPanel.bind();
+
+  buildPresetGrid();
+  syncUIFromParams();
 
   bindEventBus();
   bindSizeHandle();

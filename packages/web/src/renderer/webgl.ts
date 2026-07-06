@@ -1,7 +1,19 @@
 import type { MapData } from '@mapgen/core';
 import type { RenderParams, UniformValue } from './renderParams.js';
+import { perfMonitor } from '../core/performance.js';
+import { bus } from '../core/eventBus.js';
 
 export type { RenderParams } from './renderParams.js';
+
+let drawCallCount = 0;
+
+export function getDrawCallCount(): number {
+  return drawCallCount;
+}
+
+export function resetDrawCallCount(): void {
+  drawCallCount = 0;
+}
 
 export class WebGLRenderer {
   private canvas: HTMLCanvasElement;
@@ -12,6 +24,8 @@ export class WebGLRenderer {
   private mapHeight: number = 0;
   private textures: Record<string, WebGLTexture> = {};
   private uniformLoc: Record<string, WebGLUniformLocation> = {};
+  private debugMode: boolean = false;
+  private wireframeMode: boolean = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -228,13 +242,34 @@ export class WebGLRenderer {
 
     this.setUniform('u_resolution', [w, h]);
     this.setUniform('u_time', performance.now() * 0.001);
+    this.setUniform('u_debugMode', this.debugMode ? 1.0 : 0.0);
+    this.setUniform('u_wireframeMode', this.wireframeMode ? 1.0 : 0.0);
+    this.setUniform('u_mapSize', [this.mapWidth, this.mapHeight]);
 
     for (const [key, value] of Object.entries(params)) {
       this.setUniform(key, value);
     }
 
+    if (this.wireframeMode) {
+      (gl as unknown as { polygonMode: (face: number, mode: number) => void }).polygonMode(
+        gl.FRONT_AND_BACK,
+        0x1b01
+      );
+    }
+
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    drawCallCount++;
+
     gl.bindVertexArray(null);
+
+    if (this.wireframeMode) {
+      (gl as unknown as { polygonMode: (face: number, mode: number) => void }).polygonMode(
+        gl.FRONT_AND_BACK,
+        0x1b02
+      );
+    }
+
+    bus.emit('render.frame', { drawCalls: drawCallCount, textureCount: Object.keys(this.textures).length });
   }
 
   resize(w: number, h: number): void {
@@ -246,5 +281,22 @@ export class WebGLRenderer {
     const gl = this.gl;
     if (this.program) gl.deleteProgram(this.program);
     for (const tex of Object.values(this.textures)) gl.deleteTexture(tex);
+  }
+
+  setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled;
+  }
+
+  setWireframeMode(enabled: boolean): void {
+    this.wireframeMode = enabled;
+  }
+
+  getDebugInfo(): { textures: number; width: number; height: number; programs: number } {
+    return {
+      textures: Object.keys(this.textures).length,
+      width: this.mapWidth,
+      height: this.mapHeight,
+      programs: this.program ? 1 : 0,
+    };
   }
 }
