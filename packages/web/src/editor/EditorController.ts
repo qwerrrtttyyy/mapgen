@@ -5,6 +5,7 @@
 import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
+import { clientToMapUv, mapPixelToClient } from '../map/viewport.js';
 import {
   CommandStack,
   applyVectorMountain,
@@ -131,29 +132,21 @@ export class EditorController extends Colleague {
     this.emit('render.request');
   }
 
-  // ── 坐标转换：客户端坐标 → 地图像素 ──
+  // ── 坐标转换：客户端坐标 → 地图像素（支持缩放/平移） ──
   private toMapPixel(clientX: number, clientY: number): PixelCoord | null {
     const md = state.mapData;
     if (!md) return null;
     const rect = this.canvas.getBoundingClientRect();
-    const cx = clientX - rect.left;
-    const cy = clientY - rect.top;
-    const scale = Math.min(rect.width / md.width, rect.height / md.height);
-    const dW = md.width * scale;
-    const dH = md.height * scale;
-    const ox = (rect.width - dW) / 2;
-    const oy = (rect.height - dH) / 2;
-    const nx = (cx - ox) / dW;
-    const ny = (cy - oy) / dH;
-    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
-    return { x: Math.floor(nx * md.width), y: Math.floor(ny * md.height) };
+    const uv = clientToMapUv(clientX, clientY, rect, md.width, md.height);
+    if (!uv) return null;
+    return { x: Math.floor(uv.nx * md.width), y: Math.floor(uv.ny * md.height) };
   }
 
   private screenScale(): number {
     const md = state.mapData;
     if (!md) return 1;
     const rect = this.canvas.getBoundingClientRect();
-    return Math.min(rect.width / md.width, rect.height / md.height);
+    return Math.min(rect.width / md.width, rect.height / md.height) * state.zoom;
   }
 
   /** 地图像素 → 屏幕坐标（用于名称命中检测） */
@@ -161,12 +154,8 @@ export class EditorController extends Colleague {
     const md = state.mapData;
     if (!md) throw new Error('No map data');
     const rect = this.canvas.getBoundingClientRect();
-    const scale = Math.min(rect.width / md.width, rect.height / md.height);
-    const dW = md.width * scale;
-    const dH = md.height * scale;
-    const ox = (rect.width - dW) / 2;
-    const oy = (rect.height - dH) / 2;
-    return [rect.left + ox + mx * scale, rect.top + oy + my * scale];
+    const [rx, ry] = mapPixelToClient(mx, my, rect, md.width, md.height);
+    return [rect.left + rx, rect.top + ry];
   }
 
   // ── 通道提取/回写 ──

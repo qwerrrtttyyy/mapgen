@@ -31,6 +31,8 @@ export interface RenderParams {
   u_fbmOctaves?: number;
   u_fbmLacunarity?: number;
   u_fbmPersistence?: number;
+  u_zoom?: number;
+  u_pan?: number[];
 }
 
 export type UniformValue = number | boolean | number[];

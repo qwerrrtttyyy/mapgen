@@ -3,31 +3,19 @@ import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
 import { selectPlate, setHover, setParam } from '../core/actions.js';
 import { MapPicker, type PickerResult } from './picker.js';
+import { clientToMapUv } from './viewport.js';
 import { Tooltip } from '../ui/tooltip.js';
 import { LaserController } from './laserController.js';
 
-const biomeNames = ['海洋', '雪线高山', '高山', '沙漠', '湿地', '森林', '苔原', '平原'];
+const biomeNames = [
+  '海洋', '雪线高山', '高山', '沙漠', '湿地', '森林', '苔原', '平原'
+];
 
-function clientToUv(
-  clientX: number,
-  clientY: number,
-  canvas: HTMLCanvasElement
-): { nx: number; ny: number } | null {
-  const rect = canvas.getBoundingClientRect();
-  const cx = clientX - rect.left;
-  const cy = clientY - rect.top;
+function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement): { nx: number; ny: number } | null {
   const { mapData } = state;
   if (!mapData) return null;
-  const { width, height } = mapData;
-  const scale = Math.min(rect.width / width, rect.height / height);
-  const dW = width * scale;
-  const dH = height * scale;
-  const ox = (rect.width - dW) / 2;
-  const oy = (rect.height - dH) / 2;
-  const nx = (cx - ox) / dW;
-  const ny = 1.0 - (cy - oy) / dH;
-  if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
-  return { nx, ny };
+  const rect = canvas.getBoundingClientRect();
+  return clientToMapUv(clientX, clientY, rect, mapData.width, mapData.height);
 }
 
 export class MapInteraction extends Colleague {
@@ -49,13 +37,10 @@ export class MapInteraction extends Colleague {
     this.tooltip = new Tooltip();
     this.laser = new LaserController(canvas);
 
-    const move = (e: MouseEvent): void => this.scheduleMove(e);
-    const click = (e: MouseEvent): void => this.handleClick(e);
-    const leave = (): void => this.handleLeave();
-    const context = (e: MouseEvent): void => {
-      e.preventDefault();
-      this.handleContext(e);
-    };
+    const move = (e: MouseEvent) => this.scheduleMove(e);
+    const click = (e: MouseEvent) => this.handleClick(e);
+    const leave = () => this.handleLeave();
+    const context = (e: MouseEvent) => { e.preventDefault(); this.handleContext(e); };
 
     canvas.addEventListener('mousemove', move);
     canvas.addEventListener('click', click);
@@ -66,15 +51,12 @@ export class MapInteraction extends Colleague {
       () => canvas.removeEventListener('mousemove', move),
       () => canvas.removeEventListener('click', click),
       () => canvas.removeEventListener('mouseleave', leave),
-      () => canvas.removeEventListener('contextmenu', context)
+      () => canvas.removeEventListener('contextmenu', context),
     );
   }
 
   setMapData(data: typeof state.mapData): void {
-    if (!data) {
-      this.picker = null;
-      return;
-    }
+    if (!data) { this.picker = null; return; }
     this.picker = new MapPicker(data);
   }
 
@@ -86,9 +68,13 @@ export class MapInteraction extends Colleague {
 
   bindEvents(): void {
     if (this.mediator) {
-      this.unsub.push(this.subscribe('generating.completed', () => this.setMapData(state.mapData)));
+      this.unsub.push(
+        this.subscribe('generating.completed', () => this.setMapData(state.mapData))
+      );
     } else {
-      this.unsub.push(bus.on('generating.completed', () => this.setMapData(state.mapData)));
+      this.unsub.push(
+        bus.on('generating.completed', () => this.setMapData(state.mapData))
+      );
     }
   }
 
@@ -224,12 +210,7 @@ export class MapInteraction extends Colleague {
 
     this.trailFrameCounter++;
     if (this.trailFrameCounter % 2 === 0) {
-      const pixels = this.trailCtx.getImageData(
-        0,
-        0,
-        this.trailCanvas.width,
-        this.trailCanvas.height
-      );
+      const pixels = this.trailCtx.getImageData(0, 0, this.trailCanvas.width, this.trailCanvas.height);
       this.emitTrailUpdate(
         this.trailCanvas.width,
         this.trailCanvas.height,
@@ -254,7 +235,11 @@ export class MapInteraction extends Colleague {
       }
     }
     this.trailCtx.putImageData(img, 0, 0);
-    this.emitTrailUpdate(this.trailCanvas.width, this.trailCanvas.height, new Uint8Array(d.buffer));
+    this.emitTrailUpdate(
+      this.trailCanvas.width,
+      this.trailCanvas.height,
+      new Uint8Array(d.buffer)
+    );
     if (!hasAlpha && this.trailDecayTimer !== null) {
       window.clearInterval(this.trailDecayTimer);
       this.trailDecayTimer = null;

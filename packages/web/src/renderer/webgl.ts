@@ -34,34 +34,31 @@ export class WebGLRenderer {
     this.gl = gl;
   }
 
-  initShaders(fragSrc: string): Promise<void> {
+  async initShaders(fragSrc: string): Promise<void> {
     const gl = this.gl;
-    const vs = this._compile(
-      gl.VERTEX_SHADER,
-      `#version 300 es
+    const vs = this._compile(gl.VERTEX_SHADER, `#version 300 es
       in vec2 a_pos;
       out vec2 v_uv;
       void main() {
         v_uv = a_pos * 0.5 + 0.5;
         gl_Position = vec4(a_pos, 0.0, 1.0);
-      }`
-    );
+      }`);
     const fs = this._compile(gl.FRAGMENT_SHADER, fragSrc);
     const prog = gl.createProgram();
     if (!prog) throw new Error('Failed to create program');
-
+    
     gl.attachShader(prog, vs);
     gl.attachShader(prog, fs);
     gl.linkProgram(prog);
-
+    
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
       throw new Error('Shader link: ' + gl.getProgramInfoLog(prog));
     }
-
+    
     this.program = prog;
     gl.useProgram(prog);
 
-    const numUniforms = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS) as number;
+    const numUniforms = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
     for (let i = 0; i < numUniforms; i++) {
       const info = gl.getActiveUniform(prog, i);
       if (info) {
@@ -70,16 +67,16 @@ export class WebGLRenderer {
       }
     }
 
-    const verts = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+    const verts = new Float32Array([-1,-1, 1,-1, -1,1, 1,1]);
     const vbo = gl.createBuffer();
     if (!vbo) throw new Error('Failed to create buffer');
-
+    
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
-
+    
     this.vao = gl.createVertexArray();
     if (!this.vao) throw new Error('Failed to create VAO');
-
+    
     gl.bindVertexArray(this.vao);
     const aPos = gl.getAttribLocation(prog, 'a_pos');
     gl.enableVertexAttribArray(aPos);
@@ -100,17 +97,16 @@ export class WebGLRenderer {
 
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
-    return Promise.resolve();
   }
 
   private _compile(type: number, src: string): WebGLShader {
     const gl = this.gl;
     const s = gl.createShader(type);
     if (!s) throw new Error('Failed to create shader');
-
+    
     gl.shaderSource(s, src);
     gl.compileShader(s);
-
+    
     if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
       throw new Error('Shader compile: ' + gl.getShaderInfoLog(s));
     }
@@ -121,7 +117,7 @@ export class WebGLRenderer {
     const gl = this.gl;
     const tex = gl.createTexture();
     if (!tex) throw new Error('Failed to create texture');
-
+    
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -145,33 +141,14 @@ export class WebGLRenderer {
     for (let i = 0; i < texNames.length; i++) {
       gl.bindTexture(gl.TEXTURE_2D, this.textures[texNames[i]]);
       if (useFloat) {
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA32F,
-          data.width,
-          data.height,
-          0,
-          gl.RGBA,
-          gl.FLOAT,
-          texData[i]
-        );
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.width, data.height, 0, gl.RGBA, gl.FLOAT, texData[i]);
       } else {
         const norm = WebGLRenderer._normalizeToUint8(texData[i]);
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          data.width,
-          data.height,
-          0,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          norm
-        );
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, norm);
       }
     }
 
+    // 世界式生成纹理（可选，缺省零纹理避免采样未定义数据）
     const empty = new Float32Array(data.width * data.height * 4);
     const currentData = data.currentTex ?? empty;
     const iceData = data.iceTex ?? empty;
@@ -182,30 +159,10 @@ export class WebGLRenderer {
     for (const [name, arr] of worldTex) {
       gl.bindTexture(gl.TEXTURE_2D, this.textures[name]);
       if (useFloat) {
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA32F,
-          data.width,
-          data.height,
-          0,
-          gl.RGBA,
-          gl.FLOAT,
-          arr
-        );
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.width, data.height, 0, gl.RGBA, gl.FLOAT, arr);
       } else {
         const norm = WebGLRenderer._normalizeToUint8(arr);
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          data.width,
-          data.height,
-          0,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          norm
-        );
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, norm);
       }
     }
 
@@ -225,9 +182,7 @@ export class WebGLRenderer {
   updateSelectMask(selected: number[]): void {
     const gl = this.gl;
     const mask = new Uint8Array(256);
-    selected.forEach(id => {
-      if (id >= 0 && id < 256) mask[id] = 255;
-    });
+    selected.forEach(id => { if (id >= 0 && id < 256) mask[id] = 255; });
     gl.bindTexture(gl.TEXTURE_2D, this.textures.u_selectionMaskTex);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, 1, gl.RED, gl.UNSIGNED_BYTE, mask);
   }
@@ -236,24 +191,12 @@ export class WebGLRenderer {
     const gl = this.gl;
     if (!data) return;
     gl.bindTexture(gl.TEXTURE_2D, this.textures.u_trailTex);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      data.width,
-      data.height,
-      0,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      data.pixels
-    );
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.width, data.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data.pixels);
   }
 
+  // shader 中声明为 int 的 uniform（其余 number 均为 float，开关为 float 非 bool）
   private static readonly INT_UNIFORMS = new Set([
-    'u_style',
-    'u_fbmOctaves',
-    'u_selectedCount',
-    'u_plateTotal',
+    'u_style', 'u_fbmOctaves', 'u_selectedCount', 'u_plateTotal',
   ]);
 
   setUniform(name: string, value: UniformValue): void {
@@ -261,6 +204,7 @@ export class WebGLRenderer {
     const loc = this.uniformLoc[name];
     if (loc === undefined) return;
 
+    // shader 开关声明为 float，必须用 uniform1f 而非 uniform1i
     if (typeof value === 'boolean') {
       gl.uniform1f(loc, value ? 1.0 : 0.0);
     } else if (typeof value === 'number') {
@@ -274,18 +218,16 @@ export class WebGLRenderer {
   }
 
   render(params: RenderParams): void {
-    perfMonitor.beginFrame();
-
     const gl = this.gl;
     const w = this.canvas.width;
     const h = this.canvas.height;
-
+    
     gl.viewport(0, 0, w, h);
     gl.clearColor(0.05, 0.05, 0.1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-
+    
     if (!this.program || !this.vao) return;
-
+    
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vao);
 
@@ -305,8 +247,7 @@ export class WebGLRenderer {
     this.setUniform('u_mapSize', [this.mapWidth, this.mapHeight]);
 
     for (const [key, value] of Object.entries(params)) {
-      if (value === undefined) continue;
-      this.setUniform(key, value as UniformValue);
+      this.setUniform(key, value);
     }
 
     if (this.wireframeMode) {
@@ -328,10 +269,7 @@ export class WebGLRenderer {
       );
     }
 
-    bus.emit('render.frame', {
-      drawCalls: drawCallCount,
-      textureCount: Object.keys(this.textures).length,
-    });
+    bus.emit('render.frame', { drawCalls: drawCallCount, textureCount: Object.keys(this.textures).length });
   }
 
   resize(w: number, h: number): void {

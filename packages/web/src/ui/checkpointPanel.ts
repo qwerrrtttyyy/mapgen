@@ -13,8 +13,8 @@ export class CheckpointPanel extends Colleague {
 
   constructor() {
     super('checkpointPanel');
-    this.list = document.getElementById('checkpoint-list');
-    this.saveBtn = document.getElementById('btn-save-checkpoint');
+    this.list = document.getElementById('cp-list');
+    this.saveBtn = document.getElementById('btn-save-cp');
   }
 
   bind(mgr: CheckpointManager): void {

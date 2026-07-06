@@ -1,4 +1,5 @@
 import type { MapData } from '@mapgen/core';
+import { clientToMapUv } from './viewport.js';
 
 export interface PickerResult {
   index: number;
@@ -20,19 +21,10 @@ export class MapPicker {
 
   pick(clientX: number, clientY: number, canvas: HTMLCanvasElement): PickerResult | null {
     const rect = canvas.getBoundingClientRect();
-    const cx = clientX - rect.left;
-    const cy = clientY - rect.top;
     const { width, height } = this.mapData;
-
-    const scale = Math.min(rect.width / width, rect.height / height);
-    const dW = width * scale;
-    const dH = height * scale;
-    const ox = (rect.width - dW) / 2;
-    const oy = (rect.height - dH) / 2;
-
-    const nx = (cx - ox) / dW;
-    const ny = (cy - oy) / dH;
-    if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
+    const uv = clientToMapUv(clientX, clientY, rect, width, height);
+    if (!uv) return null;
+    const { nx, ny } = uv;
 
     const x = Math.floor(nx * (width - 1));
     const y = Math.floor(ny * (height - 1));

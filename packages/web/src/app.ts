@@ -1,4 +1,4 @@
-import type { MapData } from '@mapgen/core';
+import type { MapData, debug as coreDebug } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -11,6 +11,11 @@ import { generate as generateMap, setParam, clearSelection } from './core/action
 import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
 import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';
+import { EditorController, type EditorMode, type EditorToolParams } from './editor/EditorController.js';
+import { NameOverlay } from './editor/NameOverlay.js';
+import { Toolbar } from './ui/toolbar.js';
+import { CheckpointPanel } from './ui/checkpointPanel.js';
+import { Launcher } from './launcher/launcher.js';
 import { DebugPanel } from './ui/debugPanel.js';
 
 const RENDER_PARAM_MAP: Record<string, string> = {
@@ -54,11 +59,17 @@ let checkpointMgr: CheckpointManager | null = null;
 let renderTimeout: number | null = null;
 let mapInteraction: MapInteraction | null = null;
 let minimapCtx: CanvasRenderingContext2D | null = null;
+let editorController: EditorController | null = null;
+let toolbar: Toolbar | null = null;
+let checkpointPanel: CheckpointPanel | null = null;
+let nameOverlay: NameOverlay | null = null;
+let launcher: Launcher | null = null;
 let isDraggingSize = false;
 let dragStartX = 0;
 let dragStartY = 0;
 let dragStartW = 0;
 let dragStartH = 0;
+let currentTool = 'idle';
 let namesVisible = true;
 let debugPanel: DebugPanel | null = null;
 
@@ -75,6 +86,8 @@ function buildRenderParams(): RenderParams {
       (rp as Record<string, number | boolean | number[]>)[uname] = val;
     }
   }
+  rp.u_zoom = state.zoom;
+  rp.u_pan = [state.panX, state.panY];
   return rp;
 }
 
@@ -110,7 +123,7 @@ function updateSizeInfo(): void {
 }
 
 function setSliderVal(id: string, rawVal: number): void {
-  const el = $<HTMLInputElement>(id);
+  const el = $(id) as HTMLInputElement | null;
   if (el) el.value = String(rawVal);
 }
 
@@ -121,19 +134,19 @@ function setDispVal(id: string, text: string): void {
 
 function syncUIFromParams(): void {
   const p = state.params;
-  const seedInput = $<HTMLInputElement>('seedStr');
+  const seedInput = $('seedStr') as HTMLInputElement | null;
   if (seedInput) seedInput.value = p.seedStr;
-  const wInput = $<HTMLInputElement>('mapWidth');
-  const hInput = $<HTMLInputElement>('mapHeight');
+  const wInput = $('mapWidth') as HTMLInputElement | null;
+  const hInput = $('mapHeight') as HTMLInputElement | null;
   if (wInput) wInput.value = String(p.mapWidth);
   if (hInput) hInput.value = String(p.mapHeight);
   updateSizeInfo();
 
-  const noiseSel = $<HTMLSelectElement>('noiseType');
+  const noiseSel = $('noiseType') as HTMLSelectElement | null;
   if (noiseSel) noiseSel.value = p.noiseType;
-  const fbmSel = $<HTMLSelectElement>('fbmType');
+  const fbmSel = $('fbmType') as HTMLSelectElement | null;
   if (fbmSel) fbmSel.value = p.fbmType;
-  const styleSel = $<HTMLSelectElement>('style');
+  const styleSel = $('style') as HTMLSelectElement | null;
   if (styleSel) styleSel.value = String(p.style);
 
   setSliderVal('octaves', p.octaves);
@@ -157,8 +170,8 @@ function syncUIFromParams(): void {
   setSliderVal('coastDetail', Math.round(p.coastDetail * 100));
   setDispVal('coastDetail-val', p.coastDetail.toFixed(2));
 
-  const setCheck = (id: string, val: boolean): void => {
-    const el = $<HTMLInputElement>(id);
+  const setCheck = (id: string, val: boolean) => {
+    const el = $(id) as HTMLInputElement | null;
     if (el) el.checked = val;
   };
   setCheck('enableOceanCurrents', p.enableOceanCurrents);
@@ -245,14 +258,14 @@ function updateStyleDots(): void {
   if (!container) return;
   container.innerHTML = '';
   const styles = RENDER_STYLES.slice(0, 6);
-  styles.forEach(s => {
+  styles.forEach((s) => {
     const dot = document.createElement('button');
     dot.className = 'sd' + (s.style === state.params.style ? ' active' : '');
     dot.appendChild(createSvgIcon(s.icon, 16));
     dot.title = s.name;
     dot.addEventListener('click', () => {
       setParam('style', s.style);
-      const sel = $<HTMLSelectElement>('style');
+      const sel = $('style') as HTMLSelectElement | null;
       if (sel) sel.value = String(s.style);
       updateStyleDots();
       scheduleRender();
@@ -262,10 +275,14 @@ function updateStyleDots(): void {
 }
 
 function updateUndoRedo(): void {
-  const undoBtn = $<HTMLButtonElement>('btn-undo');
-  const redoBtn = $<HTMLButtonElement>('btn-redo');
-  if (undoBtn) undoBtn.disabled = true;
-  if (redoBtn) redoBtn.disabled = true;
+  const undoBtn = $('btn-undo') as HTMLButtonElement | null;
+  const redoBtn = $('btn-redo') as HTMLButtonElement | null;
+  if (undoBtn) undoBtn.disabled = !(editorController?.canUndo ?? false);
+  if (redoBtn) redoBtn.disabled = !(editorController?.canRedo ?? false);
+}
+
+function applyZoom(): void {
+  scheduleRender();
 }
 
 function setGeneratingStatus(generating: boolean, error?: string): void {
@@ -317,31 +334,12 @@ function drawMinimap(): void {
       const di = (y * w + x) * 4;
 
       let r: number, g: number, b: number;
-      if (e < seaLevel - 0.15) {
-        r = 20;
-        g = 50;
-        b = 100;
-      } else if (e < seaLevel) {
-        r = 40;
-        g = 80;
-        b = 140;
-      } else if (e < seaLevel + 0.05) {
-        r = 194;
-        g = 178;
-        b = 128;
-      } else if (e < snowLine - 0.1) {
-        r = 60;
-        g = 120;
-        b = 50;
-      } else if (e < snowLine) {
-        r = 100;
-        g = 90;
-        b = 70;
-      } else {
-        r = 240;
-        g = 245;
-        b = 255;
-      }
+      if (e < seaLevel - 0.15) { r = 20; g = 50; b = 100; }
+      else if (e < seaLevel) { r = 40; g = 80; b = 140; }
+      else if (e < seaLevel + 0.05) { r = 194; g = 178; b = 128; }
+      else if (e < snowLine - 0.1) { r = 60; g = 120; b = 50; }
+      else if (e < snowLine) { r = 100; g = 90; b = 70; }
+      else { r = 240; g = 245; b = 255; }
 
       data[di] = r;
       data[di + 1] = g;
@@ -358,7 +356,7 @@ function buildPresetGrid(): void {
   grid.innerHTML = '';
   const themeGroup = PRESET_GROUPS.find(g => g.category === 'theme');
   if (!themeGroup) return;
-  themeGroup.presets.forEach(preset => {
+  themeGroup.presets.forEach((preset) => {
     const card = document.createElement('button');
     card.className = 'preset-card' + (state.currentPreset === preset.id ? ' active' : '');
     const iconWrap = document.createElement('span');
@@ -407,32 +405,29 @@ interface SliderBinding {
   autoGen?: boolean;
 }
 
+function updateSliderFill(el: HTMLInputElement): void {
+  const min = parseFloat(el.min) || 0;
+  const max = parseFloat(el.max) || 100;
+  const val = parseFloat(el.value) || 0;
+  const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+  el.style.setProperty('--value', `${pct}%`);
+}
+
 function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBinding): void {
-  const el = $<HTMLInputElement>(id);
+  const el = $(id) as HTMLInputElement | null;
   const dispId = id + '-val';
   if (!el) return;
+  updateSliderFill(el);
   el.addEventListener('input', () => {
     const raw = parseFloat(el.value);
     const val = binding.toParam(raw);
     setParam(paramKey, val as never);
     setDispVal(dispId, binding.toDisplay(raw));
+    updateSliderFill(el);
     if (paramKey === 'windDirX' || paramKey === 'windDirY') {
       updateWindArrow();
     }
-    const renderOnlyKeys = [
-      'style',
-      'showBoundaries',
-      'boundaryWidth',
-      'showRivers',
-      'showContours',
-      'showTerrain',
-      'showSelection',
-      'showClimate',
-      'lightAngle',
-      'pointLightEnabled',
-      'glowEnabled',
-      'cursorSize',
-    ];
+    const renderOnlyKeys = ['style', 'showBoundaries', 'boundaryWidth', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'lightAngle', 'pointLightEnabled', 'glowEnabled', 'cursorSize'];
     if (renderOnlyKeys.includes(paramKey as string)) {
       scheduleRender();
     }
@@ -443,24 +438,11 @@ function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBindi
 }
 
 function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $<HTMLInputElement>(id);
+  const el = $(id) as HTMLInputElement | null;
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.checked as never);
-    const renderOnlyKeys = [
-      'showBoundaries',
-      'showRivers',
-      'showContours',
-      'showTerrain',
-      'showSelection',
-      'showClimate',
-      'pointLightEnabled',
-      'glowEnabled',
-      'laserActive',
-      'cursorActive',
-      'trailEnabled',
-      'laserSelection',
-    ];
+    const renderOnlyKeys = ['showBoundaries', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'pointLightEnabled', 'glowEnabled', 'laserActive', 'cursorActive', 'trailEnabled', 'laserSelection'];
     if (renderOnlyKeys.includes(paramKey as string)) {
       scheduleRender();
     }
@@ -469,7 +451,7 @@ function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): vo
 }
 
 function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $<HTMLSelectElement>(id);
+  const el = $(id) as HTMLSelectElement | null;
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.value as never);
@@ -484,7 +466,7 @@ function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void
 function bindSizeHandle(): void {
   const handle = $('size-handle');
   if (!handle) return;
-  handle.addEventListener('mousedown', e => {
+  handle.addEventListener('mousedown', (e) => {
     isDraggingSize = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -492,7 +474,7 @@ function bindSizeHandle(): void {
     dragStartH = state.params.mapHeight;
     e.preventDefault();
   });
-  document.addEventListener('mousemove', e => {
+  document.addEventListener('mousemove', (e) => {
     if (!isDraggingSize) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
@@ -500,14 +482,12 @@ function bindSizeHandle(): void {
     const newH = Math.max(64, Math.min(2048, dragStartH + Math.round(dy / 2) * 2));
     if (newW !== state.params.mapWidth || newH !== state.params.mapHeight) {
       patchParams({ mapWidth: newW, mapHeight: newH });
-      const wInput = $<HTMLInputElement>('mapWidth');
-      const hInput = $<HTMLInputElement>('mapHeight');
+      const wInput = $('mapWidth') as HTMLInputElement | null;
+      const hInput = $('mapHeight') as HTMLInputElement | null;
       if (wInput) wInput.value = String(newW);
       if (hInput) hInput.value = String(newH);
       updateSizeInfo();
-      document
-        .querySelectorAll<HTMLButtonElement>('.sz-btn')
-        .forEach(b => b.classList.remove('active'));
+      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
     }
   });
   document.addEventListener('mouseup', () => {
@@ -544,7 +524,7 @@ function bindEventBus(): void {
       for (let i = 0; i < total; i++) {
         if (elev[i * 4] >= state.params.seaLevel) landCount++;
       }
-      wiStatsVal.textContent = `${Math.round((landCount / total) * 100)}% 陆地`;
+      wiStatsVal.textContent = `${Math.round(landCount / total * 100)}% 陆地`;
     }
   });
   bus.on('generating.failed', (err: string) => {
@@ -555,10 +535,40 @@ function bindEventBus(): void {
     if (renderer instanceof WebGLRenderer) renderer.updateSelectMask(plates);
     scheduleRender();
   });
+  bus.on('checkpoint.save.request', async () => {
+    if (!checkpointMgr || !state.mapData) return;
+    const ckpt = await checkpointMgr.save(
+      `检查点 ${checkpointMgr.checkpoints.length + 1}`,
+      'manual',
+      state.mapData,
+      state.params
+    );
+    if (ckpt) {
+      bus.emit('checkpoint.updated');
+    }
+  });
+  bus.on('checkpoint.restore.request', async (id: number) => {
+    if (!checkpointMgr) return;
+    const ckpt = await checkpointMgr.restore(id);
+    if (!ckpt) return;
+    const restored = checkpointMgr.restoreMapData(ckpt);
+    if (!restored) return;
+    patchParams(ckpt.data.params as Partial<UIParams>);
+    syncUIFromParams();
+    state.mapData = restored;
+    renderer?.uploadMapData(restored);
+    mapInteraction?.setMapData(restored);
+    render();
+    bus.emit('generating.completed', { mapData: restored });
+  });
+  bus.on('editor.committed', () => {
+    updateUndoRedo();
+    scheduleRender();
+  });
   bus.on('export.request', () => {
-    const c = $<HTMLCanvasElement>('glCanvas');
+    const c = $('glCanvas') as HTMLCanvasElement | null;
     if (!c) return;
-    c.toBlob(blob => {
+    c.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -589,345 +599,376 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  void (async () => {
-    const canvas = $<HTMLCanvasElement>('glCanvas');
-    const minimap = $<HTMLCanvasElement>('minimap');
-    if (!canvas) {
-      logger.error('#glCanvas not found');
-      return;
-    }
+document.addEventListener('DOMContentLoaded', async () => {
+  const canvas = $('glCanvas') as HTMLCanvasElement | null;
+  const minimap = $('minimap') as HTMLCanvasElement | null;
+  if (!canvas) {
+    logger.error('#glCanvas not found');
+    return;
+  }
 
-    if (import.meta.env.DEV) {
-      (window as unknown as { __mapgen: unknown }).__mapgen = { state };
-    }
+  if (import.meta.env.DEV) {
+    (window as unknown as { __mapgen: unknown }).__mapgen = { state };
+  }
 
-    if (minimap) {
-      minimapCtx = minimap.getContext('2d');
-    }
+  if (minimap) {
+    minimapCtx = minimap.getContext('2d');
+  }
 
-    await initRenderer(canvas);
+  await initRenderer(canvas);
 
-    checkpointMgr = new CheckpointManager();
-    await checkpointMgr.load();
+  checkpointMgr = new CheckpointManager();
+  await checkpointMgr.load();
 
-    debugPanel = new DebugPanel();
-    debugPanel.bind();
+  editorController = new EditorController(canvas);
+  nameOverlay = new NameOverlay(document.body);
+  nameOverlay.bindEvents();
+  toolbar = new Toolbar();
+  toolbar.bind();
+  checkpointPanel = new CheckpointPanel();
+  checkpointPanel.bind(checkpointMgr);
+  debugPanel = new DebugPanel();
+  debugPanel.bind();
 
-    buildPresetGrid();
-    syncUIFromParams();
+  buildPresetGrid();
+  syncUIFromParams();
 
-    bindEventBus();
-    bindSizeHandle();
+  bindEventBus();
+  bindSizeHandle();
 
-    const panel = $('panel');
-    $('btn-panel-toggle')?.addEventListener('click', () => {
+  try {
+    const savedTheme = localStorage.getItem('mapgen:theme');
+    if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+  } catch { /* ignore */ }
+
+  let launched = false;
+  if (Launcher.shouldShow()) {
+    launcher = new Launcher(document.body);
+    const result = await launcher.waitForLaunch();
+    launched = true;
+    result.start();
+    await launcher.hide();
+    launcher.destroy();
+    launcher = null;
+  }
+
+  buildPresetGrid();
+  syncUIFromParams();
+
+  const panel = $('panel');
+  const checkpointPopover = $('checkpoint-popover');
+  $('btn-panel-toggle')?.addEventListener('click', () => {
+    panel?.classList.toggle('panel-open');
+  });
+  $('btn-checkpoint')?.addEventListener('click', () => {
+    checkpointPopover?.classList.toggle('show');
+  });
+  $('btn-theme')?.addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.dataset.theme || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    root.classList.add('theme-transition');
+    root.dataset.theme = next;
+    window.setTimeout(() => root.classList.remove('theme-transition'), 400);
+    try {
+      localStorage.setItem('mapgen:theme', next);
+    } catch { /* ignore */ }
+  });
+
+  document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      if (!target) return;
+      document.querySelectorAll<HTMLElement>('.panel-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
+        s.classList.toggle('active', s.dataset.section === target);
+      });
+    });
+  });
+
+  $('btn-random')?.addEventListener('click', () => {
+    const seed = String(Math.floor(Math.random() * 99999));
+    setParam('seedStr', seed);
+    const seedInput = $('seedStr') as HTMLInputElement | null;
+    if (seedInput) seedInput.value = seed;
+    generateMap();
+  });
+  $('btn-undo')?.addEventListener('click', () => {
+    editorController?.undo();
+    updateUndoRedo();
+  });
+  $('btn-redo')?.addEventListener('click', () => {
+    editorController?.redo();
+    updateUndoRedo();
+  });
+  const toggleNamesBtn = $('btn-toggle-names');
+  if (toggleNamesBtn) {
+    toggleNamesBtn.classList.toggle('active', namesVisible);
+    toggleNamesBtn.addEventListener('click', () => {
+      namesVisible = !namesVisible;
+      toggleNamesBtn.classList.toggle('active', namesVisible);
+      bus.emit('overlay.toggle', namesVisible);
+    });
+  }
+  bus.emit('overlay.toggle', namesVisible);
+
+  $('seedStr')?.addEventListener('change', (e) => {
+    setParam('seedStr', (e.target as HTMLInputElement).value);
+  });
+
+  const wInput = $('mapWidth') as HTMLInputElement | null;
+  const hInput = $('mapHeight') as HTMLInputElement | null;
+  const onSizeChange = () => {
+    const w = parseInt(wInput?.value || '512', 10);
+    const h = parseInt(hInput?.value || '512', 10);
+    patchParams({ mapWidth: w, mapHeight: h });
+    document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
+    updateSizeInfo();
+  };
+  wInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
+  hInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
+
+  document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const w = parseInt(btn.dataset.w || '512', 10);
+      const h = parseInt(btn.dataset.h || '512', 10);
+      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      patchParams({ mapWidth: w, mapHeight: h });
+      if (wInput) wInput.value = String(w);
+      if (hInput) hInput.value = String(h);
+      updateSizeInfo();
+      generateMap();
+    });
+  });
+
+  bindSliderEx('octaves', 'octaves', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('lacunarity', 'lacunarity', {
+    toParam: raw => raw,
+    toDisplay: raw => raw.toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('persistence', 'persistence', {
+    toParam: raw => raw,
+    toDisplay: raw => raw.toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('plateCount', 'plateCount', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('landmass', 'landmass', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => raw + '%',
+    autoGen: true,
+  });
+  bindSliderEx('mountainFold', 'mountainFold', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('coastDetail', 'coastDetail', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+
+  bindCheckbox('enableOceanCurrents', 'enableOceanCurrents', true);
+  bindCheckbox('enableIceSheet', 'enableIceSheet', true);
+  bindCheckbox('enableMonsoon', 'enableMonsoon', true);
+  bindCheckbox('enableContinentality', 'enableContinentality', true);
+  bindCheckbox('enableHadleyEnhancement', 'enableHadleyEnhancement', true);
+
+  bindSliderEx('seaLevel', 'seaLevel', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('erosionStrength', 'erosionStrength', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('erosionIterations', 'erosionIterations', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('lakeDensity', 'lakeDensity', {
+    toParam: raw => raw / 1000,
+    toDisplay: raw => (raw / 1000).toFixed(3),
+    autoGen: true,
+  });
+
+  bindSliderEx('tempOffset', 'tempOffset', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('snowLine', 'snowLine', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('rainStrength', 'rainStrength', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('windDirX', 'windDirX', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('windDirY', 'windDirY', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+
+  bindSliderEx('riverCount', 'riverCount', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+
+  bindSelect('noiseType', 'noiseType', true);
+  bindSelect('fbmType', 'fbmType', true);
+  bindSelect('style', 'style');
+
+  bindCheckbox('showBoundaries', 'showBoundaries');
+  bindSliderEx('boundaryWidth', 'boundaryWidth', {
+    toParam: raw => raw / 10,
+    toDisplay: raw => (raw / 10).toFixed(1),
+  });
+  bindCheckbox('showRivers', 'showRivers');
+  bindCheckbox('showContours', 'showContours');
+  bindCheckbox('showTerrain', 'showTerrain');
+  bindCheckbox('showSelection', 'showSelection');
+  bindCheckbox('showClimate', 'showClimate');
+  bindSliderEx('lightAngle', 'lightAngle', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+  });
+  bindCheckbox('pointLightEnabled', 'pointLightEnabled');
+  bindCheckbox('glowEnabled', 'glowEnabled');
+  bindCheckbox('laserActive', 'laserActive');
+  bindCheckbox('laserSelection', 'laserSelection');
+  bindSliderEx('laserWidth', 'laserWidth', {
+    toParam: raw => raw / 1000,
+    toDisplay: raw => (raw / 1000).toFixed(3),
+  });
+  bindCheckbox('cursorActive', 'cursorActive');
+  bindCheckbox('trailEnabled', 'trailEnabled');
+
+  document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tool = btn.dataset.tool;
+      if (!tool) return;
+      currentTool = tool;
+      document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const brushCtrls = $('brush-ctrls');
+      if (brushCtrls) {
+        brushCtrls.style.display = tool === 'brush' ? '' : 'none';
+      }
+      editorController?.setMode(tool as EditorMode);
+    });
+  });
+  const brushCtrlsEl = $('brush-ctrls') as HTMLElement | null;
+  if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
+
+  bindSliderEx('brushRadius', 'cursorSize', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+  });
+  const brushRadiusEl = $('brushRadius') as HTMLInputElement | null;
+  const brushStrengthEl = $('brushStrength') as HTMLInputElement | null;
+  if (brushRadiusEl) updateSliderFill(brushRadiusEl);
+  if (brushStrengthEl) updateSliderFill(brushStrengthEl);
+  brushRadiusEl?.addEventListener('input', () => {
+    const v = parseInt(brushRadiusEl.value, 10);
+    editorController?.setTool({ brushRadius: v });
+    updateSliderFill(brushRadiusEl);
+  });
+  brushStrengthEl?.addEventListener('input', () => {
+    const v = parseInt(brushStrengthEl.value, 10);
+    const strength = v / 100;
+    setDispVal('brushStrength-val', strength.toFixed(1));
+    editorController?.setTool({ brushStrength: strength });
+    updateSliderFill(brushStrengthEl);
+  });
+
+  const updateZoom = () => {
+    const zv = $('zoom-val');
+    if (zv) zv.textContent = `${Math.round(state.zoom * 100)}%`;
+    applyZoom();
+    scheduleRender();
+  };
+  $('btn-zoom-in')?.addEventListener('click', () => { state.zoom = Math.min(4, state.zoom * 1.25); updateZoom(); });
+  $('btn-zoom-out')?.addEventListener('click', () => { state.zoom = Math.max(0.25, state.zoom / 1.25); updateZoom(); });
+  $('btn-zoom-reset')?.addEventListener('click', () => { state.zoom = 1; updateZoom(); });
+
+  mapInteraction = new MapInteraction(canvas);
+  mapInteraction.bindEvents();
+
+  const handleResize = () => {
+    if (!renderer) return;
+    renderer.resize(window.innerWidth, window.innerHeight);
+    render();
+  };
+  handleResize();
+  window.addEventListener('resize', handleResize);
+
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      generateMap();
+    } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+      const seed = String(Math.floor(Math.random() * 99999));
+      setParam('seedStr', seed);
+      const seedInput = $('seedStr') as HTMLInputElement | null;
+      if (seedInput) seedInput.value = seed;
+      generateMap();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
       panel?.classList.toggle('panel-open');
       panel?.classList.toggle('panel-closed');
-    });
-
-    document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const target = tab.dataset.tab;
-        if (!target) return;
-        document
-          .querySelectorAll<HTMLElement>('.panel-tab')
-          .forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
-          s.classList.toggle('active', s.dataset.section === target);
-        });
-      });
-    });
-
-    $('btn-generate')?.addEventListener('click', () => generateMap());
-    $('btn-random')?.addEventListener('click', () => {
-      const seed = String(Math.floor(Math.random() * 99999));
-      setParam('seedStr', seed);
-      const seedInput = $<HTMLInputElement>('seedStr');
-      if (seedInput) seedInput.value = seed;
-      generateMap();
-    });
-    $('btn-random-seed')?.addEventListener('click', () => {
-      const seed = String(Math.floor(Math.random() * 99999));
-      setParam('seedStr', seed);
-      const seedInput = $<HTMLInputElement>('seedStr');
-      if (seedInput) seedInput.value = seed;
-      generateMap();
-    });
-    $('btn-undo')?.addEventListener('click', () => {});
-    $('btn-redo')?.addEventListener('click', () => {});
-    $('btn-export')?.addEventListener('click', () => bus.emit('export.request'));
-    $('btn-clear-selection')?.addEventListener('click', () => clearSelection());
-    $('btn-toggle-names')?.addEventListener('click', () => {
-      namesVisible = !namesVisible;
-      $('btn-toggle-names')?.classList.toggle('active', namesVisible);
-    });
-
-    $('seedStr')?.addEventListener('change', e => {
-      setParam('seedStr', (e.target as HTMLInputElement).value);
-    });
-
-    const wInput = $<HTMLInputElement>('mapWidth');
-    const hInput = $<HTMLInputElement>('mapHeight');
-    const onSizeChange = (): void => {
-      const w = parseInt(wInput?.value || '512', 10);
-      const h = parseInt(hInput?.value || '512', 10);
-      patchParams({ mapWidth: w, mapHeight: h });
-      document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
-      updateSizeInfo();
-    };
-    wInput?.addEventListener('change', () => {
-      onSizeChange();
-      generateMap();
-    });
-    hInput?.addEventListener('change', () => {
-      onSizeChange();
-      generateMap();
-    });
-
-    document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const w = parseInt(btn.dataset.w || '512', 10);
-        const h = parseInt(btn.dataset.h || '512', 10);
-        document
-          .querySelectorAll<HTMLButtonElement>('.sz-btn')
-          .forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        patchParams({ mapWidth: w, mapHeight: h });
-        if (wInput) wInput.value = String(w);
-        if (hInput) hInput.value = String(h);
-        updateSizeInfo();
-        generateMap();
-      });
-    });
-
-    bindSliderEx('octaves', 'octaves', {
-      toParam: raw => raw,
-      toDisplay: raw => String(raw),
-      autoGen: true,
-    });
-    bindSliderEx('lacunarity', 'lacunarity', {
-      toParam: raw => raw,
-      toDisplay: raw => raw.toFixed(1),
-      autoGen: true,
-    });
-    bindSliderEx('persistence', 'persistence', {
-      toParam: raw => raw,
-      toDisplay: raw => raw.toFixed(2),
-      autoGen: true,
-    });
-    bindSliderEx('plateCount', 'plateCount', {
-      toParam: raw => raw,
-      toDisplay: raw => String(raw),
-      autoGen: true,
-    });
-    bindSliderEx('landmass', 'landmass', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => raw + '%',
-      autoGen: true,
-    });
-    bindSliderEx('mountainFold', 'mountainFold', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(2),
-      autoGen: true,
-    });
-    bindSliderEx('coastDetail', 'coastDetail', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(2),
-      autoGen: true,
-    });
-
-    bindCheckbox('enableOceanCurrents', 'enableOceanCurrents', true);
-    bindCheckbox('enableIceSheet', 'enableIceSheet', true);
-    bindCheckbox('enableMonsoon', 'enableMonsoon', true);
-    bindCheckbox('enableContinentality', 'enableContinentality', true);
-    bindCheckbox('enableHadleyEnhancement', 'enableHadleyEnhancement', true);
-
-    bindSliderEx('seaLevel', 'seaLevel', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(2),
-      autoGen: true,
-    });
-    bindSliderEx('erosionStrength', 'erosionStrength', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(1),
-      autoGen: true,
-    });
-    bindSliderEx('erosionIterations', 'erosionIterations', {
-      toParam: raw => raw,
-      toDisplay: raw => String(raw),
-      autoGen: true,
-    });
-    bindSliderEx('lakeDensity', 'lakeDensity', {
-      toParam: raw => raw / 1000,
-      toDisplay: raw => (raw / 1000).toFixed(3),
-      autoGen: true,
-    });
-
-    bindSliderEx('tempOffset', 'tempOffset', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(2),
-      autoGen: true,
-    });
-    bindSliderEx('snowLine', 'snowLine', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(2),
-      autoGen: true,
-    });
-    bindSliderEx('rainStrength', 'rainStrength', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(1),
-      autoGen: true,
-    });
-    bindSliderEx('windDirX', 'windDirX', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(1),
-      autoGen: true,
-    });
-    bindSliderEx('windDirY', 'windDirY', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(1),
-      autoGen: true,
-    });
-
-    bindSliderEx('riverCount', 'riverCount', {
-      toParam: raw => raw,
-      toDisplay: raw => String(raw),
-      autoGen: true,
-    });
-
-    bindSelect('noiseType', 'noiseType', true);
-    bindSelect('fbmType', 'fbmType', true);
-    bindSelect('style', 'style');
-
-    bindCheckbox('showBoundaries', 'showBoundaries');
-    bindSliderEx('boundaryWidth', 'boundaryWidth', {
-      toParam: raw => raw / 10,
-      toDisplay: raw => (raw / 10).toFixed(1),
-    });
-    bindCheckbox('showRivers', 'showRivers');
-    bindCheckbox('showContours', 'showContours');
-    bindCheckbox('showTerrain', 'showTerrain');
-    bindCheckbox('showSelection', 'showSelection');
-    bindCheckbox('showClimate', 'showClimate');
-    bindSliderEx('lightAngle', 'lightAngle', {
-      toParam: raw => raw / 100,
-      toDisplay: raw => (raw / 100).toFixed(2),
-    });
-    bindCheckbox('pointLightEnabled', 'pointLightEnabled');
-    bindCheckbox('glowEnabled', 'glowEnabled');
-    bindCheckbox('laserActive', 'laserActive');
-    bindCheckbox('laserSelection', 'laserSelection');
-    bindSliderEx('laserWidth', 'laserWidth', {
-      toParam: raw => raw / 1000,
-      toDisplay: raw => (raw / 1000).toFixed(3),
-    });
-    bindCheckbox('cursorActive', 'cursorActive');
-    bindCheckbox('trailEnabled', 'trailEnabled');
-
-    document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tool = btn.dataset.tool;
-        if (!tool) return;
-        document
-          .querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]')
-          .forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const brushCtrls = $('brush-ctrls');
-        if (brushCtrls) {
-          brushCtrls.style.display = tool === 'brush' ? '' : 'none';
-        }
-      });
-    });
-    const brushCtrlsEl = $('brush-ctrls');
-    if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
-
-    bindSliderEx('brushRadius', 'cursorSize', {
-      toParam: raw => raw,
-      toDisplay: raw => String(raw),
-    });
-    $('brushStrength')?.addEventListener('input', e => {
-      const v = parseInt((e.target as HTMLInputElement).value, 10);
-      setDispVal('brushStrength-val', (v / 100).toFixed(1));
-    });
-
-    let zoom = 1;
-    const updateZoom = (): void => {
-      const zv = $('zoom-val');
-      if (zv) zv.textContent = `${Math.round(zoom * 100)}%`;
-    };
-    $('btn-zoom-in')?.addEventListener('click', () => {
-      zoom = Math.min(4, zoom * 1.25);
-      updateZoom();
-    });
-    $('btn-zoom-out')?.addEventListener('click', () => {
-      zoom = Math.max(0.25, zoom / 1.25);
-      updateZoom();
-    });
-    $('btn-zoom-reset')?.addEventListener('click', () => {
-      zoom = 1;
-      updateZoom();
-    });
-
-    mapInteraction = new MapInteraction(canvas);
-    mapInteraction.bindEvents();
-
-    const handleResize = (): void => {
-      if (!renderer) return;
-      renderer.resize(window.innerWidth, window.innerHeight);
-      render();
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-
-    document.addEventListener('keydown', e => {
-      const t = e.target as HTMLElement;
-      if (
-        t instanceof HTMLInputElement ||
-        t instanceof HTMLTextAreaElement ||
-        t instanceof HTMLSelectElement
-      )
-        return;
-      if (e.code === 'Space') {
-        e.preventDefault();
-        generateMap();
-      } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
-        const seed = String(Math.floor(Math.random() * 99999));
-        setParam('seedStr', seed);
-        const seedInput = $<HTMLInputElement>('seedStr');
-        if (seedInput) seedInput.value = seed;
-        generateMap();
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        panel?.classList.toggle('panel-open');
-        panel?.classList.toggle('panel-closed');
-      } else if (e.key === 'Escape') {
-        clearSelection();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
-      ) {
-        e.preventDefault();
-      } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        const toolMap: Record<string, string> = {
-          v: 'idle',
-          b: 'brush',
-          m: 'vector-line',
-          p: 'vector-poly',
-          d: 'drag-plate',
-          a: 'annotate',
-        };
-        const tool = toolMap[e.key.toLowerCase()];
-        if (tool) {
-          const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);
-          btn?.click();
-        }
+    } else if (e.key === 'Escape') {
+      clearSelection();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        editorController?.redo();
+      } else {
+        editorController?.undo();
       }
-    });
+      updateUndoRedo();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+      e.preventDefault();
+      editorController?.redo();
+      updateUndoRedo();
+    } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      const toolMap: Record<string, string> = { v: 'idle', b: 'brush', m: 'vector-line', p: 'vector-poly', d: 'drag-plate', a: 'annotate' };
+      const tool = toolMap[e.key.toLowerCase()];
+      if (tool) {
+        const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);
+        btn?.click();
+      }
+    }
+  });
 
+  updateUndoRedo();
+
+  if (!launched) {
     generateMap();
-  })();
+  }
 });

@@ -1,7 +1,9 @@
 import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
-import { setParam } from '../core/actions.js';
+import { setParam, selectPlate } from '../core/actions.js';
 import { state } from '../core/appState.js';
+import { clientToMapUv } from './viewport.js';
+import type { MapPicker, PickerResult } from './picker.js';
 
 export type LaserMode = 'pointer' | 'selection';
 
@@ -10,26 +12,11 @@ export interface LaserSelectResult {
   cells: number[];
 }
 
-function clientToUv(
-  clientX: number,
-  clientY: number,
-  canvas: HTMLCanvasElement
-): { nx: number; ny: number } | null {
-  const rect = canvas.getBoundingClientRect();
-  const cx = clientX - rect.left;
-  const cy = clientY - rect.top;
+function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement): { nx: number; ny: number } | null {
   const { mapData } = state;
   if (!mapData) return null;
-  const { width, height } = mapData;
-  const scale = Math.min(rect.width / width, rect.height / height);
-  const dW = width * scale;
-  const dH = height * scale;
-  const ox = (rect.width - dW) / 2;
-  const oy = (rect.height - dH) / 2;
-  const nx = (cx - ox) / dW;
-  const ny = 1.0 - (cy - oy) / dH;
-  if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
-  return { nx, ny };
+  const rect = canvas.getBoundingClientRect();
+  return clientToMapUv(clientX, clientY, rect, mapData.width, mapData.height);
 }
 
 export class LaserController extends Colleague {
@@ -166,10 +153,7 @@ export class LaserController extends Colleague {
     if (plates.size === 0) return;
     state.selectedPlates.clear();
     plates.forEach(p => state.selectedPlates.add(p));
-    this.emit('selection.changed', {
-      plates: Array.from(state.selectedPlates),
-      regions: Array.from(state.selectedRegions),
-    });
+    this.emit('selection.changed', { plates: Array.from(state.selectedPlates), regions: Array.from(state.selectedRegions) });
     this.emit('laser.selection.done', { plates: Array.from(plates) });
   }
 
