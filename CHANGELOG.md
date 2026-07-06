@@ -4,7 +4,6 @@ All notable changes to the Material Map Generator.
 
 ## v0.0.3-pre (2026-07-06)
 
-<<<<<<< HEAD
 ### 后端抽象层与模块质量提升
 
 - **新增 `@mapgen/shared-types`**: 跨边界类型契约、`Result<T>` 错误处理、`MapData` Base64 序列化
@@ -26,7 +25,7 @@ All notable changes to the Material Map Generator.
   - ✅ typecheck: 5/5 通过
   - ✅ build: 5/5 通过
   - ✅ tests: 213/213 通过（core 185 + manager 25 + shared-types 1 + server 2）
-=======
+
 ### 重构与发布准备
 
 - **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
@@ -35,7 +34,6 @@ All notable changes to the Material Map Generator.
   - ✅ typecheck: 3/3 通过
   - ✅ build: 2/2 通过（web 44 modules）
   - ✅ tests: 72/72 通过
->>>>>>> main
 
 ### 视觉与高优先级修复
 

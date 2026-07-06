@@ -4,11 +4,7 @@
 [![License](https://img.shields.io/github/license/qwerrrtttyyy/mapgen)](LICENSE)
 [![Build](https://img.shields.io/badge/build-monorepo-blue)](https://github.com/qwerrrtttyyy/mapgen)
 
-<<<<<<< HEAD
 基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。前端可独立运行全功能；可选 Node.js 后端提供 REST + SSE 远程生成与持久化。
-=======
-基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。纯前端，无需服务器。
->>>>>>> main
 
 ## 截图
 
@@ -27,7 +23,6 @@
 
 ```bash
 bun install
-<<<<<<< HEAD
 bun run dev        # 前端开发模式 → http://localhost:3000
 bun run dev:server # 后端开发模式 → http://localhost:8787
 bun run dev:all    # 同时启动前端 + 后端
@@ -35,12 +30,6 @@ bun run build      # 生产构建
 bun run build:server # 仅构建后端
 bun run typecheck  # 类型检查
 bun test           # 运行全部测试
-=======
-
-bun run dev      # 开发模式 → http://localhost:3000
-bun run build    # 生产构建
-bun run typecheck # 类型检查
->>>>>>> main
 ```
 
 ## 功能
