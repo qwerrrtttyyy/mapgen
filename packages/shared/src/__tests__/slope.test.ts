@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeSlope } from '../slope.js';
 
 describe('Slope 坡度计算', () => {
-  const W = 64,
-    H = 64;
+  const W = 64, H = 64;
 
   describe('computeSlope 坡度场', () => {
     it('平坦区域坡度为零', () => {
@@ -54,13 +53,13 @@ describe('Slope 坡度计算', () => {
       const elevation = new Float32Array(W * H);
       const center = Math.floor(H / 2) * W + Math.floor(W / 2);
 
-      // 创建陡峭山峰
+      // 创建山峰
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           const dx = x - W / 2;
           const dy = y - H / 2;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          elevation[y * W + x] = Math.max(0.2, 0.8 - dist * 0.12);
+          elevation[y * W + x] = Math.max(0.2, 0.8 - dist * 0.02);
         }
       }
 

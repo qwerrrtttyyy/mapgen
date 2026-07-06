@@ -45,6 +45,7 @@ export type MediatorEvent =
   | 'regenerate.phase'
   | 'randomSeed.request'
   | 'export.request'
+  | 'export.dialog.open'
   | 'checkpoint.save.request'
   | 'checkpoint.restore.request'
   | 'checkpoint.delete.request'
@@ -82,6 +83,7 @@ export interface MediatorEventPayload {
   'regenerate.phase': string;
   'randomSeed.request': void;
   'export.request': void;
+  'export.dialog.open': void;
   'checkpoint.save.request': void;
   'checkpoint.restore.request': number;
   'checkpoint.delete.request': number;

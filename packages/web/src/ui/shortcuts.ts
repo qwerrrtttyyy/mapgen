@@ -35,9 +35,13 @@ export class Shortcuts extends Colleague {
           this.emit('checkpoint.save.request');
           break;
         case 'e':
-          if (e.ctrlKey || e.metaKey) return;
-          e.preventDefault();
-          this.emit('export.request');
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            this.emit('export.dialog.open');
+          } else {
+            e.preventDefault();
+            this.emit('export.request');
+          }
           break;
         case 'l':
           e.preventDefault();

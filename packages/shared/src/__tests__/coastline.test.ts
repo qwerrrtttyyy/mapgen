@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeCoastDistance, continentalityFactor } from '../coastline.js';
 
 describe('Coastline 海岸距离场', () => {
-  const W = 64,
-    H = 64;
+  const W = 64, H = 64;
   const seaLevel = 0.45;
 
   describe('computeCoastDistance 海岸距离计算', () => {
@@ -24,11 +23,11 @@ describe('Coastline 海岸距离场', () => {
       expect(coastDist[centerIdx]).toBeGreaterThan(0);
     });
 
-    it('全海无陆时距离填零', () => {
+    it('海洋区域距离为负', () => {
       const elevation = new Float32Array(W * H).fill(0.3);
       const coastDist = computeCoastDistance(W, H, elevation, seaLevel);
-      expect(coastDist[0]).toBe(0);
-      expect(coastDist[W * H - 1]).toBe(0);
+      expect(coastDist[0]).toBeLessThan(0);
+      expect(coastDist[W * H - 1]).toBeLessThan(0);
     });
 
     it('海岸线附近距离接近零', () => {
@@ -74,22 +73,22 @@ describe('Coastline 海岸距离场', () => {
     it('内陆大陆度高', () => {
       const coastDist = new Float32Array(W * H);
       coastDist.fill(50);
-      const factor = continentalityFactor(coastDist, 30);
-      expect(factor.every(v => v > 0.5)).toBe(true);
+      const factor = continentalityFactor(coastDist, W, H, Math.floor(H / 2) * W + Math.floor(W / 2));
+      expect(factor).toBeGreaterThan(0.5);
     });
 
     it('沿海大陆度低', () => {
       const coastDist = new Float32Array(W * H);
       coastDist.fill(5);
-      const factor = continentalityFactor(coastDist, 30);
-      expect(factor.every(v => v < 0.3)).toBe(true);
+      const factor = continentalityFactor(coastDist, W, H, Math.floor(H / 2) * W + Math.floor(W / 2));
+      expect(factor).toBeLessThan(0.3);
     });
 
     it('海洋大陆度为零', () => {
       const coastDist = new Float32Array(W * H);
       coastDist.fill(-20);
-      const factor = continentalityFactor(coastDist, 30);
-      expect(factor.every(v => v === 0)).toBe(true);
+      const factor = continentalityFactor(coastDist, W, H, 0);
+      expect(factor).toBe(0);
     });
   });
 });
