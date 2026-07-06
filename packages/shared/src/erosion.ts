@@ -176,52 +176,71 @@ export function hydraulicErosion(
   const size = width * height;
   const water = new Float32Array(size);
   const sediment = new Float32Array(size);
-  const dirs = EROSION_DIRS;
+
+  // 预计算 8 方向偏移（内联避免数组查找开销）
+  const DX = [-1, 1, 0, 0, -1, -1, 1, 1];
+  const DY = [0, 0, -1, 1, -1, 1, -1, 1];
+
+  const evapFactor = 1 - evaporationRate;
+  const stepFrac = EROSION_STEP_FRACTION;
+  const slopeFactor = EROSION_SLOPE_CAPACITY_FACTOR;
+  const waterTransfer = EROSION_WATER_TRANSFER;
 
   for (let iter = 0; iter < iterations; iter++) {
-    for (let i = 0; i < size; i++) {
-      if (elev[i] > 0) water[i] += EROSION_WATER_INCREMENT;
-    }
     let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
       const rowBase = y * width;
       for (let x = 1; x < width - 1; x++) {
         const idx = rowBase + x;
+
+        // 注水（合并到主循环，避免额外全量遍历）
+        if (elev[idx] > 0) water[idx] += EROSION_WATER_INCREMENT;
+
         const e = elev[idx];
         let minE = e, minDir = -1;
-        for (let d = 0; d < 8; d++) {
-          const ni = idx + dirs[d * 2] + dirs[d * 2 + 1] * width;
-          const ne = elev[ni];
-          if (ne < minE) { minE = ne; minDir = d; }
-        }
+
+        // 8 方向找最低邻居（内联，避免函数调用）
+        const idx_mw = idx - 1, idx_pw = idx + 1;
+        const idx_mh = idx - width, idx_ph = idx + width;
+        let ne: number;
+
+        ne = elev[idx_mw]; if (ne < minE) { minE = ne; minDir = 0; }
+        ne = elev[idx_pw]; if (ne < minE) { minE = ne; minDir = 1; }
+        ne = elev[idx_mh]; if (ne < minE) { minE = ne; minDir = 2; }
+        ne = elev[idx_ph]; if (ne < minE) { minE = ne; minDir = 3; }
+        ne = elev[idx_mh - 1]; if (ne < minE) { minE = ne; minDir = 4; }
+        ne = elev[idx_mh + 1]; if (ne < minE) { minE = ne; minDir = 5; }
+        ne = elev[idx_ph - 1]; if (ne < minE) { minE = ne; minDir = 6; }
+        ne = elev[idx_ph + 1]; if (ne < minE) { minE = ne; minDir = 7; }
+
         if (minDir >= 0) {
           const slp = e - minE;
-          const carryCapacity = slp * water[idx] * strength * (1 + slp * EROSION_SLOPE_CAPACITY_FACTOR);
+          const w = water[idx];
+          const carryCapacity = slp * w * strength * (1 + slp * slopeFactor);
           const sDiff = carryCapacity - sediment[idx];
           let amount = 0;
           if (sDiff > 0) {
-            amount = Math.min(sDiff * EROSION_STEP_FRACTION, e - minE);
+            amount = Math.min(sDiff * stepFrac, e - minE);
             elev[idx] -= amount;
             sediment[idx] += amount;
           } else {
-            amount = Math.min(-sDiff * EROSION_STEP_FRACTION, sediment[idx]);
+            amount = Math.min(-sDiff * stepFrac, sediment[idx]);
             elev[idx] += amount;
             sediment[idx] -= amount;
           }
           totalChange += amount;
-          const ddx = dirs[minDir * 2];
-          const ddy = dirs[minDir * 2 + 1];
-          const ni = idx + ddx + ddy * width;
-          const halfWater = water[idx] * EROSION_WATER_TRANSFER;
-          const halfSediment = sediment[idx] * EROSION_WATER_TRANSFER;
-          water[ni] += halfWater;
-          sediment[ni] += halfSediment;
-          water[idx] = halfWater;
-          sediment[idx] = halfSediment;
+          const ni = idx + DX[minDir] + DY[minDir] * width;
+          const halfW = w * waterTransfer;
+          const halfS = sediment[idx] * waterTransfer;
+          water[ni] += halfW;
+          sediment[ni] += halfS;
+          water[idx] = halfW;
+          sediment[idx] = halfS;
         }
       }
     }
-    for (let i = 0; i < size; i++) water[i] *= (1 - evaporationRate);
+    // 蒸发（合并到主循环后只需一次遍历）
+    for (let i = 0; i < size; i++) water[i] *= evapFactor;
     if (totalChange < EROSION_MAX_CHANGE_THRESHOLD) break;
   }
   return elev;
