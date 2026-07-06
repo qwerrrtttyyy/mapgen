@@ -2,6 +2,7 @@ import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { setParam, selectPlate } from '../core/actions.js';
 import { state } from '../core/appState.js';
+import { clientToMapUv } from './viewport.js';
 import type { MapPicker, PickerResult } from './picker.js';
 
 export type LaserMode = 'pointer' | 'selection';
@@ -12,21 +13,10 @@ export interface LaserSelectResult {
 }
 
 function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement): { nx: number; ny: number } | null {
-  const rect = canvas.getBoundingClientRect();
-  const cx = clientX - rect.left;
-  const cy = clientY - rect.top;
   const { mapData } = state;
   if (!mapData) return null;
-  const { width, height } = mapData;
-  const scale = Math.min(rect.width / width, rect.height / height);
-  const dW = width * scale;
-  const dH = height * scale;
-  const ox = (rect.width - dW) / 2;
-  const oy = (rect.height - dH) / 2;
-  const nx = (cx - ox) / dW;
-  const ny = 1.0 - (cy - oy) / dH;
-  if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return null;
-  return { nx, ny };
+  const rect = canvas.getBoundingClientRect();
+  return clientToMapUv(clientX, clientY, rect, mapData.width, mapData.height);
 }
 
 export class LaserController extends Colleague {

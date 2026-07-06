@@ -1,9 +1,8 @@
-// p5.js 渲染器
+// p5.js 渲染器 — 替代 Canvas2D 回退，提供交互式可视化
 import type { MapData } from '@mapgen/core';
 import type p5 from 'p5';
 import { state } from '../core/appState.js';
 import { bus } from '../core/eventBus.js';
-import { perfMonitor } from '../core/performance.js';
 
 interface P5Particle {
   x: number;
@@ -106,8 +105,6 @@ export class P5Renderer {
   }
 
   private _draw(p: p5): void {
-    perfMonitor.beginFrame();
-    
     const now = performance.now();
     const dt = Math.min((now - this.lastFrameTime) / 1000, 0.1);
     this.lastFrameTime = now;
@@ -119,13 +116,16 @@ export class P5Renderer {
       return;
     }
 
+    // 绘制地图
     this._drawMap(p);
 
+    // 粒子效果
     if (this.showParticles) {
       this._updateParticles(p, dt);
       this._drawParticles(p);
     }
 
+    // 缩略图装饰
     this._drawDecorations(p);
   }
 
@@ -136,12 +136,11 @@ export class P5Renderer {
     const mapH = this.mapData.height;
     const cW = p.width;
     const cH = p.height;
-    const scale = Math.min(cW / mapW, cH / mapH);
-    const dW = Math.floor(mapW * scale);
-    const dH = Math.floor(mapH * scale);
-    const ox = (cW - dW) / 2;
-    const oy = (cH - dH) / 2;
+    const baseScale = Math.min(cW / mapW, cH / mapH);
+    const dW = Math.floor(mapW * baseScale);
+    const dH = Math.floor(mapH * baseScale);
 
+    // 过渡动画：缩放 + 淡入
     let tScale = 1.0;
     let tAlpha = 255;
     if (this.transitionProgress < 1.0) {
@@ -150,20 +149,23 @@ export class P5Renderer {
       tAlpha = Math.floor(255 * this._easeOutCubic(this.transitionProgress));
     }
 
-    const scaledW = dW * tScale;
-    const scaledH = dH * tScale;
-    const sx = ox + (dW - scaledW) / 2;
-    const sy = oy + (dH - scaledH) / 2;
+    const viewZoom = state.zoom * tScale;
+    const drawW = dW * viewZoom;
+    const drawH = dH * viewZoom;
+    const sx = (cW - drawW) / 2 + state.panX * drawW;
+    const sy = (cH - drawH) / 2 + state.panY * drawH;
 
     p.push();
     p.tint(255, tAlpha);
 
+    // 使用 p5.js image 绘制
     const img = (p as any)._mapImage;
     if (img) {
-      p.image(img, sx, sy, scaledW, scaledH);
+      p.image(img, sx, sy, drawW, drawH);
     } else {
+      // 回退到直接绘制
       p.fill(40, 40, 50);
-      p.rect(sx, sy, scaledW, scaledH);
+      p.rect(sx, sy, drawW, drawH);
     }
     p.pop();
   }
@@ -193,6 +195,7 @@ export class P5Renderer {
   private _updateParticles(p: p5, dt: number): void {
     if (!this.mapData) return;
 
+    // 从河流、火山口、海岸线生成新粒子
     if (this.particles.length < 200 && Math.random() < 0.3) {
       this._spawnParticle(p);
     }
@@ -207,6 +210,7 @@ export class P5Renderer {
       pt.x += pt.vx * dt;
       pt.y += pt.vy * dt;
 
+      // 边界回弹
       if (pt.x < 0 || pt.x > p.width) pt.vx *= -0.5;
       if (pt.y < 0 || pt.y > p.height) pt.vy *= -0.5;
     }
@@ -220,6 +224,7 @@ export class P5Renderer {
     const cH = this.canvas.height;
     const scale = Math.min(cW / mapW, cH / mapH);
 
+    // 随机生成位置倾向海岸线
     for (let attempt = 0; attempt < 10; attempt++) {
       const mx = Math.floor(Math.random() * mapW);
       const my = Math.floor(Math.random() * mapH);
@@ -256,6 +261,7 @@ export class P5Renderer {
   private _drawDecorations(p: p5): void {
     if (!this.mapData) return;
 
+    // 绘制微缩图
     const thumbSize = 80;
     const thumbX = p.width - thumbSize - 16;
     const thumbY = p.height - thumbSize - 16;
@@ -266,6 +272,7 @@ export class P5Renderer {
     p.noFill();
     p.rect(thumbX, thumbY, thumbSize, thumbSize, 4);
 
+    // 绘制微缩图内容
     if (this.imageData) {
       const thumbImg = (p as any)._thumbImage;
       if (thumbImg) {
@@ -274,6 +281,7 @@ export class P5Renderer {
     }
     p.pop();
 
+    // 图例
     this._drawLegend(p);
   }
 
@@ -334,6 +342,7 @@ export class P5Renderer {
         let r: number, g: number, b: number;
 
         if (elevation <= seaLevel) {
+          // 水域：根据深度渐变色
           const depth = Math.max(0, (seaLevel - elevation) / (seaLevel + 0.5));
           const shallow = 1 - Math.min(1, depth * 3);
           r = 20 + shallow * 40;
@@ -345,32 +354,41 @@ export class P5Renderer {
           const shade = 1 - sl * 0.3;
 
           if (temperature < snowLine && elevation > 0.6) {
+            // 雪/冰
             r = 230 * shade; g = 235 * shade; b = 245 * shade;
           } else if (elevation > 0.7) {
+            // 岩石
             r = 130 * shade; g = 120 * shade; b = 110 * shade;
           } else if (moisture < 0.15 && temperature > 0.4) {
+            // 沙漠
             r = 200 * shade; g = 175 * shade; b = 110 * shade;
           } else if (moisture > 0.55) {
+            // 森林
             r = 40 * shade; g = 100 * shade; b = 40 * shade;
           } else if (moisture > 0.3) {
+            // 草原
             r = 110 * shade; g = 150 * shade; b = 50 * shade;
           } else {
+            // 灌木
             r = 140 * shade; g = 130 * shade; b = 70 * shade;
           }
         }
 
+        // 河流
         if (riverMask > 0) {
           const blend = riverMask * 0.7;
           r = r * (1 - blend) + 50 * blend;
           g = g * (1 - blend) + 100 * blend;
           b = b * (1 - blend) + 180 * blend;
         }
+        // 湖泊
         if (lakeMask > 0) {
           const blend = lakeMask * 0.8;
           r = r * (1 - blend) + 40 * blend;
           g = g * (1 - blend) + 80 * blend;
           b = b * (1 - blend) + 160 * blend;
         }
+        // 山脊
         if (ridgeMask > 0.5) {
           const blend = ridgeMask * 0.4;
           r = r * (1 - blend) + 80 * blend;
@@ -392,6 +410,7 @@ export class P5Renderer {
     if (!this.p5Instance || !this.imageData || !this.mapData) return;
     const p = this.p5Instance;
 
+    // 创建 p5.js Image 用于高效绘制
     const gfx = p.createGraphics(this.mapData.width, this.mapData.height);
     gfx.pixelDensity(1);
     gfx.loadPixels();
@@ -403,6 +422,7 @@ export class P5Renderer {
     gfx.updatePixels();
     (p as any)._mapImage = gfx;
 
+    // 创建缩略图
     const thumb = p.createGraphics(80, 80);
     thumb.pixelDensity(1);
     thumb.image(gfx, 0, 0, 80, 80);
@@ -410,6 +430,7 @@ export class P5Renderer {
   }
 
   render(): void {
+    // p5.js 自动渲染，通过 requestAnimationFrame 驱动
     if (this.animFrameId === null) {
       this.animFrameId = requestAnimationFrame(() => {
         this.animFrameId = null;
@@ -430,6 +451,7 @@ export class P5Renderer {
   }
 
   setParticleCount(_count: number): void {
+    // 粒子生成由 _updateParticles 自动管理
   }
 
   destroy(): void {

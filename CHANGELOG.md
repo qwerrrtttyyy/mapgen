@@ -4,24 +4,43 @@ All notable changes to the Material Map Generator.
 
 ## v0.0.3-pre (2026-07-05)
 
-### 性能优化与图形实现精简
+### 重构与发布准备
 
 - **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
-- **底层优化**: 
-  - 使用 TypedArray 替代普通数组，减少内存分配
-  - 优化循环算法，减少对象创建
-  - 预计算常用值，避免重复计算
-  - 使用位运算替代除法运算
-- **图形实现修剪**:
-  - 移除冗余注释，代码更简洁
-  - 移除 AI 生成痕迹的过度注释
-  - 新增 `PerformanceMonitor` 类进行帧率检测
-  - WebGLRenderer / P5Renderer 集成性能监控
-  - FPS 统计通过 eventBus 实时上报
+- **包管理器迁移**: 从 npm 迁移到 Bun，删除 `package-lock.json`，使用 `bun.lock`
 - **代码质量验证**: 
   - ✅ typecheck: 3/3 通过
-  - ✅ build: 2/2 通过（web 46 modules）
+  - ✅ build: 2/2 通过（web 44 modules）
   - ✅ tests: 72/72 通过
+
+### 视觉与高优先级修复
+
+- **启动器阻塞修复**: 移除 `await launcher.waitForHide()` 死等，启动按钮点击后正确关闭覆盖层并初始化 UI
+- **检查点入口修复**: 顶部工具栏新增“检查点”按钮，切换 `#checkpoint-popover` 显示
+- **检查点缩略图修复**: Canvas2D 回退下使用彩色地形渲染替代黑屏
+- **滑块进度指示**: 为所有 `input[type="range"]` 添加动态 `--value` 填充与渐变背景
+- **缩放/平移重构**: 从 CSS transform 迁移到渲染器内部实现，消除像素化与坐标偏差
+  - WebGL 使用 `u_zoom` / `u_pan` uniform
+  - Canvas2D / p5.js 应用对应视图变换
+  - 新增 `packages/web/src/map/viewport.ts` 统一坐标转换
+- **坐标系统一**: `MapPicker`、`MapInteraction`、`LaserController`、`EditorController`、`NameOverlay` 全部使用 `clientToMapUv` / `mapPixelToClient`
+- **名称标签可读性**: 添加半透明背景、圆角与文字阴影，复杂地形上更清晰
+- **名称显示开关同步**: 初始化时同步按钮 active 状态与 `NameOverlay.visible`
+- **撤销/重做提示**: 初始加载后调用 `updateUndoRedo()`，避免按钮长期禁用
+- **WebGL 着色器修复**: `fs-map.frag` 中 `azgaarColor` 函数改为接收 `vec2 uv` 参数，修复 GLSL 编译错误
+
+### CSS 大扩展
+
+- **设计 Token 体系**: 扩展完整的 `--md-sys-*` / `--md-ref-*` 令牌，覆盖背景、文本、强调色、阴影、圆角、动效
+- **主题切换**: 支持暗色/亮色主题，`data-theme="light"` 全局生效，顶部工具栏主题按钮持久化到 localStorage
+- **全局动效系统**: overlay fade/scale 进入退出、按钮 hover/focus/active 微交互、滑块 thumb 缩放、卡片悬浮效果
+- **组件样式统一**: 统一面板、工具栏、按钮、输入框、滑块、卡片、标签、工具提示、MiniMap、检查点项样式
+- **响应式布局骨架**: 新增 1024px / 768px / 480px 断点，右侧面板在移动端抽屉化，底部工具栏折叠/横向滚动
+
+### 仓库清理
+
+- 从历史提交中移除 `.planning/` 调试截图、临时脚本与 `.turbo/cache/` 元数据文件
+- 更新 `.gitignore`，排除 `.planning/` 与 `.turbo/`
 
 ### 项目结构概览
 

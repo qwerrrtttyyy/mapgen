@@ -1,8 +1,8 @@
 {
   "name": "mapgen-monorepo",
-  "version": "0.0.3-pre",
+  "version": "0.0.3",
   "private": true,
-  "description": "Material Map Generator - Pure Frontend Monorepo with Planet-Scale Simulation",
+  "description": "Material Map Generator - Pure Frontend Monorepo",
   "workspaces": [
     "packages/*"
   ],
@@ -18,9 +18,10 @@
     "turbo": "^2.0.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18",
+    "bun": ">=1.2.0"
   },
-  "packageManager": "npm@10.0.0",
+  "packageManager": "bun@1.2.14",
   "dependencies": {
     "pngjs": "^7.0.0"
   }

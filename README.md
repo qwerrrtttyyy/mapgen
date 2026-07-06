@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/github/license/qwerrrtttyyy/mapgen)](LICENSE)
 [![Build](https://img.shields.io/badge/build-monorepo-blue)](https://github.com/qwerrrtttyyy/mapgen)
 
-基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。纯前端，无需服务器。v0.0.3-pre 版本优化底层设置以提升运行速度。
+基于程序化噪声和板块构造模拟的地图生成工具，使用 WebGL2 渲染，Material Design 3 深色主题 UI。纯前端，无需服务器。
 
 ## 截图
 
@@ -14,7 +14,6 @@
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| [v0.0.3-pre](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.3-pre) | 2026-07-05 | 性能优化版 — 底层设置优化，提升运行速度 |
 | [v0.0.2](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.2) | 2026-06-28 | 复杂世界式全局生成 — 洋流/冰盖/流域/火山/季节 |
 | [v0.0.1](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.1) | 2026-06-26 | Monorepo 重写版 — WebGL2 + Material Design 3 |
 | [v0.4.3](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.4.3) | 2026-06-19 | 旧版最终版 — 模块化重写 |
@@ -25,10 +24,11 @@
 ## 快速开始
 
 ```bash
-npm install
-npm run dev      # 开发模式 → http://localhost:3000
-npm run build    # 生产构建
-npm run typecheck # 类型检查
+bun install
+
+bun run dev      # 开发模式 → http://localhost:3000
+bun run build    # 生产构建
+bun run typecheck # 类型检查
 ```
 
 ## 功能
