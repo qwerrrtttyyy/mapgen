@@ -1,4 +1,3 @@
-```
 # Build artifacts
 dist/
 build/
@@ -35,4 +34,12 @@ htmlcov/
 # System files
 .DS_Store
 Thumbs.db
-```
+
+# Turbo cache
+.turbo/cache/
+
+# Dogfood test output
+dogfood-output/
+
+# Lock file conflict — using npm
+bun.lock
