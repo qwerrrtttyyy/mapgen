@@ -16,6 +16,7 @@ export { classifyBiomes, biomeNormalize, getBiomeInfo, BIOME_INFO, BIOME_COUNT }
 export { computeWatershed } from './watershed.js';
 export { computeVolcanism } from './volcanism.js';
 export { computeSeasonalVariation, decodeSeasonDelta } from './seasons.js';
+export { debug, setupDebugGlobal, getDebug } from './debug.js';
 import { hashSeed } from './noise.js';
 import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes } from './tectonic.js';
 import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
