@@ -16,6 +16,7 @@ export { classifyBiomes, biomeNormalize, getBiomeInfo, type BiomeId, type BiomeI
 export { computeWatershed, type WatershedInput, type WatershedResult } from './watershed.js';
 export { computeVolcanism, type VolcanismInput, type VolcanismResult, type VolcanoSite, type Hotspot } from './volcanism.js';
 export { computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonInput, type SeasonResult } from './seasons.js';
+export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
 
 import { hashSeed } from './noise.js';
 import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
