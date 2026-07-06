@@ -17,6 +17,7 @@ export { computeWatershed, type WatershedInput, type WatershedResult } from './w
 export { computeVolcanism, type VolcanismInput, type VolcanismResult, type VolcanoSite, type Hotspot } from './volcanism.js';
 export { computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonInput, type SeasonResult } from './seasons.js';
 export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming } from './debug.js';
+export { t, getPreferredLocale, createTranslator, translations, type Locale } from './i18n/index.js';
 export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
 
 import { hashSeed } from './noise.js';
