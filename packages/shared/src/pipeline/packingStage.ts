@@ -1,6 +1,6 @@
 import { classifyBiome } from '../texturePack.js';
 import { getBiomeInfo } from '../biomes.js';
-import type { MapData, MapParams } from '../index.js';
+import type { MapData, MapParams } from '../types.js';
 import type { TectonicState } from './tectonicStage.js';
 import type { ClimateState } from './climateStage.js';
 import type { RiverState } from './riverStage.js';
@@ -76,6 +76,14 @@ export function runPackingStage(
   const volcanoSites = riverState.volcanoSites;
   const hotspots = riverState.hotspots;
 
+  let maxHotspotStrength = 0;
+  for (let i = 0; i < hotspots.length; i++) {
+    if (hotspots[i].strength > maxHotspotStrength) {
+      maxHotspotStrength = hotspots[i].strength;
+    }
+  }
+  const hotspotStrengthPacked = maxHotspotStrength * 0.5;
+
   for (let i = 0; i < size; i++) {
     const pid = plateId[i] | 0;
     const i4 = i * 4;
@@ -133,8 +141,7 @@ export function runPackingStage(
 
     volcanismTex[i4 + 0] = volcanoProb[i];
     volcanismTex[i4 + 1] = calderaMask[i] * 0.5;
-    volcanismTex[i4 + 2] =
-      hotspots.length > 0 ? Math.max(...hotspots.map(h => h.strength)) * 0.5 : 0;
+    volcanismTex[i4 + 2] = hotspotStrengthPacked;
     volcanismTex[i4 + 3] = 0;
   }
 

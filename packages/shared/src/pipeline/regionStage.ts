@@ -1,11 +1,15 @@
-import { analyzeRegions } from '../regions.js';
+import { analyzeRegions, type Region } from '../regions.js';
 import { detectTerrainRegions } from '../editor.js';
-import { generateNames, type NameablePlate, type NameableRegion } from '../naming.js';
-import type { MapParams } from '../index.js';
+import {
+  generateNames,
+  type NameablePlate,
+  type NameableRegion,
+  type NameManifest,
+} from '../naming.js';
+import type { MapParams } from '../types.js';
 import type { TectonicState } from './tectonicStage.js';
 import type { ClimateState } from './climateStage.js';
 import type { RiverState } from './riverStage.js';
-import type { Region, NameManifest } from '../index.js';
 
 export interface RegionState {
   regions: Region[];
