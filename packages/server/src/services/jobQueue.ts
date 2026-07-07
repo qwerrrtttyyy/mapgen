@@ -131,7 +131,10 @@ class JobQueue {
     }
 
     completedJobs.sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0));
-    const toRemove = completedJobs.slice(0, completedJobs.length - this.maxHistory + this.jobs.size - this.maxHistory);
+    const toRemove = completedJobs.slice(
+      0,
+      completedJobs.length - this.maxHistory + this.jobs.size - this.maxHistory
+    );
     for (const job of toRemove) {
       this.jobs.delete(job.id);
     }

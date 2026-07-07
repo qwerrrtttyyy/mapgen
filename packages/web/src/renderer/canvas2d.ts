@@ -37,9 +37,9 @@ export class Canvas2DRenderer {
         const temperature = moistTex[i4 + 2];
         const riverMask = riverTex[i4];
         const lakeMask = riverTex[i4 + 3];
-        
+
         let r: number, g: number, b: number;
-        
+
         if (elevation <= seaLevel) {
           const t = Math.max(0, elevation / (seaLevel || 0.001));
           r = (0.05 + t * 0.1) * 255;
@@ -47,25 +47,56 @@ export class Canvas2DRenderer {
           b = (0.35 + t * 0.2) * 255;
         } else {
           const land = (elevation - seaLevel) / (1.0 - seaLevel);
-          if (land < 0.05) { r = 191; g = 178; b = 127; }
-          else if (temperature < 0.15) { r = 191; g = 216; b = 216; }
-          else if (moisture < 0.2 && temperature > 0.5) { r = 216; g = 191; b = 114; }
-          else if (elevation > 0.7) { r = 140; g = 127; b = 114; }
-          else if (moisture > 0.6) { r = 63; g = 114; b = 63; }
-          else { r = 89; g = 153; b = 63; }
+          if (land < 0.05) {
+            r = 191;
+            g = 178;
+            b = 127;
+          } else if (temperature < 0.15) {
+            r = 191;
+            g = 216;
+            b = 216;
+          } else if (moisture < 0.2 && temperature > 0.5) {
+            r = 216;
+            g = 191;
+            b = 114;
+          } else if (elevation > 0.7) {
+            r = 140;
+            g = 127;
+            b = 114;
+          } else if (moisture > 0.6) {
+            r = 63;
+            g = 114;
+            b = 63;
+          } else {
+            r = 89;
+            g = 153;
+            b = 63;
+          }
         }
-        
-        if (riverMask > 0) { r = r * 0.3 + 63; g = g * 0.3 + 114; b = b * 0.3 + 165; }
-        if (lakeMask > 0) { r = r * 0.4 + 76; g = g * 0.4 + 127; b = b * 0.4 + 178; }
-        if (ridgeMask > 0.5) { r = r * 0.5 + 70; g = g * 0.5 + 63.5; b = b * 0.5 + 57; }
-        
+
+        if (riverMask > 0) {
+          r = r * 0.3 + 63;
+          g = g * 0.3 + 114;
+          b = b * 0.3 + 165;
+        }
+        if (lakeMask > 0) {
+          r = r * 0.4 + 76;
+          g = g * 0.4 + 127;
+          b = b * 0.4 + 178;
+        }
+        if (ridgeMask > 0.5) {
+          r = r * 0.5 + 70;
+          g = g * 0.5 + 63.5;
+          b = b * 0.5 + 57;
+        }
+
         pixels[i4] = Math.min(255, Math.max(0, r));
         pixels[i4 + 1] = Math.min(255, Math.max(0, g));
         pixels[i4 + 2] = Math.min(255, Math.max(0, b));
         pixels[i4 + 3] = 255;
       }
     }
-    
+
     this.imageData = imgData;
   }
 

@@ -259,7 +259,7 @@ function updateStyleDots(): void {
   if (!container) return;
   container.innerHTML = '';
   const styles = RENDER_STYLES.slice(0, 6);
-  styles.forEach((s) => {
+  styles.forEach(s => {
     const dot = document.createElement('button');
     dot.className = 'sd' + (s.style === state.params.style ? ' active' : '');
     dot.appendChild(createSvgIcon(s.icon, 16));
@@ -335,12 +335,31 @@ function drawMinimap(): void {
       const di = (y * w + x) * 4;
 
       let r: number, g: number, b: number;
-      if (e < seaLevel - 0.15) { r = 20; g = 50; b = 100; }
-      else if (e < seaLevel) { r = 40; g = 80; b = 140; }
-      else if (e < seaLevel + 0.05) { r = 194; g = 178; b = 128; }
-      else if (e < snowLine - 0.1) { r = 60; g = 120; b = 50; }
-      else if (e < snowLine) { r = 100; g = 90; b = 70; }
-      else { r = 240; g = 245; b = 255; }
+      if (e < seaLevel - 0.15) {
+        r = 20;
+        g = 50;
+        b = 100;
+      } else if (e < seaLevel) {
+        r = 40;
+        g = 80;
+        b = 140;
+      } else if (e < seaLevel + 0.05) {
+        r = 194;
+        g = 178;
+        b = 128;
+      } else if (e < snowLine - 0.1) {
+        r = 60;
+        g = 120;
+        b = 50;
+      } else if (e < snowLine) {
+        r = 100;
+        g = 90;
+        b = 70;
+      } else {
+        r = 240;
+        g = 245;
+        b = 255;
+      }
 
       data[di] = r;
       data[di + 1] = g;
@@ -357,7 +376,7 @@ function buildPresetGrid(): void {
   grid.innerHTML = '';
   const themeGroup = PRESET_GROUPS.find(g => g.category === 'theme');
   if (!themeGroup) return;
-  themeGroup.presets.forEach((preset) => {
+  themeGroup.presets.forEach(preset => {
     const card = document.createElement('button');
     card.className = 'preset-card' + (state.currentPreset === preset.id ? ' active' : '');
     const iconWrap = document.createElement('span');
@@ -428,7 +447,20 @@ function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBindi
     if (paramKey === 'windDirX' || paramKey === 'windDirY') {
       updateWindArrow();
     }
-    const renderOnlyKeys = ['style', 'showBoundaries', 'boundaryWidth', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'lightAngle', 'pointLightEnabled', 'glowEnabled', 'cursorSize'];
+    const renderOnlyKeys = [
+      'style',
+      'showBoundaries',
+      'boundaryWidth',
+      'showRivers',
+      'showContours',
+      'showTerrain',
+      'showSelection',
+      'showClimate',
+      'lightAngle',
+      'pointLightEnabled',
+      'glowEnabled',
+      'cursorSize',
+    ];
     if (renderOnlyKeys.includes(paramKey as string)) {
       scheduleRender();
     }
@@ -443,7 +475,20 @@ function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): vo
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.checked as never);
-    const renderOnlyKeys = ['showBoundaries', 'showRivers', 'showContours', 'showTerrain', 'showSelection', 'showClimate', 'pointLightEnabled', 'glowEnabled', 'laserActive', 'cursorActive', 'trailEnabled', 'laserSelection'];
+    const renderOnlyKeys = [
+      'showBoundaries',
+      'showRivers',
+      'showContours',
+      'showTerrain',
+      'showSelection',
+      'showClimate',
+      'pointLightEnabled',
+      'glowEnabled',
+      'laserActive',
+      'cursorActive',
+      'trailEnabled',
+      'laserSelection',
+    ];
     if (renderOnlyKeys.includes(paramKey as string)) {
       scheduleRender();
     }
@@ -467,7 +512,7 @@ function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void
 function bindSizeHandle(): void {
   const handle = $('size-handle');
   if (!handle) return;
-  handle.addEventListener('mousedown', (e) => {
+  handle.addEventListener('mousedown', e => {
     isDraggingSize = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
@@ -475,7 +520,7 @@ function bindSizeHandle(): void {
     dragStartH = state.params.mapHeight;
     e.preventDefault();
   });
-  document.addEventListener('mousemove', (e) => {
+  document.addEventListener('mousemove', e => {
     if (!isDraggingSize) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
@@ -488,7 +533,9 @@ function bindSizeHandle(): void {
       if (wInput) wInput.value = String(newW);
       if (hInput) hInput.value = String(newH);
       updateSizeInfo();
-      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.sz-btn')
+        .forEach(b => b.classList.remove('active'));
     }
   });
   document.addEventListener('mouseup', () => {
@@ -525,7 +572,7 @@ function bindEventBus(): void {
       for (let i = 0; i < total; i++) {
         if (elev[i * 4] >= state.params.seaLevel) landCount++;
       }
-      wiStatsVal.textContent = `${Math.round(landCount / total * 100)}% 陆地`;
+      wiStatsVal.textContent = `${Math.round((landCount / total) * 100)}% 陆地`;
     }
   });
   bus.on('generating.failed', (err: string) => {
@@ -644,7 +691,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const savedTheme = localStorage.getItem('mapgen:theme');
     if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   let launched = false;
   if (Launcher.shouldShow()) {
@@ -677,14 +726,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.setTimeout(() => root.classList.remove('theme-transition'), 400);
     try {
       localStorage.setItem('mapgen:theme', next);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   });
 
   document.querySelectorAll<HTMLElement>('.panel-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const target = tab.dataset.tab;
       if (!target) return;
-      document.querySelectorAll<HTMLElement>('.panel-tab').forEach(t => t.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLElement>('.panel-tab')
+        .forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
         s.classList.toggle('active', s.dataset.section === target);
@@ -718,7 +771,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   bus.emit('overlay.toggle', namesVisible);
 
-  $('seedStr')?.addEventListener('change', (e) => {
+  $('seedStr')?.addEventListener('change', e => {
     setParam('seedStr', (e.target as HTMLInputElement).value);
   });
 
@@ -731,14 +784,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
     updateSizeInfo();
   };
-  wInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
-  hInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
+  wInput?.addEventListener('change', () => {
+    onSizeChange();
+    generateMap();
+  });
+  hInput?.addEventListener('change', () => {
+    onSizeChange();
+    generateMap();
+  });
 
   document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const w = parseInt(btn.dataset.w || '512', 10);
       const h = parseInt(btn.dataset.h || '512', 10);
-      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.sz-btn')
+        .forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       patchParams({ mapWidth: w, mapHeight: h });
       if (wInput) wInput.value = String(w);
@@ -876,7 +937,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => {
       const tool = btn.dataset.tool;
       if (!tool) return;
-      document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]')
+        .forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const brushCtrls = $('brush-ctrls');
       if (brushCtrls) {
@@ -915,9 +978,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyZoom();
     scheduleRender();
   };
-  $('btn-zoom-in')?.addEventListener('click', () => { state.zoom = Math.min(4, state.zoom * 1.25); updateZoom(); });
-  $('btn-zoom-out')?.addEventListener('click', () => { state.zoom = Math.max(0.25, state.zoom / 1.25); updateZoom(); });
-  $('btn-zoom-reset')?.addEventListener('click', () => { state.zoom = 1; updateZoom(); });
+  $('btn-zoom-in')?.addEventListener('click', () => {
+    state.zoom = Math.min(4, state.zoom * 1.25);
+    updateZoom();
+  });
+  $('btn-zoom-out')?.addEventListener('click', () => {
+    state.zoom = Math.max(0.25, state.zoom / 1.25);
+    updateZoom();
+  });
+  $('btn-zoom-reset')?.addEventListener('click', () => {
+    state.zoom = 1;
+    updateZoom();
+  });
 
   mapInteraction = new MapInteraction(canvas);
   mapInteraction.bindEvents();
@@ -930,9 +1002,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   handleResize();
   window.addEventListener('resize', handleResize);
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     const t = e.target as HTMLElement;
-    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      t instanceof HTMLSelectElement
+    )
+      return;
     if (e.code === 'Space') {
       e.preventDefault();
       generateMap();
@@ -956,12 +1033,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         editorController?.undo();
       }
       updateUndoRedo();
-    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+    } else if (
+      (e.ctrlKey || e.metaKey) &&
+      (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
+    ) {
       e.preventDefault();
       editorController?.redo();
       updateUndoRedo();
     } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      const toolMap: Record<string, string> = { v: 'idle', b: 'brush', m: 'vector-line', p: 'vector-poly', d: 'drag-plate', a: 'annotate' };
+      const toolMap: Record<string, string> = {
+        v: 'idle',
+        b: 'brush',
+        m: 'vector-line',
+        p: 'vector-poly',
+        d: 'drag-plate',
+        a: 'annotate',
+      };
       const tool = toolMap[e.key.toLowerCase()];
       if (tool) {
         const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);

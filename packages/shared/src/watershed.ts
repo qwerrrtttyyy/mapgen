@@ -50,24 +50,24 @@ export interface WatershedResult {
 }
 
 // D8 方向编码（bit 位）
-const D8_E  = 1;
+const D8_E = 1;
 const D8_SE = 2;
-const D8_S  = 4;
+const D8_S = 4;
 const D8_SW = 8;
-const D8_W  = 16;
+const D8_W = 16;
 const D8_NW = 32;
-const D8_N  = 64;
+const D8_N = 64;
 const D8_NE = 128;
 
 const D8_OFFSETS: Array<{ dir: number; dx: number; dy: number; dist: number }> = [
-  { dir: D8_E,  dx:  1, dy:  0, dist: 1 },
-  { dir: D8_SE, dx:  1, dy:  1, dist: Math.SQRT2 },
-  { dir: D8_S,  dx:  0, dy:  1, dist: 1 },
-  { dir: D8_SW, dx: -1, dy:  1, dist: Math.SQRT2 },
-  { dir: D8_W,  dx: -1, dy:  0, dist: 1 },
+  { dir: D8_E, dx: 1, dy: 0, dist: 1 },
+  { dir: D8_SE, dx: 1, dy: 1, dist: Math.SQRT2 },
+  { dir: D8_S, dx: 0, dy: 1, dist: 1 },
+  { dir: D8_SW, dx: -1, dy: 1, dist: Math.SQRT2 },
+  { dir: D8_W, dx: -1, dy: 0, dist: 1 },
   { dir: D8_NW, dx: -1, dy: -1, dist: Math.SQRT2 },
-  { dir: D8_N,  dx:  0, dy: -1, dist: 1 },
-  { dir: D8_NE, dx:  1, dy: -1, dist: Math.SQRT2 },
+  { dir: D8_N, dx: 0, dy: -1, dist: 1 },
+  { dir: D8_NE, dx: 1, dy: -1, dist: Math.SQRT2 },
 ];
 
 /**
@@ -75,9 +75,11 @@ const D8_OFFSETS: Array<{ dir: number; dx: number; dy: number; dist: number }> =
  * 平坦区：找最低邻居（若全平则流向为 0）
  */
 function computeFlowDirection(
-  width: number, height: number,
-  elevation: Float32Array, seaLevel: number,
-  lakeMask: Float32Array | undefined,
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number,
+  lakeMask: Float32Array | undefined
 ): Uint8Array {
   const size = width * height;
   const flowDir = new Uint8Array(size);
@@ -93,7 +95,8 @@ function computeFlowDirection(
       let maxDrop = 0;
       let bestDir = 0;
       for (const off of D8_OFFSETS) {
-        const nx = x + off.dx, ny = y + off.dy;
+        const nx = x + off.dx,
+          ny = y + off.dy;
         if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
         const ni = ny * width + nx;
         const ne = elevation[ni];
@@ -117,11 +120,18 @@ function computeFlowDirection(
  * 同一盆地内：从出口出发，沿流向反向遍历可达的所有像素。
  */
 function partitionBasins(
-  width: number, height: number,
-  elevation: Float32Array, seaLevel: number,
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number,
   flowDir: Uint8Array,
-  minArea: number,
-): { basinId: Int32Array; basinCount: number; outlets: Array<{ basinId: number; x: number; y: number }>; areas: Int32Array } {
+  minArea: number
+): {
+  basinId: Int32Array;
+  basinCount: number;
+  outlets: Array<{ basinId: number; x: number; y: number }>;
+  areas: Int32Array;
+} {
   const size = width * height;
   const basinId = new Int32Array(size).fill(-1);
   // 海洋像素 basinId = -1（不归属任何陆地盆地）
@@ -135,10 +145,14 @@ function partitionBasins(
       if (elevation[idx] <= seaLevel) continue; // 仅陆地
       let isOutlet = false;
       for (const off of D8_OFFSETS) {
-        const nx = x + off.dx, ny = y + off.dy;
+        const nx = x + off.dx,
+          ny = y + off.dy;
         if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
         const ni = ny * width + nx;
-        if (elevation[ni] <= seaLevel) { isOutlet = true; break; }
+        if (elevation[ni] <= seaLevel) {
+          isOutlet = true;
+          break;
+        }
       }
       if (isOutlet) outlets.push(idx);
     }
@@ -158,7 +172,8 @@ function partitionBasins(
       // 反向找：流向 d 对应的下游像素
       const off = D8_OFFSETS.find(o => o.dir === d);
       if (!off) continue;
-      const nx = x + off.dx, ny = y + off.dy;
+      const nx = x + off.dx,
+        ny = y + off.dy;
       if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
       const downstream = ny * width + nx;
       // 把 idx 加到 downstream 的上游链表
@@ -212,9 +227,11 @@ function partitionBasins(
       const neighborCount = new Map<number, number>();
       for (let i = 0; i < size; i++) {
         if (basinId[i] !== b) continue;
-        const x = i % width, y = (i / width) | 0;
+        const x = i % width,
+          y = (i / width) | 0;
         for (const off of D8_OFFSETS) {
-          const nx = x + off.dx, ny = y + off.dy;
+          const nx = x + off.dx,
+            ny = y + off.dy;
           if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
           const nb = basinId[ny * width + nx];
           if (nb >= 0 && nb !== b) {
@@ -222,9 +239,13 @@ function partitionBasins(
           }
         }
       }
-      let maxNeighbor = -1, maxCount = 0;
+      let maxNeighbor = -1,
+        maxCount = 0;
       for (const [nb, cnt] of neighborCount) {
-        if (cnt > maxCount) { maxCount = cnt; maxNeighbor = nb; }
+        if (cnt > maxCount) {
+          maxCount = cnt;
+          maxNeighbor = nb;
+        }
       }
       if (maxNeighbor === -1) continue;
       // 重映射
@@ -248,11 +269,12 @@ function partitionBasins(
  * 仅在 riverMask > 阈值的河道像素上计算，使用流向的反向拓扑。
  */
 function computeStrahlerOrder(
-  width: number, height: number,
+  width: number,
+  height: number,
   flowDir: Uint8Array,
   riverMask: Float32Array | undefined,
   seaLevel: number,
-  elevation: Float32Array,
+  elevation: Float32Array
 ): Uint8Array {
   const size = width * height;
   const order = new Uint8Array(size);
@@ -275,7 +297,8 @@ function computeStrahlerOrder(
       if (d === 0) continue;
       const off = D8_OFFSETS.find(o => o.dir === d);
       if (!off) continue;
-      const nx = x + off.dx, ny = y + off.dy;
+      const nx = x + off.dx,
+        ny = y + off.dy;
       if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
       const downstream = ny * width + nx;
       if (!isRiver(downstream)) continue; // 下游非河道（如入海）
@@ -302,8 +325,10 @@ function computeStrahlerOrder(
     if (d === 0) continue;
     const off = D8_OFFSETS.find(o => o.dir === d);
     if (!off) continue;
-    const x = cur % width, y = (cur / width) | 0;
-    const nx = x + off.dx, ny = y + off.dy;
+    const x = cur % width,
+      y = (cur / width) | 0;
+    const nx = x + off.dx,
+      ny = y + off.dy;
     if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
     const downstream = ny * width + nx;
     if (!isRiver(downstream)) continue;
@@ -314,8 +339,10 @@ function computeStrahlerOrder(
     while (link !== -1) {
       const up = upstreamOf[link];
       const uo = order[up];
-      if (uo > curMax) { curMax = uo; sameMaxCount = 1; }
-      else if (uo === curMax) sameMaxCount++;
+      if (uo > curMax) {
+        curMax = uo;
+        sameMaxCount = 1;
+      } else if (uo === curMax) sameMaxCount++;
       link = upstreamNext[link];
     }
     order[downstream] = sameMaxCount >= 2 ? curMax + 1 : curMax;
@@ -332,8 +359,11 @@ function computeStrahlerOrder(
 
 /** 标记分水岭：basinId 不同的相邻像素均为分水岭 */
 function markDivides(
-  width: number, height: number,
-  basinId: Int32Array, elevation: Float32Array, seaLevel: number,
+  width: number,
+  height: number,
+  basinId: Int32Array,
+  elevation: Float32Array,
+  seaLevel: number
 ): Uint8Array {
   const size = width * height;
   const isDivide = new Uint8Array(size);

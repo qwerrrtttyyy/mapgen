@@ -20,7 +20,13 @@ export interface Plate {
 
 export type BoundaryType = 0 | 1 | 2 | 3; // 0=none, 1=convergent, 2=divergent, 3=transform
 
-export function generatePlates(seed: number, count: number, width: number, height: number, landmass: number): Plate[] {
+export function generatePlates(
+  seed: number,
+  count: number,
+  width: number,
+  height: number,
+  landmass: number
+): Plate[] {
   const plates: Plate[] = [];
   const noise = createNoise(seed, 'simplex');
 
@@ -39,10 +45,16 @@ export function generatePlates(seed: number, count: number, width: number, heigh
       0.5 + 0.5 * Math.sin((h + 240) * 0.0174533),
     ];
     plates.push({
-      id: i, x, y, vx, vy,
+      id: i,
+      x,
+      y,
+      vx,
+      vy,
       type: isLand ? 'continent' : 'ocean',
       color,
-      area: 0, boundary: 0, growth: 0,
+      area: 0,
+      boundary: 0,
+      growth: 0,
       elevation: isLand ? 0.3 + Math.random() * 0.4 : -0.3 - Math.random() * 0.3,
       moisture: isLand ? 0.3 + Math.random() * 0.4 : 0.7 + Math.random() * 0.3,
       temperature: isLand ? 0.4 + Math.random() * 0.3 : 0.5 + Math.random() * 0.2,
@@ -53,7 +65,11 @@ export function generatePlates(seed: number, count: number, width: number, heigh
   return plates;
 }
 
-export function assignPlates(width: number, height: number, plates: Plate[]): { plateId: Float32Array; plateDist: Float32Array } {
+export function assignPlates(
+  width: number,
+  height: number,
+  plates: Plate[]
+): { plateId: Float32Array; plateDist: Float32Array } {
   const size = width * height;
   const plateId = new Float32Array(size);
   const plateDist = new Float32Array(size);
@@ -74,7 +90,10 @@ export function assignPlates(width: number, height: number, plates: Plate[]): { 
         const dx = nx - plateXs[i];
         const dy = ny - plateYs[i];
         const d = dx * dx + dy * dy;
-        if (d < minDist) { minDist = d; closest = i; }
+        if (d < minDist) {
+          minDist = d;
+          closest = i;
+        }
       }
       plateId[idx] = closest;
       plateDist[idx] = Math.sqrt(minDist);
@@ -83,14 +102,22 @@ export function assignPlates(width: number, height: number, plates: Plate[]): { 
   return { plateId, plateDist };
 }
 
-export function computeBoundaries(width: number, height: number, plateId: Float32Array): Float32Array {
+export function computeBoundaries(
+  width: number,
+  height: number,
+  plateId: Float32Array
+): Float32Array {
   const boundary = new Float32Array(width * height);
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
       const id = plateId[idx];
-      if (plateId[idx - 1] !== id || plateId[idx + 1] !== id ||
-          plateId[idx - width] !== id || plateId[idx + width] !== id) {
+      if (
+        plateId[idx - 1] !== id ||
+        plateId[idx + 1] !== id ||
+        plateId[idx - width] !== id ||
+        plateId[idx + width] !== id
+      ) {
         boundary[idx] = 1;
       }
     }
@@ -99,7 +126,10 @@ export function computeBoundaries(width: number, height: number, plateId: Float3
 }
 
 export function computeBoundaryTypes(
-  width: number, height: number, plateId: Float32Array, plates: Plate[]
+  width: number,
+  height: number,
+  plateId: Float32Array,
+  plates: Plate[]
 ): { boundaryType: Uint8Array; boundaryIntensity: Float32Array } {
   const size = width * height;
   const boundaryType = new Uint8Array(size);
@@ -112,7 +142,16 @@ export function computeBoundaryTypes(
     plateVY[i] = plates[i].vy;
   }
 
-  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const dirs = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+    [-1, -1],
+    [-1, 1],
+    [1, -1],
+    [1, 1],
+  ];
 
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
@@ -137,7 +176,10 @@ export function computeBoundaryTypes(
       let bestNid = -1;
       let bestCount = 0;
       for (const [nid, count] of neighborCounts) {
-        if (count > bestCount) { bestCount = count; bestNid = nid; }
+        if (count > bestCount) {
+          bestCount = count;
+          bestNid = nid;
+        }
       }
 
       if (bestNid < 0) continue;

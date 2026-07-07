@@ -11,7 +11,11 @@ export interface LaserSelectResult {
   cells: number[];
 }
 
-function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement): { nx: number; ny: number } | null {
+function clientToUv(
+  clientX: number,
+  clientY: number,
+  canvas: HTMLCanvasElement
+): { nx: number; ny: number } | null {
   const { mapData } = state;
   if (!mapData) return null;
   const rect = canvas.getBoundingClientRect();
@@ -152,7 +156,10 @@ export class LaserController extends Colleague {
     if (plates.size === 0) return;
     state.selectedPlates.clear();
     plates.forEach(p => state.selectedPlates.add(p));
-    this.emit('selection.changed', { plates: Array.from(state.selectedPlates), regions: Array.from(state.selectedRegions) });
+    this.emit('selection.changed', {
+      plates: Array.from(state.selectedPlates),
+      regions: Array.from(state.selectedRegions),
+    });
     this.emit('laser.selection.done', { plates: Array.from(plates) });
   }
 
