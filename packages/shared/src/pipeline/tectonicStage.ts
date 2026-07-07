@@ -5,7 +5,7 @@ import {
   computeBoundaryTypes,
   type Plate,
 } from '../tectonic.js';
-import type { MapParams } from '../index.js';
+import type { MapParams } from '../types.js';
 import { f32 } from './typedArrays.js';
 
 export interface TectonicState {

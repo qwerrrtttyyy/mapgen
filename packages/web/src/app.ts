@@ -1,4 +1,4 @@
-import type { MapData, debug as coreDebug } from '@mapgen/core';
+import type { MapData } from '@mapgen/core';
 import { WebGLRenderer } from './renderer/webgl.js';
 import { Canvas2DRenderer } from './renderer/canvas2d.js';
 import { P5Renderer } from './renderer/p5renderer.js';
@@ -11,7 +11,7 @@ import { generate as generateMap, setParam, clearSelection } from './core/action
 import { PRESET_GROUPS, findPreset, RENDER_STYLES } from './launcher/presets.js';
 import { createSvgIcon } from './core/svgIcon.js';
 import { MapInteraction } from './map/mapInteraction.js';
-import { EditorController, type EditorMode, type EditorToolParams } from './editor/EditorController.js';
+import { EditorController, type EditorMode } from './editor/EditorController.js';
 import { NameOverlay } from './editor/NameOverlay.js';
 import { Toolbar } from './ui/toolbar.js';
 import { CheckpointPanel } from './ui/checkpointPanel.js';
@@ -71,7 +71,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 let dragStartW = 0;
 let dragStartH = 0;
-let currentTool = 'idle';
 let namesVisible = true;
 let debugPanel: DebugPanel | null = null;
 
@@ -125,7 +124,7 @@ function updateSizeInfo(): void {
 }
 
 function setSliderVal(id: string, rawVal: number): void {
-  const el = $(id) as HTMLInputElement | null;
+  const el = $(id);
   if (el) el.value = String(rawVal);
 }
 
@@ -136,19 +135,19 @@ function setDispVal(id: string, text: string): void {
 
 function syncUIFromParams(): void {
   const p = state.params;
-  const seedInput = $('seedStr') as HTMLInputElement | null;
+  const seedInput = $('seedStr');
   if (seedInput) seedInput.value = p.seedStr;
-  const wInput = $('mapWidth') as HTMLInputElement | null;
-  const hInput = $('mapHeight') as HTMLInputElement | null;
+  const wInput = $('mapWidth');
+  const hInput = $('mapHeight');
   if (wInput) wInput.value = String(p.mapWidth);
   if (hInput) hInput.value = String(p.mapHeight);
   updateSizeInfo();
 
-  const noiseSel = $('noiseType') as HTMLSelectElement | null;
+  const noiseSel = $('noiseType');
   if (noiseSel) noiseSel.value = p.noiseType;
-  const fbmSel = $('fbmType') as HTMLSelectElement | null;
+  const fbmSel = $('fbmType');
   if (fbmSel) fbmSel.value = p.fbmType;
-  const styleSel = $('style') as HTMLSelectElement | null;
+  const styleSel = $('style');
   if (styleSel) styleSel.value = String(p.style);
 
   setSliderVal('octaves', p.octaves);
@@ -173,7 +172,7 @@ function syncUIFromParams(): void {
   setDispVal('coastDetail-val', p.coastDetail.toFixed(2));
 
   const setCheck = (id: string, val: boolean) => {
-    const el = $(id) as HTMLInputElement | null;
+    const el = $(id);
     if (el) el.checked = val;
   };
   setCheck('enableOceanCurrents', p.enableOceanCurrents);
@@ -267,7 +266,7 @@ function updateStyleDots(): void {
     dot.title = s.name;
     dot.addEventListener('click', () => {
       setParam('style', s.style);
-      const sel = $('style') as HTMLSelectElement | null;
+      const sel = $('style');
       if (sel) sel.value = String(s.style);
       updateStyleDots();
       scheduleRender();
@@ -277,8 +276,8 @@ function updateStyleDots(): void {
 }
 
 function updateUndoRedo(): void {
-  const undoBtn = $('btn-undo') as HTMLButtonElement | null;
-  const redoBtn = $('btn-redo') as HTMLButtonElement | null;
+  const undoBtn = $('btn-undo');
+  const redoBtn = $('btn-redo');
   if (undoBtn) undoBtn.disabled = !(editorController?.canUndo ?? false);
   if (redoBtn) redoBtn.disabled = !(editorController?.canRedo ?? false);
 }
@@ -416,7 +415,7 @@ function updateSliderFill(el: HTMLInputElement): void {
 }
 
 function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBinding): void {
-  const el = $(id) as HTMLInputElement | null;
+  const el = $(id);
   const dispId = id + '-val';
   if (!el) return;
   updateSliderFill(el);
@@ -440,7 +439,7 @@ function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBindi
 }
 
 function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $(id) as HTMLInputElement | null;
+  const el = $(id);
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.checked as never);
@@ -453,7 +452,7 @@ function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): vo
 }
 
 function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $(id) as HTMLSelectElement | null;
+  const el = $(id);
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.value as never);
@@ -484,8 +483,8 @@ function bindSizeHandle(): void {
     const newH = Math.max(64, Math.min(2048, dragStartH + Math.round(dy / 2) * 2));
     if (newW !== state.params.mapWidth || newH !== state.params.mapHeight) {
       patchParams({ mapWidth: newW, mapHeight: newH });
-      const wInput = $('mapWidth') as HTMLInputElement | null;
-      const hInput = $('mapHeight') as HTMLInputElement | null;
+      const wInput = $('mapWidth');
+      const hInput = $('mapHeight');
       if (wInput) wInput.value = String(newW);
       if (hInput) hInput.value = String(newH);
       updateSizeInfo();
@@ -569,7 +568,7 @@ function bindEventBus(): void {
   });
   bus.on('export.request', () => {
     // 快速导出 PNG（'e' 快捷键）
-    const canvas = $('glCanvas') as HTMLCanvasElement | null;
+    const canvas = $('glCanvas');
     if (!canvas) return;
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -606,8 +605,8 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const canvas = $('glCanvas') as HTMLCanvasElement | null;
-  const minimap = $('minimap') as HTMLCanvasElement | null;
+  const canvas = $('glCanvas');
+  const minimap = $('minimap');
   if (!canvas) {
     logger.error('#glCanvas not found');
     return;
@@ -696,7 +695,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-random')?.addEventListener('click', () => {
     const seed = String(Math.floor(Math.random() * 99999));
     setParam('seedStr', seed);
-    const seedInput = $('seedStr') as HTMLInputElement | null;
+    const seedInput = $('seedStr');
     if (seedInput) seedInput.value = seed;
     generateMap();
   });
@@ -723,8 +722,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setParam('seedStr', (e.target as HTMLInputElement).value);
   });
 
-  const wInput = $('mapWidth') as HTMLInputElement | null;
-  const hInput = $('mapHeight') as HTMLInputElement | null;
+  const wInput = $('mapWidth');
+  const hInput = $('mapHeight');
   const onSizeChange = () => {
     const w = parseInt(wInput?.value || '512', 10);
     const h = parseInt(hInput?.value || '512', 10);
@@ -877,7 +876,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => {
       const tool = btn.dataset.tool;
       if (!tool) return;
-      currentTool = tool;
       document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const brushCtrls = $('brush-ctrls');
@@ -887,15 +885,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       editorController?.setMode(tool as EditorMode);
     });
   });
-  const brushCtrlsEl = $('brush-ctrls') as HTMLElement | null;
+  const brushCtrlsEl = $('brush-ctrls');
   if (brushCtrlsEl) brushCtrlsEl.style.display = 'none';
 
   bindSliderEx('brushRadius', 'cursorSize', {
     toParam: raw => raw,
     toDisplay: raw => String(raw),
   });
-  const brushRadiusEl = $('brushRadius') as HTMLInputElement | null;
-  const brushStrengthEl = $('brushStrength') as HTMLInputElement | null;
+  const brushRadiusEl = $('brushRadius');
+  const brushStrengthEl = $('brushStrength');
   if (brushRadiusEl) updateSliderFill(brushRadiusEl);
   if (brushStrengthEl) updateSliderFill(brushStrengthEl);
   brushRadiusEl?.addEventListener('input', () => {
@@ -941,7 +939,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
       const seed = String(Math.floor(Math.random() * 99999));
       setParam('seedStr', seed);
-      const seedInput = $('seedStr') as HTMLInputElement | null;
+      const seedInput = $('seedStr');
       if (seedInput) seedInput.value = seed;
       generateMap();
     } else if (e.key === 'Tab') {

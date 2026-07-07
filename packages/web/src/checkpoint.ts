@@ -127,7 +127,6 @@ function generateThumbnail(mapData: MapData): string {
         g = 60 + shallow * 80;
         b = 120 + shallow * 60 + depth * 40;
       } else {
-        const land = (h - seaLevel) / (1 - seaLevel);
         const slope = elevTex[i + 1];
         const sl = Math.min(1, slope * 3);
         const shade = 1 - sl * 0.3;

@@ -1,5 +1,5 @@
 import { generateElevation, hydraulicErosion } from '../erosion.js';
-import type { MapParams } from '../index.js';
+import type { MapParams } from '../types.js';
 import type { TectonicState } from './tectonicStage.js';
 import { f32 } from './typedArrays.js';
 

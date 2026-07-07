@@ -3,7 +3,7 @@ import { computeOceanCurrents } from '../oceanCurrents.js';
 import { computeSlope } from '../slope.js';
 import { computeClimate } from '../regions.js';
 import { computeIceSheet } from '../ice.js';
-import type { MapParams } from '../index.js';
+import type { MapParams } from '../types.js';
 import type { ElevationState } from './elevationStage.js';
 import type { TectonicState } from './tectonicStage.js';
 import { f32 } from './typedArrays.js';

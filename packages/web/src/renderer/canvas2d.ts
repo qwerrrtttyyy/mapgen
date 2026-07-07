@@ -22,7 +22,7 @@ export class Canvas2DRenderer {
   }
 
   private _renderToImageData(data: MapData): void {
-    const { width, height, elevTex, moistTex, riverTex, tempTex } = data;
+    const { width, height, elevTex, moistTex, riverTex } = data;
     const imgData = this.ctx.createImageData(width, height);
     const pixels = imgData.data;
     const seaLevel = state.params.seaLevel;
@@ -81,8 +81,6 @@ export class Canvas2DRenderer {
     const cW = canvas.width;
     const cH = canvas.height;
     const baseScale = Math.min(cW / mapW, cH / mapH);
-    const dW = mapW * baseScale;
-    const dH = mapH * baseScale;
     const centerX = cW / 2;
     const centerY = cH / 2;
 

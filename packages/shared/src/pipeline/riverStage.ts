@@ -1,13 +1,12 @@
 import { generateLakes } from '../erosion.js';
-import { generateRivers } from '../rivers.js';
+import { generateRivers, type River } from '../rivers.js';
 import { classifyBiomes } from '../biomes.js';
 import { computeWatershed } from '../watershed.js';
-import { computeVolcanism } from '../volcanism.js';
+import { computeVolcanism, type VolcanoSite, type Hotspot } from '../volcanism.js';
 import { computeSeasonalVariation } from '../seasons.js';
-import type { MapParams } from '../index.js';
+import type { MapParams } from '../types.js';
 import type { TectonicState } from './tectonicStage.js';
 import type { ClimateState } from './climateStage.js';
-import type { River, VolcanoSite, Hotspot } from '../index.js';
 import { f32, u8, i32 } from './typedArrays.js';
 
 export interface RiverState {

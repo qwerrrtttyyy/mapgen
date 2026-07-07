@@ -4,6 +4,19 @@ import { computeSlope } from './slope.js';
 
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
+let _cachedWidth = -1;
+let _erosionOffsets: Int32Array | null = null;
+function getErosionOffsets(width: number): Int32Array {
+  if (_cachedWidth !== width || !_erosionOffsets) {
+    _cachedWidth = width;
+    _erosionOffsets = new Int32Array(8);
+    for (let d = 0; d < 8; d++) {
+      _erosionOffsets[d] = EROSION_DIRS[d * 2] + EROSION_DIRS[d * 2 + 1] * width;
+    }
+  }
+  return _erosionOffsets;
+}
+
 export function generateElevation(
   width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[],
   plateDist: Float32Array, tectonicForce: Float32Array,
@@ -166,12 +179,17 @@ export function hydraulicErosion(
   const size = width * height;
   const water = new Float32Array(size);
   const sediment = new Float32Array(size);
-  const dirs = EROSION_DIRS;
+  const dirs = getErosionOffsets(width);
   const maxChangeThreshold = 1e-5;
+  const rainAmount = 0.01;
+  const depositionRate = 0.1;
+  const erosionRate = 0.1;
+  const capacityFactor = strength;
+  const halfFactor = 0.5;
 
   for (let iter = 0; iter < iterations; iter++) {
     for (let i = 0; i < size; i++) {
-      if (elev[i] > 0) water[i] += 0.01;
+      if (elev[i] > 0) water[i] += rainAmount;
     }
     let totalChange = 0;
     for (let y = 1; y < height - 1; y++) {
@@ -179,40 +197,46 @@ export function hydraulicErosion(
       for (let x = 1; x < width - 1; x++) {
         const idx = rowBase + x;
         const e = elev[idx];
-        let minE = e, minDir = -1;
-        for (let d = 0; d < 8; d++) {
-          const ni = idx + dirs[d * 2] + dirs[d * 2 + 1] * width;
-          const ne = elev[ni];
-          if (ne < minE) { minE = ne; minDir = d; }
-        }
+        let minE = e;
+        let minDir = -1;
+        const d0 = dirs[0], n0 = idx + d0; if (elev[n0] < minE) { minE = elev[n0]; minDir = 0; }
+        const d1 = dirs[1], n1 = idx + d1; if (elev[n1] < minE) { minE = elev[n1]; minDir = 1; }
+        const d2 = dirs[2], n2 = idx + d2; if (elev[n2] < minE) { minE = elev[n2]; minDir = 2; }
+        const d3 = dirs[3], n3 = idx + d3; if (elev[n3] < minE) { minE = elev[n3]; minDir = 3; }
+        const d4 = dirs[4], n4 = idx + d4; if (elev[n4] < minE) { minE = elev[n4]; minDir = 4; }
+        const d5 = dirs[5], n5 = idx + d5; if (elev[n5] < minE) { minE = elev[n5]; minDir = 5; }
+        const d6 = dirs[6], n6 = idx + d6; if (elev[n6] < minE) { minE = elev[n6]; minDir = 6; }
+        const d7 = dirs[7], n7 = idx + d7; if (elev[n7] < minE) { minE = elev[n7]; minDir = 7; }
+
         if (minDir >= 0) {
           const slp = e - minE;
-          const carryCapacity = slp * water[idx] * strength * (1 + slp * 5);
-          const sDiff = carryCapacity - sediment[idx];
+          const w = water[idx];
+          const s = sediment[idx];
+          const carryCapacity = slp * w * capacityFactor * (1 + slp * 5);
+          const sDiff = carryCapacity - s;
           let amount = 0;
           if (sDiff > 0) {
-            amount = Math.min(sDiff * 0.1, e - minE);
-            elev[idx] -= amount;
-            sediment[idx] += amount;
+            amount = Math.min(sDiff * erosionRate, slp);
+            elev[idx] = e - amount;
+            sediment[idx] = s + amount;
           } else {
-            amount = Math.min(-sDiff * 0.1, sediment[idx]);
-            elev[idx] += amount;
-            sediment[idx] -= amount;
+            amount = Math.min(-sDiff * depositionRate, s);
+            elev[idx] = e + amount;
+            sediment[idx] = s - amount;
           }
           totalChange += amount;
-          const ddx = dirs[minDir * 2];
-          const ddy = dirs[minDir * 2 + 1];
-          const ni = idx + ddx + ddy * width;
-          const halfWater = water[idx] * 0.5;
-          const halfSediment = sediment[idx] * 0.5;
-          water[ni] += halfWater;
-          sediment[ni] += halfSediment;
-          water[idx] = halfWater;
-          sediment[idx] = halfSediment;
+          const ni = idx + dirs[minDir];
+          const hw = w * halfFactor;
+          const hs = sediment[idx] * halfFactor;
+          water[ni] += hw;
+          sediment[ni] += hs;
+          water[idx] = hw;
+          sediment[idx] = hs;
         }
       }
     }
-    for (let i = 0; i < size; i++) water[i] *= (1 - evaporationRate);
+    const evapFactor = 1 - evaporationRate;
+    for (let i = 0; i < size; i++) water[i] *= evapFactor;
     if (totalChange < maxChangeThreshold) break;
   }
   return elev;
