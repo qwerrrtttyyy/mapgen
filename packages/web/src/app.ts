@@ -71,7 +71,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 let dragStartW = 0;
 let dragStartH = 0;
-
 let namesVisible = true;
 let debugPanel: DebugPanel | null = null;
 
@@ -125,7 +124,7 @@ function updateSizeInfo(): void {
 }
 
 function setSliderVal(id: string, rawVal: number): void {
-  const el = $(id);
+  const el = $<HTMLInputElement>(id);
   if (el) el.value = String(rawVal);
 }
 
@@ -136,19 +135,19 @@ function setDispVal(id: string, text: string): void {
 
 function syncUIFromParams(): void {
   const p = state.params;
-  const seedInput = $('seedStr');
+  const seedInput = $<HTMLInputElement>('seedStr');
   if (seedInput) seedInput.value = p.seedStr;
-  const wInput = $('mapWidth');
-  const hInput = $('mapHeight');
+  const wInput = $<HTMLInputElement>('mapWidth');
+  const hInput = $<HTMLInputElement>('mapHeight');
   if (wInput) wInput.value = String(p.mapWidth);
   if (hInput) hInput.value = String(p.mapHeight);
   updateSizeInfo();
 
-  const noiseSel = $('noiseType');
+  const noiseSel = $<HTMLSelectElement>('noiseType');
   if (noiseSel) noiseSel.value = p.noiseType;
-  const fbmSel = $('fbmType');
+  const fbmSel = $<HTMLSelectElement>('fbmType');
   if (fbmSel) fbmSel.value = p.fbmType;
-  const styleSel = $('style');
+  const styleSel = $<HTMLSelectElement>('style');
   if (styleSel) styleSel.value = String(p.style);
 
   setSliderVal('octaves', p.octaves);
@@ -172,8 +171,8 @@ function syncUIFromParams(): void {
   setSliderVal('coastDetail', Math.round(p.coastDetail * 100));
   setDispVal('coastDetail-val', p.coastDetail.toFixed(2));
 
-  const setCheck = (id: string, val: boolean) => {
-    const el = $(id);
+  const setCheck = (id: string, val: boolean): void => {
+    const el = $<HTMLInputElement>(id);
     if (el) el.checked = val;
   };
   setCheck('enableOceanCurrents', p.enableOceanCurrents);
@@ -267,7 +266,7 @@ function updateStyleDots(): void {
     dot.title = s.name;
     dot.addEventListener('click', () => {
       setParam('style', s.style);
-      const sel = $('style');
+      const sel = $<HTMLSelectElement>('style');
       if (sel) sel.value = String(s.style);
       updateStyleDots();
       scheduleRender();
@@ -277,8 +276,8 @@ function updateStyleDots(): void {
 }
 
 function updateUndoRedo(): void {
-  const undoBtn = $('btn-undo');
-  const redoBtn = $('btn-redo');
+  const undoBtn = $<HTMLButtonElement>('btn-undo');
+  const redoBtn = $<HTMLButtonElement>('btn-redo');
   if (undoBtn) undoBtn.disabled = !(editorController?.canUndo ?? false);
   if (redoBtn) redoBtn.disabled = !(editorController?.canRedo ?? false);
 }
@@ -435,7 +434,7 @@ function updateSliderFill(el: HTMLInputElement): void {
 }
 
 function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBinding): void {
-  const el = $(id);
+  const el = $<HTMLInputElement>(id);
   const dispId = id + '-val';
   if (!el) return;
   updateSliderFill(el);
@@ -472,7 +471,7 @@ function bindSliderEx(id: string, paramKey: keyof UIParams, binding: SliderBindi
 }
 
 function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $(id);
+  const el = $<HTMLInputElement>(id);
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.checked as never);
@@ -498,7 +497,7 @@ function bindCheckbox(id: string, paramKey: keyof UIParams, autoGen = false): vo
 }
 
 function bindSelect(id: string, paramKey: keyof UIParams, autoGen = false): void {
-  const el = $(id);
+  const el = $<HTMLSelectElement>(id);
   if (!el) return;
   el.addEventListener('change', () => {
     setParam(paramKey, el.value as never);
@@ -529,8 +528,8 @@ function bindSizeHandle(): void {
     const newH = Math.max(64, Math.min(2048, dragStartH + Math.round(dy / 2) * 2));
     if (newW !== state.params.mapWidth || newH !== state.params.mapHeight) {
       patchParams({ mapWidth: newW, mapHeight: newH });
-      const wInput = $('mapWidth');
-      const hInput = $('mapHeight');
+      const wInput = $<HTMLInputElement>('mapWidth');
+      const hInput = $<HTMLInputElement>('mapHeight');
       if (wInput) wInput.value = String(newW);
       if (hInput) hInput.value = String(newH);
       updateSizeInfo();
@@ -616,9 +615,9 @@ function bindEventBus(): void {
   });
   bus.on('export.request', () => {
     // 快速导出 PNG（'e' 快捷键）
-    const canvas = $('glCanvas');
+    const canvas = $<HTMLCanvasElement>('glCanvas');
     if (!canvas) return;
-    canvas.toBlob(blob => {
+    canvas.toBlob((blob: Blob | null) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -653,8 +652,8 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const canvas = $('glCanvas');
-  const minimap = $('minimap');
+  const canvas = $<HTMLCanvasElement>('glCanvas');
+  const minimap = $<HTMLCanvasElement>('minimap');
   if (!canvas) {
     logger.error('#glCanvas not found');
     return;
@@ -749,7 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('btn-random')?.addEventListener('click', () => {
     const seed = String(Math.floor(Math.random() * 99999));
     setParam('seedStr', seed);
-    const seedInput = $('seedStr');
+    const seedInput = $<HTMLInputElement>('seedStr');
     if (seedInput) seedInput.value = seed;
     generateMap();
   });
@@ -776,8 +775,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setParam('seedStr', (e.target as HTMLInputElement).value);
   });
 
-  const wInput = $('mapWidth');
-  const hInput = $('mapHeight');
+  const wInput = $<HTMLInputElement>('mapWidth');
+  const hInput = $<HTMLInputElement>('mapHeight');
   const onSizeChange = () => {
     const w = parseInt(wInput?.value || '512', 10);
     const h = parseInt(hInput?.value || '512', 10);
@@ -956,8 +955,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     toParam: raw => raw,
     toDisplay: raw => String(raw),
   });
-  const brushRadiusEl = $('brushRadius');
-  const brushStrengthEl = $('brushStrength');
+  const brushRadiusEl = $<HTMLInputElement>('brushRadius');
+  const brushStrengthEl = $<HTMLInputElement>('brushStrength');
   if (brushRadiusEl) updateSliderFill(brushRadiusEl);
   if (brushStrengthEl) updateSliderFill(brushStrengthEl);
   brushRadiusEl?.addEventListener('input', () => {
@@ -1017,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
       const seed = String(Math.floor(Math.random() * 99999));
       setParam('seedStr', seed);
-      const seedInput = $('seedStr');
+      const seedInput = $<HTMLInputElement>('seedStr');
       if (seedInput) seedInput.value = seed;
       generateMap();
     } else if (e.key === 'Tab') {

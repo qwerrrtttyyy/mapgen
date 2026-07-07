@@ -112,7 +112,6 @@ export class Canvas2DRenderer {
     const cW = canvas.width;
     const cH = canvas.height;
     const baseScale = Math.min(cW / mapW, cH / mapH);
-
     const centerX = cW / 2;
     const centerY = cH / 2;
 
