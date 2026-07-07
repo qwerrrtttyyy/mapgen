@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { computeCoastDistance, continentalityFactor } from '../coastline.js';
 
 describe('Coastline 海岸距离场', () => {
-  const W = 64, H = 64;
+  const W = 64,
+    H = 64;
   const seaLevel = 0.45;
 
   describe('computeCoastDistance 海岸距离计算', () => {

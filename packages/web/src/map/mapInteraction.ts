@@ -7,11 +7,13 @@ import { clientToMapUv } from './viewport.js';
 import { Tooltip } from '../ui/tooltip.js';
 import { LaserController } from './laserController.js';
 
-const biomeNames = [
-  '海洋', '雪线高山', '高山', '沙漠', '湿地', '森林', '苔原', '平原'
-];
+const biomeNames = ['海洋', '雪线高山', '高山', '沙漠', '湿地', '森林', '苔原', '平原'];
 
-function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement): { nx: number; ny: number } | null {
+function clientToUv(
+  clientX: number,
+  clientY: number,
+  canvas: HTMLCanvasElement
+): { nx: number; ny: number } | null {
   const { mapData } = state;
   if (!mapData) return null;
   const rect = canvas.getBoundingClientRect();
@@ -40,7 +42,10 @@ export class MapInteraction extends Colleague {
     const move = (e: MouseEvent) => this.scheduleMove(e);
     const click = (e: MouseEvent) => this.handleClick(e);
     const leave = () => this.handleLeave();
-    const context = (e: MouseEvent) => { e.preventDefault(); this.handleContext(e); };
+    const context = (e: MouseEvent) => {
+      e.preventDefault();
+      this.handleContext(e);
+    };
 
     canvas.addEventListener('mousemove', move);
     canvas.addEventListener('click', click);
@@ -51,12 +56,15 @@ export class MapInteraction extends Colleague {
       () => canvas.removeEventListener('mousemove', move),
       () => canvas.removeEventListener('click', click),
       () => canvas.removeEventListener('mouseleave', leave),
-      () => canvas.removeEventListener('contextmenu', context),
+      () => canvas.removeEventListener('contextmenu', context)
     );
   }
 
   setMapData(data: typeof state.mapData): void {
-    if (!data) { this.picker = null; return; }
+    if (!data) {
+      this.picker = null;
+      return;
+    }
     this.picker = new MapPicker(data);
   }
 
@@ -68,13 +76,9 @@ export class MapInteraction extends Colleague {
 
   bindEvents(): void {
     if (this.mediator) {
-      this.unsub.push(
-        this.subscribe('generating.completed', () => this.setMapData(state.mapData))
-      );
+      this.unsub.push(this.subscribe('generating.completed', () => this.setMapData(state.mapData)));
     } else {
-      this.unsub.push(
-        bus.on('generating.completed', () => this.setMapData(state.mapData))
-      );
+      this.unsub.push(bus.on('generating.completed', () => this.setMapData(state.mapData)));
     }
   }
 
@@ -210,7 +214,12 @@ export class MapInteraction extends Colleague {
 
     this.trailFrameCounter++;
     if (this.trailFrameCounter % 2 === 0) {
-      const pixels = this.trailCtx.getImageData(0, 0, this.trailCanvas.width, this.trailCanvas.height);
+      const pixels = this.trailCtx.getImageData(
+        0,
+        0,
+        this.trailCanvas.width,
+        this.trailCanvas.height
+      );
       this.emitTrailUpdate(
         this.trailCanvas.width,
         this.trailCanvas.height,
@@ -235,11 +244,7 @@ export class MapInteraction extends Colleague {
       }
     }
     this.trailCtx.putImageData(img, 0, 0);
-    this.emitTrailUpdate(
-      this.trailCanvas.width,
-      this.trailCanvas.height,
-      new Uint8Array(d.buffer)
-    );
+    this.emitTrailUpdate(this.trailCanvas.width, this.trailCanvas.height, new Uint8Array(d.buffer));
     if (!hasAlpha && this.trailDecayTimer !== null) {
       window.clearInterval(this.trailDecayTimer);
       this.trailDecayTimer = null;

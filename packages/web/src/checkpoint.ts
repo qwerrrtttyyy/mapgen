@@ -119,7 +119,9 @@ function generateThumbnail(mapData: MapData): string {
       const moisture = moistTex[i];
       const temperature = moistTex[i + 2];
       const idx = (y * size + x) * 4;
-      let r = 0, g = 0, b = 0;
+      let r = 0,
+        g = 0,
+        b = 0;
       if (h <= seaLevel) {
         const depth = (seaLevel - h) / (seaLevel + 0.5);
         const shallow = 1 - Math.min(1, depth * 3);
@@ -127,22 +129,33 @@ function generateThumbnail(mapData: MapData): string {
         g = 60 + shallow * 80;
         b = 120 + shallow * 60 + depth * 40;
       } else {
-        const land = (h - seaLevel) / (1 - seaLevel);
         const slope = elevTex[i + 1];
         const sl = Math.min(1, slope * 3);
         const shade = 1 - sl * 0.3;
         if (temperature < 0.25 && h > 0.6) {
-          r = 230 * shade; g = 235 * shade; b = 245 * shade;
+          r = 230 * shade;
+          g = 235 * shade;
+          b = 245 * shade;
         } else if (h > 0.7) {
-          r = 130 * shade; g = 120 * shade; b = 110 * shade;
+          r = 130 * shade;
+          g = 120 * shade;
+          b = 110 * shade;
         } else if (moisture < 0.15 && temperature > 0.4) {
-          r = 200 * shade; g = 175 * shade; b = 110 * shade;
+          r = 200 * shade;
+          g = 175 * shade;
+          b = 110 * shade;
         } else if (moisture > 0.55) {
-          r = 40 * shade; g = 100 * shade; b = 40 * shade;
+          r = 40 * shade;
+          g = 100 * shade;
+          b = 40 * shade;
         } else if (moisture > 0.3) {
-          r = 110 * shade; g = 150 * shade; b = 50 * shade;
+          r = 110 * shade;
+          g = 150 * shade;
+          b = 50 * shade;
         } else {
-          r = 140 * shade; g = 130 * shade; b = 70 * shade;
+          r = 140 * shade;
+          g = 130 * shade;
+          b = 70 * shade;
         }
       }
       img.data[idx] = Math.max(0, Math.min(255, Math.round(r)));

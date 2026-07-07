@@ -42,7 +42,7 @@ vi.stubGlobal('URL', {
 vi.spyOn(document.body, 'appendChild').mockImplementation(() => null as never);
 vi.spyOn(document.body, 'removeChild').mockImplementation(() => null as never);
 
-import { ExportManager, type ExportFormat, type ExportScale } from '../export/exportManager.js';
+import { ExportManager } from '../export/exportManager.js';
 
 describe('ExportManager', () => {
   let manager: ExportManager;

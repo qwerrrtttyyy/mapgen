@@ -31,7 +31,7 @@ export class P5Renderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this._readyPromise = new Promise((resolve) => {
+    this._readyPromise = new Promise(resolve => {
       this._readyResolve = resolve;
     });
   }
@@ -87,15 +87,22 @@ export class P5Renderer {
         const scale = Math.min(rect.width / mapW, rect.height / mapH);
         const mx = p.mouseX - rect.width / 2;
         const my = p.mouseY - rect.height / 2;
-        const px = Math.floor((mx / scale + mapW / 2));
-        const py = Math.floor((my / scale + mapH / 2));
+        const px = Math.floor(mx / scale + mapW / 2);
+        const py = Math.floor(my / scale + mapH / 2);
         if (px >= 0 && px < mapW && py >= 0 && py < mapH) {
           const idx = py * mapW + px;
           const pid = Math.round(this.mapData.plateTex[idx * 4] * state.params.plateCount);
           const elev = this.mapData.elevTex[idx * 4];
           const temp = this.mapData.moistTex[idx * 4 + 2];
           const moist = this.mapData.moistTex[idx * 4];
-          bus.emit('picker.update', { px, py, plateId: pid, elevation: elev, temperature: temp, moisture: moist });
+          bus.emit('picker.update', {
+            px,
+            py,
+            plateId: pid,
+            elevation: elev,
+            temperature: temp,
+            moisture: moist,
+          });
         }
       };
     };
@@ -349,28 +356,39 @@ export class P5Renderer {
           g = 60 + shallow * 80;
           b = 120 + shallow * 60 + depth * 40;
         } else {
-          const land = (elevation - seaLevel) / (1.0 - seaLevel);
           const sl = Math.min(1, slope * 3);
           const shade = 1 - sl * 0.3;
 
           if (temperature < snowLine && elevation > 0.6) {
             // 雪/冰
-            r = 230 * shade; g = 235 * shade; b = 245 * shade;
+            r = 230 * shade;
+            g = 235 * shade;
+            b = 245 * shade;
           } else if (elevation > 0.7) {
             // 岩石
-            r = 130 * shade; g = 120 * shade; b = 110 * shade;
+            r = 130 * shade;
+            g = 120 * shade;
+            b = 110 * shade;
           } else if (moisture < 0.15 && temperature > 0.4) {
             // 沙漠
-            r = 200 * shade; g = 175 * shade; b = 110 * shade;
+            r = 200 * shade;
+            g = 175 * shade;
+            b = 110 * shade;
           } else if (moisture > 0.55) {
             // 森林
-            r = 40 * shade; g = 100 * shade; b = 40 * shade;
+            r = 40 * shade;
+            g = 100 * shade;
+            b = 40 * shade;
           } else if (moisture > 0.3) {
             // 草原
-            r = 110 * shade; g = 150 * shade; b = 50 * shade;
+            r = 110 * shade;
+            g = 150 * shade;
+            b = 50 * shade;
           } else {
             // 灌木
-            r = 140 * shade; g = 130 * shade; b = 70 * shade;
+            r = 140 * shade;
+            g = 130 * shade;
+            b = 70 * shade;
           }
         }
 

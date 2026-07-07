@@ -5,10 +5,21 @@ import { computeSlope } from './slope.js';
 const EROSION_DIRS = new Int16Array([-1, 0, 1, 0, 0, -1, 0, 1, -1, -1, -1, 1, 1, -1, 1, 1]);
 
 export function generateElevation(
-  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[],
-  plateDist: Float32Array, tectonicForce: Float32Array,
-  noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
-  mountainFold: number, coastDetail: number
+  width: number,
+  height: number,
+  seed: number,
+  plateId: Float32Array,
+  plates: Plate[],
+  plateDist: Float32Array,
+  tectonicForce: Float32Array,
+  noiseType: NoiseType,
+  fbmType: FbmType,
+  octaves: number,
+  lacunarity: number,
+  persistence: number,
+  seaLevel: number,
+  mountainFold: number,
+  coastDetail: number
 ): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
   const size = width * height;
   const elevation = new Float32Array(size);
@@ -60,15 +71,36 @@ export function generateElevation(
       // ── 2. 多尺度地形噪声（自然 FBM：谱权重+域形变+各向异性）──
       // 陆地：ridged（山脊）混合 standard（细节），海洋：standard 平滑
       if (isContinental) {
-        const ridged = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'ridged',
-          { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 });
-        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
-          { warpStrength: 0.4 });
+        const ridged = noise.fbmNatural(
+          nx * 5,
+          ny * 5,
+          octaves,
+          lacunarity,
+          persistence,
+          'ridged',
+          { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 }
+        );
+        const detail = noise.fbmNatural(
+          nx * 5,
+          ny * 5,
+          octaves,
+          lacunarity,
+          persistence,
+          'standard',
+          { warpStrength: 0.4 }
+        );
         elev += ridged * 0.12 + detail * 0.14;
       } else {
-        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
-          { warpStrength: 0.3 });
-        elev += detail * 0.10;
+        const detail = noise.fbmNatural(
+          nx * 5,
+          ny * 5,
+          octaves,
+          lacunarity,
+          persistence,
+          'standard',
+          { warpStrength: 0.3 }
+        );
+        elev += detail * 0.1;
       }
 
       // ── 3. 山脊场（用于独立山脊图层）──
@@ -95,11 +127,16 @@ export function generateElevation(
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
       const pid = plateId[idx];
-      if (plateId[idx - 1] !== pid || plateId[idx + 1] !== pid ||
-          plateId[idx - width] !== pid || plateId[idx + width] !== pid) {
+      if (
+        plateId[idx - 1] !== pid ||
+        plateId[idx + 1] !== pid ||
+        plateId[idx - width] !== pid ||
+        plateId[idx + width] !== pid
+      ) {
         for (let dy = -2; dy <= 2; dy++) {
           for (let dx = -2; dx <= 2; dx++) {
-            const ny = y + dy, nx = x + dx;
+            const ny = y + dy,
+              nx = x + dx;
             if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
               boundaryBand[ny * width + nx] = 1;
             }
@@ -115,7 +152,10 @@ export function generateElevation(
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
-        if (!boundaryBand[idx]) { if (pass === 1) dst[idx] = src[idx]; continue; }
+        if (!boundaryBand[idx]) {
+          if (pass === 1) dst[idx] = src[idx];
+          continue;
+        }
         let sum = src[idx];
         let cnt = 1;
         for (let dy = -2; dy <= 2; dy++) {
@@ -138,7 +178,8 @@ export function generateElevation(
       const idx = y * width + x;
       const tf = tectonicForce[idx];
       if (tf === 0) continue;
-      const nx = x / width, ny = y / height;
+      const nx = x / width,
+        ny = y / height;
       if (tf > 0) {
         let m = tf * mountainFold * 0.8;
         m += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.25;
@@ -159,8 +200,12 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 export function hydraulicErosion(
-  width: number, height: number, elevation: Float32Array,
-  iterations: number, strength: number, evaporationRate: number = 0.01
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  iterations: number,
+  strength: number,
+  evaporationRate: number = 0.01
 ): Float32Array {
   const elev = new Float32Array(elevation);
   const size = width * height;
@@ -179,11 +224,15 @@ export function hydraulicErosion(
       for (let x = 1; x < width - 1; x++) {
         const idx = rowBase + x;
         const e = elev[idx];
-        let minE = e, minDir = -1;
+        let minE = e,
+          minDir = -1;
         for (let d = 0; d < 8; d++) {
           const ni = idx + dirs[d * 2] + dirs[d * 2 + 1] * width;
           const ne = elev[ni];
-          if (ne < minE) { minE = ne; minDir = d; }
+          if (ne < minE) {
+            minE = ne;
+            minDir = d;
+          }
         }
         if (minDir >= 0) {
           const slp = e - minE;
@@ -212,13 +261,20 @@ export function hydraulicErosion(
         }
       }
     }
-    for (let i = 0; i < size; i++) water[i] *= (1 - evaporationRate);
+    for (let i = 0; i < size; i++) water[i] *= 1 - evaporationRate;
     if (totalChange < maxChangeThreshold) break;
   }
   return elev;
 }
 
-export function generateLakes(width: number, height: number, elevation: Float32Array, seaLevel: number, lakeDensity: number, seed: number): Float32Array {
+export function generateLakes(
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number,
+  lakeDensity: number,
+  seed: number
+): Float32Array {
   const lakes = new Float32Array(width * height);
   const noise = createNoise(seed + 7, 'simplex');
   for (let y = 2; y < height - 2; y++) {
@@ -226,14 +282,15 @@ export function generateLakes(width: number, height: number, elevation: Float32A
       const idx = y * width + x;
       const elev = elevation[idx];
       if (elev > seaLevel && elev < seaLevel + 0.1) {
-        const n = noise.fbm(x / width * 20, y / height * 20, 2, 2, 0.5, 'standard');
+        const n = noise.fbm((x / width) * 20, (y / height) * 20, 2, 2, 0.5, 'standard');
         if (n > 1 - lakeDensity) {
           let isBasin = true;
           for (let dy = -1; dy <= 1 && isBasin; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
               if (dx === 0 && dy === 0) continue;
               if (elevation[(y + dy) * width + (x + dx)] < elev) {
-                isBasin = false; break;
+                isBasin = false;
+                break;
               }
             }
           }

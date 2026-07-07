@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { labelComponents, computeComponentStats } from '../connectedComponents.js';
 
 describe('ConnectedComponents 连通域标记', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
 
   describe('labelComponents 连通域标记', () => {
     it('单一连通域', () => {
@@ -99,7 +100,9 @@ describe('ConnectedComponents 连通域标记', () => {
       const shouldLabel = (i: number) => mask[i] > 0;
       const areConnected = () => true;
       const { labels } = labelComponents(W, H, shouldLabel, areConnected);
-      const uniqueLabels = Array.from(new Set(Array.from(labels).filter(l => l > 0))).sort((a, b) => a - b);
+      const uniqueLabels = Array.from(new Set(Array.from(labels).filter(l => l > 0))).sort(
+        (a, b) => a - b
+      );
 
       expect(uniqueLabels).toEqual([1, 2, 3]);
     });
@@ -121,8 +124,10 @@ describe('ConnectedComponents 连通域标记', () => {
 
     it('计算质心', () => {
       const labels = new Int32Array(W * H);
-      const startX = 10, startY = 10;
-      const rwidth = 5, rheight = 5;
+      const startX = 10,
+        startY = 10;
+      const rwidth = 5,
+        rheight = 5;
 
       for (let y = startY; y < startY + rheight; y++) {
         for (let x = startX; x < startX + rwidth; x++) {
