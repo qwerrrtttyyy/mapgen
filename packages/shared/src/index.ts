@@ -1,31 +1,142 @@
 export { hashSeed, createNoise, NoiseEngine, type NoiseType, type FbmType } from './noise.js';
-export { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate, type BoundaryType } from './tectonic.js';
+export {
+  generatePlates,
+  assignPlates,
+  computeBoundaries,
+  computeBoundaryTypes,
+  type Plate,
+  type BoundaryType,
+} from './tectonic.js';
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
-export { analyzeRegions, computeClimate, type Region, type ClimateData, type ClimateEnhanceOptions } from './regions.js';
-export { generateNames, regenerateNames, type NameManifest, type NameablePlate, type NameableRegion, type NamedPlate, type NamedRegion, type PlateKind, type TerrainType } from './naming.js';
-export { detectTerrainRegions, type DetectedRegion, type TerrainDetectOptions, CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon, movePlate, recomputePlateGeometry, type BrushTarget, type VectorTarget } from './editor.js';
+export {
+  analyzeRegions,
+  computeClimate,
+  type Region,
+  type ClimateData,
+  type ClimateEnhanceOptions,
+} from './regions.js';
+export {
+  generateNames,
+  regenerateNames,
+  type NameManifest,
+  type NameablePlate,
+  type NameableRegion,
+  type NamedPlate,
+  type NamedRegion,
+  type PlateKind,
+  type TerrainType,
+} from './naming.js';
+export {
+  detectTerrainRegions,
+  type DetectedRegion,
+  type TerrainDetectOptions,
+  CommandStack,
+  type Command,
+  applyBrushStroke,
+  applyVectorMountain,
+  applyVectorPolygon,
+  movePlate,
+  recomputePlateGeometry,
+  type BrushTarget,
+  type VectorTarget,
+} from './editor.js';
 export { computeSlope } from './slope.js';
-export { classifyBiome, extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures, packElevTex, packCurrentTex, packIceTex, packBiomeTex, packWatershedTex, packVolcanismTex, packSeasonTex, type TexturePackParams } from './texturePack.js';
-export { runDownstreamPipeline, applyDownstreamToMapData, type DownstreamInput, type DownstreamResult } from './downstream.js';
+export {
+  classifyBiome,
+  extractChannel,
+  extractPlateId,
+  packAllTextures,
+  packClimateRiverTextures,
+  packElevTex,
+  packCurrentTex,
+  packIceTex,
+  packBiomeTex,
+  packWatershedTex,
+  packVolcanismTex,
+  packSeasonTex,
+  type TexturePackParams,
+} from './texturePack.js';
+export {
+  runDownstreamPipeline,
+  applyDownstreamToMapData,
+  type DownstreamInput,
+  type DownstreamResult,
+} from './downstream.js';
 export { computeCoastDistance, continentalityFactor } from './coastline.js';
-export { computeOceanCurrents, type OceanCurrentInput, type OceanCurrentResult } from './oceanCurrents.js';
+export {
+  computeOceanCurrents,
+  type OceanCurrentInput,
+  type OceanCurrentResult,
+} from './oceanCurrents.js';
 export { computeIceSheet, type IceInput, type IceResult } from './ice.js';
-export { computeDetailPatch, detectDetailPeaks, type ViewportRegion, type DetailPatch, type DetailPeak } from './lazyGen.js';
-export { classifyBiomes, biomeNormalize, getBiomeInfo, type BiomeId, type BiomeInfo, type BiomeClassifyInput, type BiomeResult, BIOME_INFO, BIOME_COUNT } from './biomes.js';
+export {
+  computeDetailPatch,
+  detectDetailPeaks,
+  type ViewportRegion,
+  type DetailPatch,
+  type DetailPeak,
+} from './lazyGen.js';
+export {
+  classifyBiomes,
+  biomeNormalize,
+  getBiomeInfo,
+  type BiomeId,
+  type BiomeInfo,
+  type BiomeClassifyInput,
+  type BiomeResult,
+  BIOME_INFO,
+  BIOME_COUNT,
+} from './biomes.js';
 export { computeWatershed, type WatershedInput, type WatershedResult } from './watershed.js';
-export { computeVolcanism, type VolcanismInput, type VolcanismResult, type VolcanoSite, type Hotspot } from './volcanism.js';
-export { computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonInput, type SeasonResult } from './seasons.js';
-export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming } from './debug.js';
-export { t, getPreferredLocale, createTranslator, translations, type Locale } from './i18n/index.js';
+export {
+  computeVolcanism,
+  type VolcanismInput,
+  type VolcanismResult,
+  type VolcanoSite,
+  type Hotspot,
+} from './volcanism.js';
+export {
+  computeSeasonalVariation,
+  decodeSeasonDelta,
+  type Season,
+  type SeasonInput,
+  type SeasonResult,
+} from './seasons.js';
+export {
+  debug,
+  setupDebugGlobal,
+  getDebug,
+  type DebugState,
+  type DebugMetrics,
+  type DebugTiming,
+} from './debug.js';
+export {
+  t,
+  getPreferredLocale,
+  createTranslator,
+  translations,
+  type Locale,
+} from './i18n/index.js';
 export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
 
 import { hashSeed } from './noise.js';
-import { generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes, type Plate } from './tectonic.js';
+import {
+  generatePlates,
+  assignPlates,
+  computeBoundaries,
+  computeBoundaryTypes,
+  type Plate,
+} from './tectonic.js';
 import { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 import { generateRivers, type River } from './rivers.js';
 import { analyzeRegions, computeClimate, type Region } from './regions.js';
-import { generateNames, type NameablePlate, type NameableRegion, type NameManifest } from './naming.js';
+import {
+  generateNames,
+  type NameablePlate,
+  type NameableRegion,
+  type NameManifest,
+} from './naming.js';
 import { detectTerrainRegions } from './editor.js';
 import { classifyBiome } from './texturePack.js';
 import { computeCoastDistance } from './coastline.js';
@@ -38,7 +149,13 @@ import { computeVolcanism, type VolcanoSite, type Hotspot } from './volcanism.js
 import { computeSeasonalVariation } from './seasons.js';
 import type { NoiseType, FbmType } from './noise.js';
 
-const ASPECT_MAP: Record<string, number> = { '1:1': 1, '4:3': 4/3, '16:9': 16/9, '2:1': 2, '3:2': 3/2 };
+const ASPECT_MAP: Record<string, number> = {
+  '1:1': 1,
+  '4:3': 4 / 3,
+  '16:9': 16 / 9,
+  '2:1': 2,
+  '3:2': 3 / 2,
+};
 
 export interface MapParams {
   seedStr: string;
@@ -124,7 +241,10 @@ export interface MapData {
 
 export type ProgressCallback = (progress: number, phaseName: string) => void;
 
-export function generateMap(params: MapParams, onProgress?: ProgressCallback): { mapData: MapData; checkpoints: Record<string, unknown> } {
+export function generateMap(
+  params: MapParams,
+  onProgress?: ProgressCallback
+): { mapData: MapData; checkpoints: Record<string, unknown> } {
   const seed = hashSeed(params.seedStr);
   let width: number, height: number;
   if (params.mapWidth && params.mapHeight) {
@@ -158,7 +278,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   let progress = 0;
   const phaseMap = new Map(phases.map(p => [p.name, p.weight / totalWeight]));
 
-  function advance(phaseName: string) {
+  function advance(phaseName: string): void {
     const w = phaseMap.get(phaseName);
     if (w) progress += w;
     if (onProgress) onProgress(progress, phaseName);
@@ -176,8 +296,18 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   let slope: Float32Array;
   let ridge: Float32Array;
   let ridgeMask: Float32Array;
-  let checkpointTectonic: { plates: Plate[]; plateId: Float32Array; plateDist: Float32Array; boundary: Float32Array };
-  let checkpointElevation: { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array };
+  let checkpointTectonic: {
+    plates: Plate[];
+    plateId: Float32Array;
+    plateDist: Float32Array;
+    boundary: Float32Array;
+  };
+  let checkpointElevation: {
+    elevation: Float32Array;
+    slope: Float32Array;
+    ridge: Float32Array;
+    ridgeMask: Float32Array;
+  };
   let checkpointErosion: { elevation: Float32Array };
 
   // 世界式生成产物（预分配零数组，blank 模式或开关关闭时保持零值）
@@ -207,7 +337,10 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   if (isBlank) {
     // 空白模式：全海域，N 个海洋板块，平坦海底，等待手绘（AC-10.1）
     advance('tectonic');
-    plates = generatePlates(seed, params.plateCount, width, height, 0).map(p => ({ ...p, type: 'ocean' as const }));
+    plates = generatePlates(seed, params.plateCount, width, height, 0).map(p => ({
+      ...p,
+      type: 'ocean' as const,
+    }));
     const assigned = assignPlates(width, height, plates);
     plateId = assigned.plateId;
     plateDist = assigned.plateDist;
@@ -217,14 +350,24 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     for (let i = 0; i < boundary.length; i++) {
       if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + bt.boundaryIntensity[i] * 0.3);
     }
-    checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
+    checkpointTectonic = {
+      plates,
+      plateId: new Float32Array(plateId),
+      plateDist: new Float32Array(plateDist),
+      boundary: new Float32Array(boundary),
+    };
 
     advance('elevation');
     elevation = new Float32Array(size0).fill(params.seaLevel - 0.3);
     slope = new Float32Array(size0);
     ridge = new Float32Array(size0);
     ridgeMask = new Float32Array(size0);
-    checkpointElevation = { elevation: new Float32Array(elevation), slope: new Float32Array(slope), ridge: new Float32Array(ridge), ridgeMask: new Float32Array(ridgeMask) };
+    checkpointElevation = {
+      elevation: new Float32Array(elevation),
+      slope: new Float32Array(slope),
+      ridge: new Float32Array(ridge),
+      ridgeMask: new Float32Array(ridgeMask),
+    };
 
     advance('erosion');
     checkpointErosion = { elevation: new Float32Array(elevation) };
@@ -235,7 +378,12 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     plateId = assigned.plateId;
     plateDist = assigned.plateDist;
     boundary = computeBoundaries(width, height, plateId);
-    const { boundaryType, boundaryIntensity } = computeBoundaryTypes(width, height, plateId, plates);
+    const { boundaryType, boundaryIntensity } = computeBoundaryTypes(
+      width,
+      height,
+      plateId,
+      plates
+    );
     // 转换为 Float32Array 供火山系统使用（Uint8Array→Float32Array）
     boundaryTypeArr = new Float32Array(size0);
     for (let i = 0; i < size0; i++) boundaryTypeArr[i] = boundaryType[i];
@@ -249,24 +397,52 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     for (let i = 0; i < boundary.length; i++) {
       if (boundary[i] > 0) boundary[i] = Math.min(1, 0.5 + boundaryIntensity[i] * 0.3);
     }
-    checkpointTectonic = { plates, plateId: new Float32Array(plateId), plateDist: new Float32Array(plateDist), boundary: new Float32Array(boundary) };
+    checkpointTectonic = {
+      plates,
+      plateId: new Float32Array(plateId),
+      plateDist: new Float32Array(plateDist),
+      boundary: new Float32Array(boundary),
+    };
 
     advance('elevation');
     const elevResult = generateElevation(
-      width, height, seed, plateId, plates, plateDist, tectonicForce,
-      params.noiseType, params.fbmType, params.octaves,
-      params.lacunarity, params.persistence, params.seaLevel,
-      params.mountainFold, params.coastDetail
+      width,
+      height,
+      seed,
+      plateId,
+      plates,
+      plateDist,
+      tectonicForce,
+      params.noiseType,
+      params.fbmType,
+      params.octaves,
+      params.lacunarity,
+      params.persistence,
+      params.seaLevel,
+      params.mountainFold,
+      params.coastDetail
     );
     elevation = elevResult.elevation;
     slope = elevResult.slope;
     ridge = elevResult.ridge;
     ridgeMask = elevResult.ridgeMask;
-    checkpointElevation = { elevation: new Float32Array(elevation), slope: new Float32Array(slope), ridge: new Float32Array(ridge), ridgeMask: new Float32Array(ridgeMask) };
+    checkpointElevation = {
+      elevation: new Float32Array(elevation),
+      slope: new Float32Array(slope),
+      ridge: new Float32Array(ridge),
+      ridgeMask: new Float32Array(ridgeMask),
+    };
 
     advance('erosion');
     if (params.erosionIterations > 0 && params.erosionStrength > 0) {
-      elevation = hydraulicErosion(width, height, elevation, params.erosionIterations, params.erosionStrength, 0.01);
+      elevation = hydraulicErosion(
+        width,
+        height,
+        elevation,
+        params.erosionIterations,
+        params.erosionStrength,
+        0.01
+      );
     }
     checkpointErosion = { elevation: new Float32Array(elevation) };
   }
@@ -281,18 +457,29 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     if (params.enableOceanCurrents !== false) {
       advance('currents');
       const currents = computeOceanCurrents({
-        width, height, elevation, seaLevel: params.seaLevel,
-        coastDist, windDirX: params.windDirX ?? 1, windDirY: params.windDirY ?? 0,
-        rainStrength: params.rainStrength ?? 1, seed,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        coastDist,
+        windDirX: params.windDirX ?? 1,
+        windDirY: params.windDirY ?? 0,
+        rainStrength: params.rainStrength ?? 1,
+        seed,
       });
-      currentVx = currents.vx; currentVy = currents.vy;
-      currentTempDelta = currents.tempDelta; currentSpeed = currents.speed;
+      currentVx = currents.vx;
+      currentVy = currents.vy;
+      currentTempDelta = currents.tempDelta;
+      currentSpeed = currents.speed;
     }
   }
 
   advance('climate');
   // blank 模式：全海域，无陆地 → 气候/湖泊/河流无意义，跳过计算（避免无谓遍历）
-  let temperature: Float32Array, tempZone: Float32Array, moisture: Float32Array, rainfall: Float32Array;
+  let temperature: Float32Array,
+    tempZone: Float32Array,
+    moisture: Float32Array,
+    rainfall: Float32Array;
   let lakes: Float32Array;
   let rivers: River[];
   let riverMask: Float32Array, riverWidth: Float32Array, riverDepth: Float32Array;
@@ -308,8 +495,15 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     riverDepth = new Float32Array(size0);
   } else {
     const climate = computeClimate(
-      width, height, elevation, params.seaLevel, params.tempOffset, params.snowLine,
-      params.windDirX ?? 1, params.windDirY ?? 0, params.rainStrength ?? 1,
+      width,
+      height,
+      elevation,
+      params.seaLevel,
+      params.tempOffset,
+      params.snowLine,
+      params.windDirX ?? 1,
+      params.windDirY ?? 0,
+      params.rainStrength ?? 1,
       // 世界式气候增强（任一开关开启即启用对应项；缺省=全开）
       {
         coastDist,
@@ -318,20 +512,29 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
         enableOceanCurrents: params.enableOceanCurrents !== false,
         enableHadleyEnhancement: params.enableHadleyEnhancement !== false,
         enableMonsoon: params.enableMonsoon !== false,
-      },
+      }
     );
-    temperature = climate.temperature; tempZone = climate.tempZone;
-    moisture = climate.moisture; rainfall = climate.rainfall;
+    temperature = climate.temperature;
+    tempZone = climate.tempZone;
+    moisture = climate.moisture;
+    rainfall = climate.rainfall;
 
     // 动态冰盖 + 冰川侵蚀（侵蚀会就地改写 elevation，故 slope 后续需重算）
     if (params.enableIceSheet !== false) {
       advance('ice');
       const ice = computeIceSheet({
-        width, height, elevation, seaLevel: params.seaLevel,
-        temperature, snowLine: params.snowLine, seed,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        temperature,
+        snowLine: params.snowLine,
+        seed,
       });
-      landIce = ice.landIce; seaIce = ice.seaIce;
-      glacierVx = ice.glacierVx; glacierVy = ice.glacierVy;
+      landIce = ice.landIce;
+      seaIce = ice.seaIce;
+      glacierVx = ice.glacierVx;
+      glacierVy = ice.glacierVy;
       // 冰川侵蚀改写了 elevation，重算 slope 保证下游 terrainRegions 阈值正确
       slope = computeSlope(width, height, elevation);
     }
@@ -341,19 +544,34 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     advance('rivers');
     const riverCount = params.riverCount ?? Math.floor(width * height * 0.0005);
     const riverResult = generateRivers(
-      width, height, elevation, moisture, params.seaLevel, riverCount, seed
+      width,
+      height,
+      elevation,
+      moisture,
+      params.seaLevel,
+      riverCount,
+      seed
     );
-    rivers = riverResult.rivers; riverMask = riverResult.riverMask;
-    riverWidth = riverResult.riverWidth; riverDepth = riverResult.riverDepth;
+    rivers = riverResult.rivers;
+    riverMask = riverResult.riverMask;
+    riverWidth = riverResult.riverWidth;
+    riverDepth = riverResult.riverDepth;
 
     // ── v2 复杂度增强：生物群系 / 流域 / 火山 / 季节 ──
     if (params.enableAdvancedBiomes !== false) {
       advance('biomes');
       const biomes = classifyBiomes({
-        elevation, temperature, rainfall, moisture,
-        seaLevel: params.seaLevel, snowLine: params.snowLine,
-        coastDist, riverMask, lakeMask: lakes,
-        landIce, seaIce,
+        elevation,
+        temperature,
+        rainfall,
+        moisture,
+        seaLevel: params.seaLevel,
+        snowLine: params.snowLine,
+        coastDist,
+        riverMask,
+        lakeMask: lakes,
+        landIce,
+        seaIce,
       });
       biomeId = biomes.biomeId;
       biomeNormalized = biomes.biomeNormalized;
@@ -362,8 +580,12 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     if (params.enableWatershed !== false) {
       advance('watershed');
       const ws = computeWatershed({
-        width, height, elevation, seaLevel: params.seaLevel,
-        riverMask, lakeMask: lakes,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        riverMask,
+        lakeMask: lakes,
         minBasinArea: 30,
       });
       basinId = ws.basinId;
@@ -374,10 +596,17 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     if (params.enableVolcanism !== false) {
       advance('volcanism');
       const volc = computeVolcanism({
-        width, height, elevation, seaLevel: params.seaLevel,
-        plateId, plates,
-        boundary, boundaryType: boundaryTypeArr,
-        hotspotCount: 3, intensity: 1, seed,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        plateId,
+        plates,
+        boundary,
+        boundaryType: boundaryTypeArr,
+        hotspotCount: 3,
+        intensity: 1,
+        seed,
       });
       volcanoProb = volc.volcanoProb;
       calderaMask = volc.calderaMask;
@@ -388,17 +617,42 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     if (params.enableSeasons !== false) {
       advance('seasons');
       const seas = computeSeasonalVariation({
-        width, height, elevation, seaLevel: params.seaLevel,
-        temperature, rainfall, coastDist,
+        width,
+        height,
+        elevation,
+        seaLevel: params.seaLevel,
+        temperature,
+        rainfall,
+        coastDist,
       });
       seasonTex = seas.seasonTex;
     }
   }
-  const checkpointClimate = { temperature: new Float32Array(temperature), tempZone: new Float32Array(tempZone), moisture: new Float32Array(moisture), rainfall: new Float32Array(rainfall) };
-  const checkpointRivers = { rivers, riverMask: new Float32Array(riverMask), riverWidth: new Float32Array(riverWidth), riverDepth: new Float32Array(riverDepth), lakes: new Float32Array(lakes) };
+  const checkpointClimate = {
+    temperature: new Float32Array(temperature),
+    tempZone: new Float32Array(tempZone),
+    moisture: new Float32Array(moisture),
+    rainfall: new Float32Array(rainfall),
+  };
+  const checkpointRivers = {
+    rivers,
+    riverMask: new Float32Array(riverMask),
+    riverWidth: new Float32Array(riverWidth),
+    riverDepth: new Float32Array(riverDepth),
+    lakes: new Float32Array(lakes),
+  };
 
   advance('regions');
-  const regions = analyzeRegions(width, height, elevation, moisture, temperature, plateId, params.seaLevel, seed);
+  const regions = analyzeRegions(
+    width,
+    height,
+    elevation,
+    moisture,
+    temperature,
+    plateId,
+    params.seaLevel,
+    seed
+  );
 
   advance('naming');
   // 计算每个板块的质心（用于命名方位词 + 名称叠加层定位）
@@ -416,15 +670,22 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   const nameablePlates: NameablePlate[] = plates.map((p, i) => ({
     plateId: i,
     type: p.type === 'continent' ? 'continent' : 'ocean',
-    centroid: plateCount[i] > 0
-      ? [plateSumX[i] / plateCount[i], plateSumY[i] / plateCount[i]]
-      : [width * 0.5, height * 0.5],
+    centroid:
+      plateCount[i] > 0
+        ? [plateSumX[i] / plateCount[i], plateSumY[i] / plateCount[i]]
+        : [width * 0.5, height * 0.5],
   }));
   // 检测地形区连通域并命名（含世界式增强 v2：冰川/三角洲/火山/群岛 + 火山概率场）
   const detectedRegions = detectTerrainRegions(
-    width, height, elevation, slope, moisture, params.seaLevel, params.snowLine,
+    width,
+    height,
+    elevation,
+    slope,
+    moisture,
+    params.seaLevel,
+    params.snowLine,
     30,
-    { landIce, coastDist, riverMask, volcanoProb, biomeId, streamOrder, basinId },
+    { landIce, coastDist, riverMask, volcanoProb, biomeId, streamOrder, basinId }
   );
   const nameableRegions: NameableRegion[] = detectedRegions.map(r => ({
     key: r.key,
@@ -513,7 +774,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     const bInfo = getBiomeInfo(bId);
     biomeTex[i4 + 0] = bId * inv31;
     biomeTex[i4 + 1] = bInfo.isLand ? 1 : 0;
-    biomeTex[i4 + 2] = ['X','A','B','C','D','E','M'].indexOf(bInfo.koppen) * inv7;
+    biomeTex[i4 + 2] = ['X', 'A', 'B', 'C', 'D', 'E', 'M'].indexOf(bInfo.koppen) * inv7;
     biomeTex[i4 + 3] = streamOrder[i] * inv7;
 
     // v2 流域纹理 RGBA: R=basinId/65535 G=isDivide B=streamOrder/7 A=flowDir/255
@@ -528,19 +789,33 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
     volcanismTex[i4 + 0] = volcanoProb[i];
     volcanismTex[i4 + 1] = calderaMask[i] * 0.5;
     // 热点强度：取最近热点（简化为全局最大值）
-    volcanismTex[i4 + 2] = hotspots.length > 0
-      ? Math.max(...hotspots.map(h => h.strength)) * 0.5
-      : 0;
+    volcanismTex[i4 + 2] =
+      hotspots.length > 0 ? Math.max(...hotspots.map(h => h.strength)) * 0.5 : 0;
     volcanismTex[i4 + 3] = 0; // 具体火山位置通过 volcanoSites 列表传给 UI
   }
 
   const mapData: MapData = {
-    width, height,
-    plateTex, elevTex, moistTex, riverTex, tempTex,
-    currentTex, iceTex, coastDist,
-    biomeTex, watershedTex, volcanismTex, seasonTex,
-    volcanoSites, hotspots,
-    plates, regions, rivers, names, seed,
+    width,
+    height,
+    plateTex,
+    elevTex,
+    moistTex,
+    riverTex,
+    tempTex,
+    currentTex,
+    iceTex,
+    coastDist,
+    biomeTex,
+    watershedTex,
+    volcanismTex,
+    seasonTex,
+    volcanoSites,
+    hotspots,
+    plates,
+    regions,
+    rivers,
+    names,
+    seed,
   };
 
   return {

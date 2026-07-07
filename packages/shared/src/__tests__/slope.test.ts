@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { computeSlope } from '../slope.js';
 
 describe('Slope 坡度计算', () => {
-  const W = 64, H = 64;
+  const W = 64,
+    H = 64;
 
   describe('computeSlope 坡度场', () => {
     it('平坦区域坡度为零', () => {

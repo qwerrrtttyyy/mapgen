@@ -1,8 +1,3 @@
-/**
- * Mapgen Manager - Core Manager
- * Implements install, CRUD, and version management for mapgen configs
- */
-
 import { randomUUID } from 'node:crypto';
 import { Storage } from './storage.js';
 import type {
@@ -12,26 +7,21 @@ import type {
   UpdateConfigOptions,
   ListFilter,
   VersionEntry,
+  ManagerState,
 } from './types.js';
 
 export class MapgenManager {
   private storage: Storage;
+  private stateCache: ManagerState | null = null;
 
   constructor(rootDir?: string) {
     this.storage = new Storage(rootDir);
   }
 
-  /** Get the .mapgen directory path */
   get dir(): string {
     return this.storage.dir;
   }
 
-  // ─── Installation ───────────────────────────────────────────
-
-  /**
-   * Initialize a .mapgen directory in the current or specified directory.
-   * Creates the directory structure and initial state file.
-   */
   async init(): Promise<CommandResult> {
     const alreadyExists = await this.storage.exists();
     if (alreadyExists) {
@@ -42,39 +32,37 @@ export class MapgenManager {
     }
 
     await this.storage.init();
+    this.invalidateCache();
     return {
       success: true,
       message: `Initialized .mapgen directory at ${this.dir}`,
     };
   }
 
-  /**
-   * Install/update mapgen. Ensures .mapgen directory exists and is up to date.
-   */
   async install(): Promise<CommandResult> {
     const exists = await this.storage.exists();
     if (!exists) {
       await this.storage.init();
+      this.invalidateCache();
       return {
         success: true,
         message: `Installed mapgen at ${this.dir}`,
       };
     }
 
-    // Validate and repair state if needed
     try {
-      const state = await this.storage.readState();
+      const state = await this.readState();
       if (state.schemaVersion < 1) {
         state.schemaVersion = 1;
-        await this.storage.writeState(state);
+        await this.writeState(state);
       }
       return {
         success: true,
         message: `mapgen is up to date at ${this.dir}`,
       };
     } catch {
-      // State file is corrupted, reinitialize
       await this.storage.init();
+      this.invalidateCache();
       return {
         success: true,
         message: `Repaired mapgen installation at ${this.dir}`,
@@ -82,26 +70,17 @@ export class MapgenManager {
     }
   }
 
-  /**
-   * Check if mapgen is installed in the current directory.
-   */
   async isInstalled(): Promise<boolean> {
     return this.storage.exists();
   }
 
-  // ─── CRUD Operations ───────────────────────────────────────
-
-  /**
-   * Create a new mapgen configuration.
-   */
   async createConfig(options: CreateConfigOptions): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
+    const state = await this.readState();
     const id = this.generateId(options.name);
 
-    // Check for duplicate name
-    if (state.configs.some(c => c.name === options.name)) {
+    if (this.findConfigByName(state, options.name)) {
       return {
         success: false,
         message: `Config "${options.name}" already exists. Use "mapgen update" to modify it.`,
@@ -121,7 +100,7 @@ export class MapgenManager {
     };
 
     state.configs.push(config);
-    await this.storage.writeState(state);
+    await this.writeState(state);
     await this.storage.writeConfigFile(id, config);
 
     return {
@@ -131,14 +110,11 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Read a single config by name or id.
-   */
   async readConfig(nameOrId: string): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
-    const config = state.configs.find(c => c.name === nameOrId || c.id === nameOrId);
+    const state = await this.readState();
+    const config = this.findConfig(state, nameOrId);
 
     if (!config) {
       return {
@@ -154,16 +130,12 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * List all configs, optionally filtered.
-   */
   async listConfigs(filter?: ListFilter): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
+    const state = await this.readState();
     let configs = [...state.configs];
 
-    // Apply filters
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       configs = configs.filter(
@@ -175,17 +147,9 @@ export class MapgenManager {
       configs = configs.filter(c => c.version === filter.version);
     }
 
-    // Sort
     const sortBy = filter?.sortBy ?? 'updatedAt';
     const sortDir = filter?.sortDir ?? 'desc';
-    configs.sort((a, b) => {
-      const av = a[sortBy];
-      const bv = b[sortBy];
-      if (typeof av === 'string' && typeof bv === 'string') {
-        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-      }
-      return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
-    });
+    configs.sort((a, b) => this.sortConfigs(a, b, sortBy, sortDir));
 
     return {
       success: true,
@@ -194,14 +158,11 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Update an existing config by name or id.
-   */
   async updateConfig(nameOrId: string, updates: UpdateConfigOptions): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
-    const idx = state.configs.findIndex(c => c.name === nameOrId || c.id === nameOrId);
+    const state = await this.readState();
+    const idx = this.findConfigIndex(state, nameOrId);
 
     if (idx === -1) {
       return {
@@ -212,9 +173,8 @@ export class MapgenManager {
 
     const config = state.configs[idx];
 
-    // Check name uniqueness if renaming
     if (updates.name && updates.name !== config.name) {
-      if (state.configs.some(c => c.name === updates.name && c.id !== config.id)) {
+      if (this.findConfigByName(state, updates.name, config.id)) {
         return {
           success: false,
           message: `Config "${updates.name}" already exists.`,
@@ -238,7 +198,7 @@ export class MapgenManager {
     config.updatedAt = Date.now();
     state.configs[idx] = config;
 
-    await this.storage.writeState(state);
+    await this.writeState(state);
     await this.storage.writeConfigFile(config.id, config);
 
     return {
@@ -248,14 +208,11 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Delete a config by name or id.
-   */
   async deleteConfig(nameOrId: string): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
-    const idx = state.configs.findIndex(c => c.name === nameOrId || c.id === nameOrId);
+    const state = await this.readState();
+    const idx = this.findConfigIndex(state, nameOrId);
 
     if (idx === -1) {
       return {
@@ -267,7 +224,7 @@ export class MapgenManager {
     const config = state.configs[idx];
     state.configs.splice(idx, 1);
 
-    await this.storage.writeState(state);
+    await this.writeState(state);
 
     try {
       await this.storage.deleteConfigFile(config.id);
@@ -281,15 +238,10 @@ export class MapgenManager {
     };
   }
 
-  // ─── Version Management ─────────────────────────────────────
-
-  /**
-   * List all versions.
-   */
   async listVersions(): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
+    const state = await this.readState();
     return {
       success: true,
       message: `Current version: ${state.versions.current}`,
@@ -297,15 +249,12 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Create a new version snapshot.
-   */
   async createVersion(tag: string, description?: string): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
+    const state = await this.readState();
 
-    if (state.versions.versions.some(v => v.tag === tag)) {
+    if (this.findVersion(state, tag)) {
       return {
         success: false,
         message: `Version "${tag}" already exists.`,
@@ -322,7 +271,7 @@ export class MapgenManager {
     state.versions.versions.push(entry);
     state.versions.current = tag;
 
-    await this.storage.writeState(state);
+    await this.writeState(state);
     await this.storage.writeVersions(state.versions);
 
     return {
@@ -332,14 +281,11 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Switch to an existing version.
-   */
   async useVersion(tag: string): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
-    const entry = state.versions.versions.find(v => v.tag === tag);
+    const state = await this.readState();
+    const entry = this.findVersion(state, tag);
 
     if (!entry) {
       return {
@@ -349,7 +295,7 @@ export class MapgenManager {
     }
 
     state.versions.current = tag;
-    await this.storage.writeState(state);
+    await this.writeState(state);
     await this.storage.writeVersions(state.versions);
 
     return {
@@ -358,13 +304,10 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Delete a version (cannot delete current version).
-   */
   async deleteVersion(tag: string): Promise<CommandResult> {
     await this.ensureInstalled();
 
-    const state = await this.storage.readState();
+    const state = await this.readState();
 
     if (tag === state.versions.current) {
       return {
@@ -382,7 +325,7 @@ export class MapgenManager {
     }
 
     state.versions.versions.splice(idx, 1);
-    await this.storage.writeState(state);
+    await this.writeState(state);
     await this.storage.writeVersions(state.versions);
 
     return {
@@ -391,20 +334,64 @@ export class MapgenManager {
     };
   }
 
-  /**
-   * Get the current version tag.
-   */
   async getCurrentVersion(): Promise<string> {
-    const state = await this.storage.readState();
+    const state = await this.readState();
     return state.versions.current;
   }
-
-  // ─── Internal ───────────────────────────────────────────────
 
   private async ensureInstalled(): Promise<void> {
     if (!(await this.storage.exists())) {
       await this.storage.init();
+      this.invalidateCache();
     }
+  }
+
+  private async readState(): Promise<ManagerState> {
+    if (this.stateCache) {
+      return this.stateCache;
+    }
+    const state = await this.storage.readState();
+    this.stateCache = state;
+    return state;
+  }
+
+  private async writeState(state: ManagerState): Promise<void> {
+    await this.storage.writeState(state);
+    this.stateCache = state;
+  }
+
+  private invalidateCache(): void {
+    this.stateCache = null;
+  }
+
+  private findConfig(state: ManagerState, nameOrId: string): MapgenConfig | undefined {
+    return state.configs.find(c => c.name === nameOrId || c.id === nameOrId);
+  }
+
+  private findConfigIndex(state: ManagerState, nameOrId: string): number {
+    return state.configs.findIndex(c => c.name === nameOrId || c.id === nameOrId);
+  }
+
+  private findConfigByName(state: ManagerState, name: string, excludeId?: string): boolean {
+    return state.configs.some(c => c.name === name && c.id !== excludeId);
+  }
+
+  private findVersion(state: ManagerState, tag: string): VersionEntry | undefined {
+    return state.versions.versions.find(v => v.tag === tag);
+  }
+
+  private sortConfigs(
+    a: MapgenConfig,
+    b: MapgenConfig,
+    sortBy: ListFilter['sortBy'],
+    sortDir: ListFilter['sortDir']
+  ): number {
+    const av = a[sortBy ?? 'updatedAt'];
+    const bv = b[sortBy ?? 'updatedAt'];
+    if (typeof av === 'string' && typeof bv === 'string') {
+      return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    return sortDir === 'asc' ? (av as number) - (bv as number) : (bv as number) - (av as number);
   }
 
   private generateId(name: string): string {

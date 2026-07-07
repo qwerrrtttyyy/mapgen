@@ -26,7 +26,7 @@ export const LAND_RIDGED_WEIGHT = 0.12;
 export const LAND_DETAIL_WEIGHT = 0.14;
 
 /** FBM 海洋 standard 噪声权重 */
-export const OCEAN_DETAIL_WEIGHT = 0.10;
+export const OCEAN_DETAIL_WEIGHT = 0.1;
 
 /** 山脊场激活阈值（ridge > threshold 且 elev > seaLevel） */
 export const RIDGE_ACTIVATION_THRESHOLD = 0.55;

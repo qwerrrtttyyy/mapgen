@@ -9,7 +9,6 @@
 
 import type { MapData } from '@mapgen/core';
 import type { UIParams } from '../core/appState.js';
-import { state } from '../core/appState.js';
 import { logger } from '../core/logger.js';
 
 // ── 常量 ──────────────────────────────────────────────────
@@ -24,15 +23,15 @@ export type ExportScale = 1 | 2 | 4;
 export interface ExportOptions {
   format: ExportFormat;
   scale: ExportScale;
-  quality?: number;      // JPEG/WebP 质量 [0, 1]，默认 0.92
-  includeOverlays?: boolean;  // 是否包含 UI 叠加层（边界、河流等），默认 true
-  filename?: string;     // 自定义文件名（不含扩展名）
+  quality?: number; // JPEG/WebP 质量 [0, 1]，默认 0.92
+  includeOverlays?: boolean; // 是否包含 UI 叠加层（边界、河流等），默认 true
+  filename?: string; // 自定义文件名（不含扩展名）
 }
 
 /** 数据导出选项 */
 export interface ExportDataOptions {
-  includeParams?: boolean;     // 包含生成参数，默认 true
-  includeMetadata?: boolean;   // 包含元数据（尺寸、种子、时间戳），默认 true
+  includeParams?: boolean; // 包含生成参数，默认 true
+  includeMetadata?: boolean; // 包含元数据（尺寸、种子、时间戳），默认 true
   includeTextureSummary?: boolean; // 包含纹理统计摘要，默认 false（体积大）
   filename?: string;
 }
@@ -41,7 +40,7 @@ export interface ExportDataOptions {
 export interface ExportResult {
   success: boolean;
   filename?: string;
-  size?: number;       // 字节数
+  size?: number; // 字节数
   error?: string;
 }
 
@@ -111,7 +110,10 @@ function computeLandPercent(elevTex: Float32Array, seaLevel: number): number {
 }
 
 function computeTextureStats(data: Float32Array, name: string, channels: number): TextureSummary {
-  let min = Infinity, max = -Infinity, sum = 0, nonZero = 0;
+  let min = Infinity,
+    max = -Infinity,
+    sum = 0,
+    nonZero = 0;
   const len = data.length;
   for (let i = 0; i < len; i++) {
     const v = data[i];
@@ -146,12 +148,7 @@ export class ExportManager {
    * 导出当前渲染画布为图片
    */
   async exportImage(options: Partial<ExportOptions> = {}): Promise<ExportResult> {
-    const {
-      format = 'png',
-      scale = 1,
-      quality,
-      filename,
-    } = options;
+    const { format = 'png', scale = 1, quality, filename } = options;
 
     if (!this.canvas) {
       return { success: false, error: '画布未初始化' };
@@ -188,9 +185,7 @@ export class ExportManager {
       }
 
       const ext = FORMAT_EXT[format];
-      const fname = filename
-        ? `${filename}.${ext}`
-        : generateFilename('mapgen', ext);
+      const fname = filename ? `${filename}.${ext}` : generateFilename('mapgen', ext);
 
       this.downloadBlob(blob, fname);
 
@@ -214,7 +209,7 @@ export class ExportManager {
   exportData(
     mapData: MapData,
     params: UIParams,
-    options: Partial<ExportDataOptions> = {},
+    options: Partial<ExportDataOptions> = {}
   ): ExportResult {
     const {
       includeParams = true,
@@ -264,9 +259,7 @@ export class ExportManager {
 
       const json = JSON.stringify(payload, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
-      const fname = filename
-        ? `${filename}.json`
-        : generateFilename('mapgen-data', 'json');
+      const fname = filename ? `${filename}.json` : generateFilename('mapgen-data', 'json');
 
       this.downloadBlob(blob, fname);
 
@@ -287,16 +280,12 @@ export class ExportManager {
   private canvasToBlob(
     canvas: HTMLCanvasElement,
     format: ExportFormat,
-    quality?: number,
+    quality?: number
   ): Promise<Blob | null> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const mime = FORMAT_MIME[format];
       const q = quality ?? DEFAULT_QUALITY[format];
-      canvas.toBlob(
-        (blob) => resolve(blob),
-        mime,
-        format === 'png' ? undefined : q,
-      );
+      canvas.toBlob(blob => resolve(blob), mime, format === 'png' ? undefined : q);
     });
   }
 

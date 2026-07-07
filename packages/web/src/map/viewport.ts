@@ -23,8 +23,8 @@ export function clientToMapUv(
   clientX: number,
   clientY: number,
   rect: DOMRect,
-  mapW: number,
-  mapH: number
+  _mapW: number,
+  _mapH: number
 ): { nx: number; ny: number } | null {
   const cx = clientX - rect.left;
   const cy = clientY - rect.top;
@@ -42,7 +42,7 @@ export function mapUvToClient(
   mapW: number,
   mapH: number
 ): [number, number] {
-  const { baseScale, dW, dH, centerX, centerY } = getViewport(rect, mapW, mapH);
+  const { dW, dH, centerX, centerY } = getViewport(rect, mapW, mapH);
   const { zoom, panX, panY } = state;
   const mapV = 1 - ny;
   const sx = centerX + (nx - 0.5 + panX) * zoom * dW;

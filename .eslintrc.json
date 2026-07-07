@@ -39,6 +39,7 @@
     "@typescript-eslint/require-await": "warn",
     "@typescript-eslint/no-misused-promises": "warn",
     "@typescript-eslint/no-floating-promises": "warn",
+    "@typescript-eslint/no-redundant-type-constituents": "warn",
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "prefer-const": "error",
     "no-var": "error"

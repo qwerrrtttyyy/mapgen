@@ -4,11 +4,14 @@
  * 支持图片导出（格式/分辨率）和数据导出（JSON）
  */
 
-import { exportManager, type ExportFormat, type ExportScale, type ExportResult } from './exportManager.js';
+import {
+  exportManager,
+  type ExportFormat,
+  type ExportScale,
+  type ExportResult,
+} from './exportManager.js';
 import type { MapData } from '@mapgen/core';
 import type { UIParams } from '../core/appState.js';
-import { bus } from '../core/eventBus.js';
-import { logger } from '../core/logger.js';
 
 interface DialogElements {
   overlay: HTMLDivElement;
@@ -147,10 +150,10 @@ export class ExportDialog {
   private bindEvents(els: DialogElements): void {
     // 关闭
     els.btnClose.addEventListener('click', () => this.close());
-    els.overlay.addEventListener('click', (e) => {
+    els.overlay.addEventListener('click', e => {
       if (e.target === els.overlay) this.close();
     });
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && this.isOpen) this.close();
     });
 
@@ -193,7 +196,9 @@ export class ExportDialog {
     if (!this.els) return;
 
     // 从全局状态获取数据
-    const mapData = (window as unknown as { __mapgen?: { state: { mapData: MapData | null; params: UIParams } } }).__mapgen?.state;
+    const mapData = (
+      window as unknown as { __mapgen?: { state: { mapData: MapData | null; params: UIParams } } }
+    ).__mapgen?.state;
     if (!mapData?.mapData) {
       this.setStatus('⚠️ 请先生成地图');
       return;
