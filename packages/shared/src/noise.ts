@@ -1,4 +1,4 @@
-import { lerp, clamp } from './utils.js';
+import { lerp } from './utils.js';
 
 const GRAD3: number[][] = [
   [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],

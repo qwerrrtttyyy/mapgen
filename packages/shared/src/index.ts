@@ -158,7 +158,7 @@ export function generateMap(params: MapParams, onProgress?: ProgressCallback): {
   let progress = 0;
   const phaseMap = new Map(phases.map(p => [p.name, p.weight / totalWeight]));
 
-  function advance(phaseName: string) {
+  function advance(phaseName: string): void {
     const w = phaseMap.get(phaseName);
     if (w) progress += w;
     if (onProgress) onProgress(progress, phaseName);

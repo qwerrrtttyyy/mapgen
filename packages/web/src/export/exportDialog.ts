@@ -7,8 +7,6 @@
 import { exportManager, type ExportFormat, type ExportScale, type ExportResult } from './exportManager.js';
 import type { MapData } from '@mapgen/core';
 import type { UIParams } from '../core/appState.js';
-import { bus } from '../core/eventBus.js';
-import { logger } from '../core/logger.js';
 
 interface DialogElements {
   overlay: HTMLDivElement;

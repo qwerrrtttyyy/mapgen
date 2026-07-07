@@ -349,7 +349,6 @@ export class P5Renderer {
           g = 60 + shallow * 80;
           b = 120 + shallow * 60 + depth * 40;
         } else {
-          const land = (elevation - seaLevel) / (1.0 - seaLevel);
           const sl = Math.min(1, slope * 3);
           const shade = 1 - sl * 0.3;
 

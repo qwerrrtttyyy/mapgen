@@ -1,9 +1,8 @@
 import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
-import { setParam, selectPlate } from '../core/actions.js';
+import { setParam } from '../core/actions.js';
 import { state } from '../core/appState.js';
 import { clientToMapUv } from './viewport.js';
-import type { MapPicker, PickerResult } from './picker.js';
 
 export type LaserMode = 'pointer' | 'selection';
 
