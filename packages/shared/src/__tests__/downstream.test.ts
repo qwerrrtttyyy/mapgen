@@ -4,7 +4,8 @@ import type { DownstreamInput, DownstreamResult } from '../downstream.js';
 import type { MapData } from '../index.js';
 
 describe('Downstream 下游管线', () => {
-  const W = 32, H = 32;
+  const W = 32,
+    H = 32;
   const size = W * H;
 
   function makeBaseInput(): DownstreamInput {

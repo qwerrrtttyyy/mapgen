@@ -1,72 +1,61 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../core/logger.js', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+// Mock DOM APIs
+const mockToBlob = vi.fn((cb: (blob: Blob | null) => void, _type?: string, _quality?: number) => {
+  cb(new Blob(['test'], { type: 'image/png' }));
+});
 
-vi.mock('../../core/appState.js', () => ({
-  state: {
-    params: {
-      seedStr: 'test',
-      seaLevel: 0.45,
-      mapWidth: 256,
-      mapHeight: 256,
-    },
-  },
-}));
+const mockCanvas = {
+  width: 512,
+  height: 512,
+  toBlob: mockToBlob,
+  getContext: vi.fn(() => ({
+    drawImage: vi.fn(),
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+  })),
+} as unknown as HTMLCanvasElement;
+
+// Mock document.createElement for canvas
+const originalCreateElement = document.createElement.bind(document);
+vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+  if (tag === 'canvas') {
+    return mockCanvas as unknown as HTMLCanvasElement;
+  }
+  if (tag === 'a') {
+    return {
+      href: '',
+      download: '',
+      click: vi.fn(),
+    } as unknown as HTMLAnchorElement;
+  }
+  return originalCreateElement(tag);
+});
+
+// Mock URL
+vi.stubGlobal('URL', {
+  createObjectURL: vi.fn(() => 'blob:test'),
+  revokeObjectURL: vi.fn(),
+});
+
+// Mock document.body
+vi.spyOn(document.body, 'appendChild').mockImplementation(() => null as never);
+vi.spyOn(document.body, 'removeChild').mockImplementation(() => null as never);
 
 import { ExportManager } from '../export/exportManager.js';
 
 describe('ExportManager', () => {
   let manager: ExportManager;
-  let mockCanvas: HTMLCanvasElement;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    const mockToBlob = vi.fn((cb: (blob: Blob | null) => void) => {
-      cb(new Blob(['test'], { type: 'image/png' }));
-    });
-    const mockGetContext = vi.fn(() => ({
-      drawImage: vi.fn(),
-      imageSmoothingEnabled: true,
-      imageSmoothingQuality: 'high',
-    }));
-
-    mockCanvas = {
-      width: 512,
-      height: 512,
-      toBlob: mockToBlob,
-      getContext: mockGetContext,
-    } as unknown as HTMLCanvasElement;
-
-    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
-      if (tag === 'canvas') return mockCanvas as unknown as HTMLElement;
-      if (tag === 'a') {
-        return { href: '', download: '', click: vi.fn() } as unknown as HTMLElement;
-      }
-      return document.createElement(tag);
-    });
-
-    vi.spyOn(document.body, 'appendChild').mockImplementation(() => null as never);
-    vi.spyOn(document.body, 'removeChild').mockImplementation(() => null as never);
-
-    vi.stubGlobal('URL', {
-      createObjectURL: vi.fn(() => 'blob:test'),
-      revokeObjectURL: vi.fn(),
-    });
-
     manager = new ExportManager();
+    vi.clearAllMocks();
   });
 
   describe('setCanvas', () => {
     it('should store canvas reference', () => {
       manager.setCanvas(mockCanvas);
+      // No direct way to verify, but subsequent export calls should work
       expect(true).toBe(true);
     });
   });
@@ -128,12 +117,12 @@ describe('ExportManager', () => {
       moistTex: new Float32Array(256 * 256 * 4),
       tempTex: new Float32Array(256 * 256 * 4),
       riverTex: new Float32Array(256 * 256 * 4),
-      plates: [{ id: 0, type: 'continent' as const, centroid: [0, 0] as [number, number], velocity: [0, 0] as [number, number], area: 0 }],
-      rivers: [],
-      regions: [],
+      plates: [{ id: 0, type: 'continent' }],
+      rivers: [{ id: 0 }],
+      regions: [{ id: 0 }],
       names: { plates: [], regions: [] },
       seed: 12345,
-    };
+    } as never;
 
     const mockParams = {
       seedStr: 'test',

@@ -18,10 +18,21 @@ function getErosionOffsets(width: number): Int32Array {
 }
 
 export function generateElevation(
-  width: number, height: number, seed: number, plateId: Float32Array, plates: Plate[],
-  plateDist: Float32Array, tectonicForce: Float32Array,
-  noiseType: NoiseType, fbmType: FbmType, octaves: number, lacunarity: number, persistence: number, seaLevel: number,
-  mountainFold: number, coastDetail: number
+  width: number,
+  height: number,
+  seed: number,
+  plateId: Float32Array,
+  plates: Plate[],
+  plateDist: Float32Array,
+  tectonicForce: Float32Array,
+  noiseType: NoiseType,
+  fbmType: FbmType,
+  octaves: number,
+  lacunarity: number,
+  persistence: number,
+  seaLevel: number,
+  mountainFold: number,
+  coastDetail: number
 ): { elevation: Float32Array; slope: Float32Array; ridge: Float32Array; ridgeMask: Float32Array } {
   const size = width * height;
   const elevation = new Float32Array(size);
@@ -73,15 +84,36 @@ export function generateElevation(
       // ── 2. 多尺度地形噪声（自然 FBM：谱权重+域形变+各向异性）──
       // 陆地：ridged（山脊）混合 standard（细节），海洋：standard 平滑
       if (isContinental) {
-        const ridged = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'ridged',
-          { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 });
-        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
-          { warpStrength: 0.4 });
+        const ridged = noise.fbmNatural(
+          nx * 5,
+          ny * 5,
+          octaves,
+          lacunarity,
+          persistence,
+          'ridged',
+          { warpStrength: 0.4, ridgeAngle: 0, anisotropy: 0.5 }
+        );
+        const detail = noise.fbmNatural(
+          nx * 5,
+          ny * 5,
+          octaves,
+          lacunarity,
+          persistence,
+          'standard',
+          { warpStrength: 0.4 }
+        );
         elev += ridged * 0.12 + detail * 0.14;
       } else {
-        const detail = noise.fbmNatural(nx * 5, ny * 5, octaves, lacunarity, persistence, 'standard',
-          { warpStrength: 0.3 });
-        elev += detail * 0.10;
+        const detail = noise.fbmNatural(
+          nx * 5,
+          ny * 5,
+          octaves,
+          lacunarity,
+          persistence,
+          'standard',
+          { warpStrength: 0.3 }
+        );
+        elev += detail * 0.1;
       }
 
       // ── 3. 山脊场（用于独立山脊图层）──
@@ -108,11 +140,16 @@ export function generateElevation(
     for (let x = 1; x < width - 1; x++) {
       const idx = y * width + x;
       const pid = plateId[idx];
-      if (plateId[idx - 1] !== pid || plateId[idx + 1] !== pid ||
-          plateId[idx - width] !== pid || plateId[idx + width] !== pid) {
+      if (
+        plateId[idx - 1] !== pid ||
+        plateId[idx + 1] !== pid ||
+        plateId[idx - width] !== pid ||
+        plateId[idx + width] !== pid
+      ) {
         for (let dy = -2; dy <= 2; dy++) {
           for (let dx = -2; dx <= 2; dx++) {
-            const ny = y + dy, nx = x + dx;
+            const ny = y + dy,
+              nx = x + dx;
             if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
               boundaryBand[ny * width + nx] = 1;
             }
@@ -128,7 +165,10 @@ export function generateElevation(
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
-        if (!boundaryBand[idx]) { if (pass === 1) dst[idx] = src[idx]; continue; }
+        if (!boundaryBand[idx]) {
+          if (pass === 1) dst[idx] = src[idx];
+          continue;
+        }
         let sum = src[idx];
         let cnt = 1;
         for (let dy = -2; dy <= 2; dy++) {
@@ -151,7 +191,8 @@ export function generateElevation(
       const idx = y * width + x;
       const tf = tectonicForce[idx];
       if (tf === 0) continue;
-      const nx = x / width, ny = y / height;
+      const nx = x / width,
+        ny = y / height;
       if (tf > 0) {
         let m = tf * mountainFold * 0.8;
         m += (ridgeNoise.fbm(nx * 30, ny * 30, 3, 2, 0.5, 'ridged') - 0.5) * mountainFold * 0.25;
@@ -172,8 +213,12 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 export function hydraulicErosion(
-  width: number, height: number, elevation: Float32Array,
-  iterations: number, strength: number, evaporationRate: number = 0.01
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  iterations: number,
+  strength: number,
+  evaporationRate: number = 0.01
 ): Float32Array {
   const elev = new Float32Array(elevation);
   const size = width * height;
@@ -199,14 +244,54 @@ export function hydraulicErosion(
         const e = elev[idx];
         let minE = e;
         let minDir = -1;
-        const d0 = dirs[0], n0 = idx + d0; if (elev[n0] < minE) { minE = elev[n0]; minDir = 0; }
-        const d1 = dirs[1], n1 = idx + d1; if (elev[n1] < minE) { minE = elev[n1]; minDir = 1; }
-        const d2 = dirs[2], n2 = idx + d2; if (elev[n2] < minE) { minE = elev[n2]; minDir = 2; }
-        const d3 = dirs[3], n3 = idx + d3; if (elev[n3] < minE) { minE = elev[n3]; minDir = 3; }
-        const d4 = dirs[4], n4 = idx + d4; if (elev[n4] < minE) { minE = elev[n4]; minDir = 4; }
-        const d5 = dirs[5], n5 = idx + d5; if (elev[n5] < minE) { minE = elev[n5]; minDir = 5; }
-        const d6 = dirs[6], n6 = idx + d6; if (elev[n6] < minE) { minE = elev[n6]; minDir = 6; }
-        const d7 = dirs[7], n7 = idx + d7; if (elev[n7] < minE) { minE = elev[n7]; minDir = 7; }
+        const d0 = dirs[0],
+          n0 = idx + d0;
+        if (elev[n0] < minE) {
+          minE = elev[n0];
+          minDir = 0;
+        }
+        const d1 = dirs[1],
+          n1 = idx + d1;
+        if (elev[n1] < minE) {
+          minE = elev[n1];
+          minDir = 1;
+        }
+        const d2 = dirs[2],
+          n2 = idx + d2;
+        if (elev[n2] < minE) {
+          minE = elev[n2];
+          minDir = 2;
+        }
+        const d3 = dirs[3],
+          n3 = idx + d3;
+        if (elev[n3] < minE) {
+          minE = elev[n3];
+          minDir = 3;
+        }
+        const d4 = dirs[4],
+          n4 = idx + d4;
+        if (elev[n4] < minE) {
+          minE = elev[n4];
+          minDir = 4;
+        }
+        const d5 = dirs[5],
+          n5 = idx + d5;
+        if (elev[n5] < minE) {
+          minE = elev[n5];
+          minDir = 5;
+        }
+        const d6 = dirs[6],
+          n6 = idx + d6;
+        if (elev[n6] < minE) {
+          minE = elev[n6];
+          minDir = 6;
+        }
+        const d7 = dirs[7],
+          n7 = idx + d7;
+        if (elev[n7] < minE) {
+          minE = elev[n7];
+          minDir = 7;
+        }
 
         if (minDir >= 0) {
           const slp = e - minE;
@@ -242,7 +327,14 @@ export function hydraulicErosion(
   return elev;
 }
 
-export function generateLakes(width: number, height: number, elevation: Float32Array, seaLevel: number, lakeDensity: number, seed: number): Float32Array {
+export function generateLakes(
+  width: number,
+  height: number,
+  elevation: Float32Array,
+  seaLevel: number,
+  lakeDensity: number,
+  seed: number
+): Float32Array {
   const lakes = new Float32Array(width * height);
   const noise = createNoise(seed + 7, 'simplex');
   for (let y = 2; y < height - 2; y++) {
@@ -250,14 +342,15 @@ export function generateLakes(width: number, height: number, elevation: Float32A
       const idx = y * width + x;
       const elev = elevation[idx];
       if (elev > seaLevel && elev < seaLevel + 0.1) {
-        const n = noise.fbm(x / width * 20, y / height * 20, 2, 2, 0.5, 'standard');
+        const n = noise.fbm((x / width) * 20, (y / height) * 20, 2, 2, 0.5, 'standard');
         if (n > 1 - lakeDensity) {
           let isBasin = true;
           for (let dy = -1; dy <= 1 && isBasin; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
               if (dx === 0 && dy === 0) continue;
               if (elevation[(y + dy) * width + (x + dx)] < elev) {
-                isBasin = false; break;
+                isBasin = false;
+                break;
               }
             }
           }
