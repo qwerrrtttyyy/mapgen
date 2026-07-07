@@ -9,9 +9,9 @@
 
 ## 截图
 
-> 📸 **真实截图待补充** — 欢迎运行 `bun run dev` 后截图提交 PR。
+![Material Map Generator](docs/screenshots/main-screenshot.png)
 
-如果你刚生成了一张满意的地图，请截图后通过 PR 替换本节。建议分辨率 1920×1080，保存到 `docs/screenshots/` 目录。
+> 截图来自 v0.0.3-pre 实际运行，使用 Playwright + headless Chromium 自动捕获。如需提交更精美的截图，欢迎运行 `bun run dev` 后保存到 `docs/screenshots/` 并发 PR。
 
 ## Demo
 

@@ -52,7 +52,7 @@
     },
     "packages/shared": {
       "name": "@mapgen/core",
-      "version": "0.0.3",
+      "version": "0.0.3-pre",
       "devDependencies": {
         "typescript": "^5.4.0",
         "vitest": "^1.6.0",
@@ -72,7 +72,7 @@
     },
     "packages/web": {
       "name": "@mapgen/web",
-      "version": "0.0.3",
+      "version": "0.0.3-pre",
       "dependencies": {
         "@mapgen/core": "*",
         "@mapgen/shared-types": "*",
