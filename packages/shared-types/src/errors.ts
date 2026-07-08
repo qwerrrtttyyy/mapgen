@@ -55,8 +55,5 @@ export class MapGenException extends Error {
     super(error.message);
     this.name = 'MapGenException';
     this.mapGenError = error;
-    if (error.cause instanceof Error) {
-      this.cause = error.cause;
-    }
   }
 }
