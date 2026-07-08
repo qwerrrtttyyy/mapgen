@@ -8,6 +8,14 @@ import { state } from '../core/appState.js';
 import { clientToMapUv, mapPixelToClient } from '../map/viewport.js';
 import {
   CommandStack,
+  applySmoothBrush,
+  applyNoiseBrush,
+  applySetElevationBrush,
+  applyRiverDraw,
+  applyLakeDraw,
+  type FalloffMode,
+  type BrushShape,
+  type NoiseBrushParams,
   applyVectorMountain,
   applyVectorPolygon,
   movePlate,
@@ -16,7 +24,7 @@ import {
 
 export type EditorMode =
   'idle' | 'brush' | 'vector-line' | 'vector-poly' | 'drag-plate' | 'annotate';
-export type BrushKind = 'raise' | 'lower' | 'sea' | 'land' | 'plate-paint';
+export type BrushKind = 'raise' | 'lower' | 'sea' | 'land' | 'plate-paint' | 'smooth' | 'noise' | 'set' | 'river' | 'lake';
 
 export interface EditorToolParams {
   brushRadius: number;
@@ -26,6 +34,14 @@ export interface EditorToolParams {
   vectorTarget: VectorTarget;
   vectorMountainHeight: number;
   vectorWidth: number;
+  brushShape: 'circle' | 'square';
+  brushFalloff: 'gaussian' | 'linear' | 'constant';
+  setElevation: number;
+  noiseFrequency: number;
+  noiseAmplitude: number;
+  riverChannelWidth: number;
+  riverChannelDepth: number;
+  lakeDepth: number;
 }
 
 export const DEFAULT_TOOL_PARAMS: EditorToolParams = {
@@ -36,6 +52,14 @@ export const DEFAULT_TOOL_PARAMS: EditorToolParams = {
   vectorTarget: 'land',
   vectorMountainHeight: 0.65,
   vectorWidth: 4,
+  brushShape: 'circle',
+  brushFalloff: 'gaussian',
+  setElevation: 0.2,
+  noiseFrequency: 0.05,
+  noiseAmplitude: 0.3,
+  riverChannelWidth: 4,
+  riverChannelDepth: 0.15,
+  lakeDepth: 0.3,
 };
 
 interface PixelCoord {
@@ -360,6 +384,36 @@ export class EditorController extends Colleague {
               after = before * (1 - fall) + (seaLevel - 0.3) * fall;
               break;
             case 'land':
+            case 'smooth': {
+              // 平滑：3x3 邻域均值
+              let sum = 0, cnt = 0;
+              for (let ny = Math.max(0, yy - 1); ny <= Math.min(md.height - 1, yy + 1); ny++)
+                for (let nx = Math.max(0, xx - 1); nx <= Math.min(md.width - 1, xx + 1); nx++)
+                  { sum += md.elevTex[ny * md.width + nx]; cnt++; }
+              const avg = sum / cnt;
+              after = before + (avg - before) * str * fall;
+              break;
+            }
+            case 'noise': {
+              // 噪声叠加
+              let h = (xx * 374761393 + yy * 668265263 + 42) | 0;
+              h = ((h ^ (h >> 13)) * 1274126177) | 0; h = h ^ (h >> 16);
+              const noise = ((h & 0x7fffffff) / 0x7fffffff - 0.5) * 2 * 0.3;
+              after = before + noise * str * fall;
+              break;
+            }
+            case 'set':
+              after = before + (this.tool.setElevation - before) * str * fall;
+              break;
+            case 'river': {
+              after = before - 0.15 * fall;
+              break;
+            }
+            case 'lake': {
+              const lakeFloor = Math.max(seaLevel - 0.1, before - this.tool.lakeDepth);
+              after = Math.min(before, lakeFloor + (before - lakeFloor) * (1 - fall));
+              break;
+            }
               after = before * (1 - fall) + 0.2 * fall;
               break;
           }
