@@ -17,6 +17,14 @@ export {
   detectTerrainRegions, type DetectedRegion, type TerrainDetectOptions,
   CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon,
   movePlate, recomputePlateGeometry, type BrushTarget, type VectorTarget,
+  applySmoothBrush,
+  applyNoiseBrush,
+  applySetElevationBrush,
+  applyRiverDraw,
+  applyLakeDraw,
+  type FalloffMode,
+  type BrushShape,
+  type NoiseBrushParams,
 } from './editor.js';
 export { computeSlope } from './slope.js';
 export {
