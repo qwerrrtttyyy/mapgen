@@ -1,3 +1,21 @@
+/**
+ * @module editor
+ * 编辑器子系统：地形区检测 + 画笔工具 + 矢量绘制 + 撤销栈
+ *
+ * 功能概览：
+ * - detectTerrainRegions: 地形区自动检测（山脉/高原/盆地/沙漠/森林/平原/冰川/三角洲/火山/群岛）
+ * - applyBrushStroke: 基础画笔（raise/lower/sea/land/plate-paint）
+ * - applySmoothBrush: 平滑画笔（邻域均值滤波）
+ * - applyNoiseBrush: 噪声画笔（叠加 value noise FBM）
+ * - applySetElevationBrush: 绝对高程画笔
+ * - applyRiverDraw: 河流绘制
+ * - applyLakeDraw: 湖泊绘制
+ * - applyVectorMountain: 矢量线→山脉
+ * - applyVectorPolygon: 矢量多边形→海/陆/湖
+ * - CommandStack: 撤销/重做栈（max=50）
+ * - movePlate: 板块拖拽
+ * - recomputePlateGeometry: 板块几何重算
+ */
 // 编辑器子系统：地形区检测 + 编辑命令 + 撤销栈
 // 本文件先实现 detectTerrainRegions（命名系统依赖）；编辑命令/撤销栈在批次 F 补充。
 
@@ -68,11 +86,19 @@ const VOLCANO_MIN_ELEV = 0.75; // 火山最低高程
 const VOLCANO_PROB_THRESHOLD = 0.35; // v2: 火山概率阈值
 const ARCHIPELAGO_MAX_AREA = 50; // 群岛：小岛最大面积
 
-/**
- * 单像素地形分类。
- * 优先级：海洋 → 冰川 → 三角洲 → 火山 → 山脉 → 高原 → 盆地 → 沙漠 → 森林 → 平原
- * 冰川/三角洲/火山需要 options 中的 world-gen 数据，缺省时跳过。
- */
+// classifyTerrain 阈值
+const DELTA_SLOPE_MAX = 0.03;        // 三角洲最大坡度
+const DELTA_ELEV_MAX = 0.08;          // 三角洲最大高程（seaLevel + 此值）
+const VOLCANO_ELEV_MIN = 0.3;         // 火山最低高程（seaLevel + 此值）
+const VOLCANO_SLOPE_FACTOR = 0.7;     // 火山坡度阈值系数（SLOPE_MOUNTAIN * 此值）
+const BASIN_ELEV_MAX = 0.12;          // 盆地最大高程（seaLevel + 此值）
+const BASIN_SLOPE_MAX = 0.02;         // 盆地最大坡度
+const DESERT_MOIST_MAX = 0.3;         // 沙漠最大湿度
+const FOREST_MOIST_MIN = 0.6;         // 森林最小湿度
+const PLATEAU_ELEV_FACTOR = 0.7;      // 高原高程系数（snowLine * 此值）
+const DELTA_COAST_MAX = 10;           // 三角洲距海岸最大像素数
+
+
 function classifyTerrain(
   elev: number,
   slope: number,
@@ -92,8 +118,8 @@ function classifyTerrain(
       cd > 0 &&
       cd < DELTA_COAST_RANGE &&
       opts.riverMask[idx] > DELTA_RIVER_THRESHOLD &&
-      slope < 0.03 &&
-      elev < seaLevel + 0.08
+      slope < DELTA_SLOPE_MAX &&
+      elev < seaLevel + DELTA_ELEV_MAX
     ) {
       return TYPE_IDS.delta;
     }
@@ -102,17 +128,17 @@ function classifyTerrain(
   if (
     opts?.volcanoProb &&
     opts.volcanoProb[idx] > VOLCANO_PROB_THRESHOLD &&
-    elev > seaLevel + 0.3 &&
-    slope > SLOPE_MOUNTAIN * 0.7
+    elev > seaLevel + VOLCANO_ELEV_MIN &&
+    slope > SLOPE_MOUNTAIN * VOLCANO_SLOPE_FACTOR
   ) {
     return TYPE_IDS.volcano;
   }
-  if (elev > snowLine * 0.7 && slope > SLOPE_MOUNTAIN) return TYPE_IDS.mountain;
-  if (elev > snowLine * 0.7 && slope < SLOPE_FLAT) return TYPE_IDS.plateau;
+  if (elev > snowLine * PLATEAU_ELEV_FACTOR && slope > SLOPE_MOUNTAIN) return TYPE_IDS.mountain;
+  if (elev > snowLine * PLATEAU_ELEV_FACTOR && slope < SLOPE_FLAT) return TYPE_IDS.plateau;
   // 盆地：低洼且平坦的谷底
-  if (elev < seaLevel + 0.12 && slope < 0.02) return TYPE_IDS.basin;
-  if (moist < 0.3) return TYPE_IDS.desert;
-  if (moist > 0.6) return TYPE_IDS.forest;
+  if (elev < seaLevel + BASIN_ELEV_MAX && slope < BASIN_SLOPE_MAX) return TYPE_IDS.basin;
+  if (moist < DESERT_MOIST_MAX) return TYPE_IDS.desert;
+  if (moist > FOREST_MOIST_MIN) return TYPE_IDS.forest;
   return TYPE_IDS.plain;
 }
 
@@ -122,6 +148,21 @@ function classifyTerrain(
  *
  * @param minArea 面积小于此值的碎片被丢弃（默认 30 像素）
  * @param options 可选世界式数据（landIce/coastDist/riverMask），启用冰川/三角洲检测
+ */
+/**
+ * 检测地形区（山脉/高原/盆地/沙漠/森林/平原/冰川/三角洲/火山/群岛）
+ * 优先级：海洋 → 冰川 → 三角洲 → 火山 → 山脉 → 高原 → 盆地 → 沙漠 → 森林 → 平原
+ *
+ * @param width - 地图宽度
+ * @param height - 地图高度
+ * @param elevation - 高程场
+ * @param slope - 坡度场
+ * @param moisture - 湿度场
+ * @param seaLevel - 海平面
+ * @param snowLine - 雪线
+ * @param minArea - 最小区域面积（像素）
+ * @param options - 可选世界式生成数据
+ * @returns 检测到的地形区列表
  */
 export function detectTerrainRegions(
   width: number,
@@ -363,6 +404,21 @@ function gaussianFalloff(dist: number, radius: number): number {
  * 返回 Command，redo 已应用（调用方负责压栈）。
  * @param data  elevation 或 plateId 数组
  * @param target  raise/lower 调整高程；sea/land 设定陆海；plate-paint 切换板块
+ */
+/**
+ * 画笔涂刷（raise/lower/sea/land/plate-paint）
+ * 返回 Command，redo 已应用（调用方负责压栈）
+ *
+ * @param width - 地图宽度
+ * @param height - 地图高度
+ * @param data - elevation 或 plateId 数组
+ * @param cx - 画笔中心 X
+ * @param cy - 画笔中心 Y
+ * @param radius - 画笔半径
+ * @param strength - 画笔强度 [0,1]
+ * @param target - 画笔目标类型
+ * @param opts - 可选参数（targetPlateId, seaLevel）
+ * @returns Command 对象（支持 undo/redo）
  */
 export function applyBrushStroke(
   width: number,
@@ -744,6 +800,20 @@ export interface NoiseBrushParams {
 }
 
 // ── 平滑画笔：对区域内像素做均值滤波 ──
+/**
+ * 平滑画笔：3x3 邻域均值滤波，平滑地形棱角
+ *
+ * @param width - 地图宽度
+ * @param height - 地图高度
+ * @param elevation - 高程数组
+ * @param cx - 画笔中心 X
+ * @param cy - 画笔中心 Y
+ * @param radius - 画笔半径
+ * @param strength - 平滑强度 [0,1]
+ * @param shape - 画笔形状（circle/square）
+ * @param falloff - 衰减模式（gaussian/linear/constant）
+ * @returns Command 对象
+ */
 export function applySmoothBrush(
   width: number,
   height: number,
@@ -798,6 +868,21 @@ export function applySmoothBrush(
 }
 
 // ── 噪声画笔：叠加柏林噪声 ──
+/**
+ * 噪声画笔：叠加 value noise FBM，增加自然地形细节
+ *
+ * @param width - 地图宽度
+ * @param height - 地图高度
+ * @param elevation - 高程数组
+ * @param cx - 画笔中心 X
+ * @param cy - 画笔中心 Y
+ * @param radius - 画笔半径
+ * @param strength - 噪声强度 [0,1]
+ * @param params - 噪声参数（frequency, amplitude, octaves, seed）
+ * @param shape - 画笔形状
+ * @param falloff - 衰减模式
+ * @returns Command 对象
+ */
 export function applyNoiseBrush(
   width: number,
   height: number,
@@ -879,6 +964,12 @@ export function applyNoiseBrush(
 }
 
 // ── 绝对高程画笔：设置目标高程值 ──
+/**
+ * 绝对高程画笔：设置目标高程值，适合精确地形雕刻
+ *
+ * @param targetElevation - 目标高程值
+ * @param strength - 混合强度 [0,1]（0=不改变，1=完全设置为目标值）
+ */
 export function applySetElevationBrush(
   width: number,
   height: number,
@@ -923,6 +1014,15 @@ export function applySetElevationBrush(
 }
 
 // ── 河流绘制：沿路径挖出河道 ──
+/**
+ * 河流绘制：沿路径挖出河道，同时修改 elevation/riverMask/riverWidth/riverDepth
+ *
+ * @param points - 路径点列表 [[x,y], ...]
+ * @param channelWidth - 河道宽度（像素）
+ * @param channelDepth - 河道深度（高程差）
+ * @param seaLevel - 海平面
+ * @returns Command 对象
+ */
 export function applyRiverDraw(
   width: number,
   height: number,
@@ -1049,6 +1149,17 @@ export function applyRiverDraw(
 }
 
 // ── 湖泊绘制：在指定位置挖出湖泊 ──
+/**
+ * 湖泊绘制：在指定位置挖掘湖泊盆地
+ *
+ * @param cx - 湖泊中心 X
+ * @param cy - 湖泊中心 Y
+ * @param radius - 湖泊半径
+ * @param depth - 湖泊深度
+ * @param seaLevel - 海平面
+ * @param shape - 画笔形状
+ * @returns Command 对象
+ */
 export function applyLakeDraw(
   width: number,
   height: number,

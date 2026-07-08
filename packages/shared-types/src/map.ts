@@ -1,26 +1,139 @@
-import type {
-  MapData as CoreMapData,
-  Plate as CorePlate,
-  Region as CoreRegion,
-  River as CoreRiver,
-  VolcanoSite as CoreVolcanoSite,
-  Hotspot as CoreHotspot,
-  NamedPlate as CoreNamedPlate,
-  NamedRegion as CoreNamedRegion,
-  NameManifest as CoreNameManifest,
-} from '@mapgen/core';
+/**
+ * @module shared-types/map
+ * 核心数据类型定义（无外部依赖，shared-types 为最底层包）
+ * 注意：这些类型是 shared/src 中同名类型的简化版本，用于序列化/传输。
+ * 运行时类型以 shared/src 为准。
+ */
 
-export type Plate = CorePlate;
-export type Region = CoreRegion;
-export type River = CoreRiver;
-export type VolcanoSite = CoreVolcanoSite;
-export type Hotspot = CoreHotspot;
-export type NamedPlate = CoreNamedPlate;
-export type NamedRegion = CoreNamedRegion;
-export type NameManifest = CoreNameManifest;
+// ── 基础地理实体 ──
 
-export type MapData = CoreMapData;
+/** 板块（与 shared/src/tectonic.ts Plate 兼容） */
+export interface Plate {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  type: 'continent' | 'ocean';
+  color: number[];
+  area: number;
+  boundary: number;
+  growth: number;
+  elevation: number;
+  moisture: number;
+  temperature: number;
+  name: string;
+  selected: boolean;
+}
 
+/** 区域（与 shared/src/regions.ts Region 兼容） */
+export interface Region {
+  id: number;
+  name: string;
+  type: string;
+  area: number;
+  population: number;
+  centerX: number;
+  centerY: number;
+  avgElevation: number;
+  avgMoisture: number;
+  avgTemperature: number;
+  plateId: number;
+  color: number[];
+  selected: boolean;
+}
+
+/** 河流段 */
+export interface RiverSegment {
+  x: number;
+  y: number;
+  width: number;
+  depth: number;
+}
+
+/** 河流（与 shared/src/rivers.ts River 兼容） */
+export interface River {
+  id: number;
+  segments: RiverSegment[];
+  length: number;
+  sourceX: number;
+  sourceY: number;
+  mouthX: number;
+  mouthY: number;
+}
+
+/** 火山位置（与 shared/src/volcanism.ts VolcanoSite 兼容） */
+export interface VolcanoSite {
+  x: number;
+  y: number;
+  kind: 'hotspot' | 'arc' | 'ridge' | 'rift';
+  strength: number;
+  hotspotId?: number;
+}
+
+/** 热点（与 shared/src/volcanism.ts Hotspot 兼容） */
+export interface Hotspot {
+  id: number;
+  x: number;
+  y: number;
+  strength: number;
+}
+
+/** 命名板块 */
+export interface NamedPlate {
+  plateId: number;
+  type: string;
+  name: string;
+  centroid: [number, number];
+}
+
+/** 命名区域 */
+export interface NamedRegion {
+  key: string;
+  type: string;
+  name: string;
+  centroid: [number, number];
+  area: number;
+}
+
+/** 命名结果（与 shared/src/naming.ts NameManifest 兼容） */
+export interface NameManifest {
+  plates: NamedPlate[];
+  regions: NamedRegion[];
+}
+
+// ── 地图数据 ──
+
+/**
+ * 完整地图数据（运行时格式，纹理为 Float32Array）
+ */
+export interface MapData {
+  width: number;
+  height: number;
+  seed: number;
+  plates: Plate[];
+  regions: Region[];
+  rivers: River[];
+  names: NameManifest;
+  plateTex: Float32Array;
+  elevTex: Float32Array;
+  moistTex: Float32Array;
+  riverTex: Float32Array;
+  tempTex: Float32Array;
+  currentTex?: Float32Array;
+  iceTex?: Float32Array;
+  coastDist?: Float32Array;
+  biomeTex?: Float32Array;
+  watershedTex?: Float32Array;
+  volcanismTex?: Float32Array;
+  seasonTex?: Float32Array;
+  volcanoSites?: VolcanoSite[];
+  hotspots?: Hotspot[];
+}
+
+/**
+ * 序列化地图数据（传输格式，纹理为 base64 字符串）
+ */
 export interface SerializedMapData {
   width: number;
   height: number;
