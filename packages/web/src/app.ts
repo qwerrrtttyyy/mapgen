@@ -73,6 +73,10 @@ let dragStartW = 0;
 let dragStartH = 0;
 let namesVisible = true;
 let debugPanel: DebugPanel | null = null;
+let minimapDirty = true;
+
+const MAX_DPR = 1.5;
+const getDpr = () => Math.min(window.devicePixelRatio || 1, MAX_DPR);
 
 function $<T extends HTMLElement = HTMLElement>(id: string): T | null {
   return document.getElementById(id) as T | null;
@@ -99,7 +103,10 @@ function render(): void {
   } else {
     renderer.render();
   }
-  drawMinimap();
+  if (minimapDirty) {
+    drawMinimap();
+    minimapDirty = false;
+  }
 }
 
 function scheduleRender(): void {
@@ -301,7 +308,7 @@ function setGeneratingStatus(generating: boolean, error?: string): void {
     else text.textContent = '就绪';
   }
   if (progOverlay) {
-    progOverlay.classList.toggle('show', generating);
+    progOverlay.classList.toggle('visible', generating);
   }
 }
 
@@ -561,6 +568,7 @@ function bindEventBus(): void {
     setProgress(1, '完成');
     renderer?.uploadMapData(mapData);
     mapInteraction?.setMapData(mapData);
+    minimapDirty = true;
     render();
     const wiStats = $('wi-stats');
     const wiStatsVal = $('wi-stats-val');
@@ -606,6 +614,7 @@ function bindEventBus(): void {
     state.mapData = restored;
     renderer?.uploadMapData(restored);
     mapInteraction?.setMapData(restored);
+    minimapDirty = true;
     render();
     bus.emit('generating.completed', { mapData: restored });
   });
@@ -715,7 +724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     panel?.classList.toggle('panel-open');
   });
   $('btn-checkpoint')?.addEventListener('click', () => {
-    checkpointPopover?.classList.toggle('show');
+    checkpointPopover?.classList.toggle('visible');
   });
   $('btn-theme')?.addEventListener('click', () => {
     const root = document.documentElement;
@@ -995,8 +1004,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   mapInteraction.bindEvents();
 
   const handleResize = () => {
-    if (!renderer) return;
-    renderer.resize(window.innerWidth, window.innerHeight);
+    if (!renderer || !canvas) return;
+    const dpr = getDpr();
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    renderer.resize(w, h);
+    minimapDirty = true;
     render();
   };
   handleResize();

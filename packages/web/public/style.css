@@ -918,6 +918,144 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-high);
 }
 
+/* ── Debug Panel ────────────────────────────────────────────────────────── */
+.debug-panel {
+  display: none;
+  position: fixed;
+  bottom: calc(var(--bottombar-h) + 8px);
+  left: 8px;
+  width: 280px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 150;
+  font-size: var(--text-xs);
+  overflow: hidden;
+}
+.debug-panel.open {
+  display: block;
+}
+.dp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+.dp-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-mid);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.dp-close:hover {
+  background: var(--bg-4);
+  color: var(--text-high);
+}
+.dp-body {
+  padding: var(--sp-2);
+  max-height: 400px;
+  overflow-y: auto;
+}
+.dp-section {
+  margin-bottom: var(--sp-3);
+}
+.dp-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-low);
+  margin-bottom: var(--sp-1);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border);
+}
+.dp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+}
+.dp-label {
+  color: var(--text-mid);
+}
+.dp-value {
+  font-family: var(--font-mono);
+  color: var(--text-high);
+}
+.dp-fps.fps-good { color: var(--success); }
+.dp-fps.fps-medium { color: var(--warn); }
+.dp-fps.fps-bad { color: var(--danger); }
+.dp-check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 3px 0;
+  cursor: pointer;
+  color: var(--text-mid);
+}
+.dp-check input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  accent-color: var(--primary);
+}
+.dp-select {
+  width: 100%;
+  padding: 4px var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-3);
+  color: var(--text-high);
+  font: inherit;
+  font-size: var(--text-xs);
+}
+.dp-btn {
+  width: 100%;
+  padding: var(--sp-1) var(--sp-2);
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-3);
+  color: var(--text-mid);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.dp-btn:hover {
+  background: var(--bg-4);
+  color: var(--text-high);
+}
+.dp-empty {
+  color: var(--text-low);
+  font-style: italic;
+  padding: var(--sp-1) 0;
+}
+.dp-timing-item {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dp-timing-name {
+  color: var(--text-high);
+  font-weight: 500;
+}
+.dp-timing-values {
+  display: flex;
+  gap: var(--sp-2);
+  font-size: 10px;
+  color: var(--text-low);
+  font-family: var(--font-mono);
+}
+
 /* ── Focus ──────────────────────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--primary);
