@@ -40,7 +40,7 @@ const state: EventServiceState = {
 };
 
 /**
- * 触发所有插件的指定钩子（并行执行异步钩子）
+ * 触发所有插件的指定钩子（并行执行异步钩子，用 Promise.allSettled 防止单个插件炸掉全部）
  */
 async function invokeHook<T>(
   hookName: keyof Plugin,
@@ -64,7 +64,12 @@ async function invokeHook<T>(
   }
 
   if (promises.length > 0) {
-    await Promise.all(promises);
+    const results = await Promise.allSettled(promises);
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`[EventService] Plugin "${plugins[i]?.name}" async ${hookName} failed:`, r.reason);
+      }
+    });
   }
 }
 
@@ -171,23 +176,28 @@ export async function emitPipelineError(
 }
 
 /**
- * 触发 plugin:loaded 事件
+ * 通知所有已注册插件有新插件加入
  */
-export async function emitPluginLoaded(plugin: Plugin): Promise<void> {
+function notifyPluginLoaded(newPlugin: Plugin): void {
   const plugins = pluginRegistry.getAll();
-  for (const p of plugins) {
-    if (p.name !== plugin.name) {
-      // 通知其他插件有新插件加入（可选监听）
+  for (const plugin of plugins) {
+    if (plugin.name === newPlugin.name) continue;
+    if (typeof plugin.onPluginRegistered === 'function') {
+      try {
+        plugin.onPluginRegistered(newPlugin);
+      } catch (err) {
+        console.error(`[EventService] Plugin "${plugin.name}" onPluginRegistered error:`, err);
+      }
     }
   }
 }
 
 /**
- * 注册插件并触发 plugin:loaded
+ * 注册插件并通知其他插件
  */
 export function registerPlugin(plugin: Plugin): void {
   pluginRegistry.register(plugin);
-  emitPluginLoaded(plugin);
+  notifyPluginLoaded(plugin);
 }
 
 /**
