@@ -69,6 +69,27 @@ export {
 // ── 类型统一：从 types.ts 导出（单一来源） ──────────────────────────────────
 export type { MapParams, MapData, ProgressCallback } from './types.js';
 
+// ── Event Service & Plugin System ─────────────────────────────────────────
+export {
+  initEventService,
+  registerPlugin,
+  unregisterPlugin,
+  getEventServiceStatus,
+  emitGenerateBefore,
+  emitGenerateAfter,
+  emitStageBefore,
+  emitStageAfter,
+  emitPipelineError,
+  type GenerateContext,
+  type StageContext,
+} from './eventService.js';
+export {
+  pluginRegistry,
+  type Plugin,
+  type PluginEventName,
+  type PluginRegistry,
+} from './plugin.js';
+
 // ── 内部导入 ────────────────────────────────────────────────────────────────
 import { hashSeed } from './noise.js';
 import type { MapParams, MapData, ProgressCallback } from './types.js';
@@ -78,6 +99,14 @@ import { runClimateStage } from './pipeline/climateStage.js';
 import { runRiverStage } from './pipeline/riverStage.js';
 import { runRegionStage } from './pipeline/regionStage.js';
 import { runPackingStage } from './pipeline/packingStage.js';
+import {
+  initEventService,
+  emitGenerateBefore,
+  emitGenerateAfter,
+  emitStageBefore,
+  emitStageAfter,
+  emitPipelineError,
+} from './eventService.js';
 
 const ASPECT_MAP: Record<string, number> = {
   '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9, '2:1': 2, '3:2': 3 / 2,
@@ -100,13 +129,19 @@ function resolveDimensions(params: MapParams): { width: number; height: number }
   return { width, height };
 }
 
-/** 地图生成入口（委托 pipeline stages，从 590 行缩减至 ~60 行） */
+/** 地图生成入口（委托 pipeline stages，支持事件钩子） */
 export function generateMap(
   params: MapParams,
   onProgress?: ProgressCallback
 ): { mapData: MapData; checkpoints: Record<string, unknown> } {
-  const seed = hashSeed(params.seedStr);
-  const { width, height } = resolveDimensions(params);
+  // 初始化事件服务（幂等）
+  initEventService();
+
+  // 参数校验钩子（同步 transform 链）
+  const validatedParams = runParamValidation(params);
+
+  const seed = hashSeed(validatedParams.seedStr);
+  const { width, height } = resolveDimensions(validatedParams);
 
   let progress = 0;
   function advance(phaseName: string): void {
@@ -115,9 +150,15 @@ export function generateMap(
     if (onProgress) onProgress(progress, phaseName);
   }
 
+  // 触发 generate:before（同步快路径，异步钩子不阻塞）
+  const genCtx = { params: validatedParams, width, height, seed };
+  runAsyncHookSafe('onGenerateBefore', genCtx);
+
   // 1. 板块构造
   advance('tectonic');
-  const tectonic = runTectonicStage(width, height, seed, params);
+  runStageHookSafe('onStageBefore', 'tectonic', validatedParams);
+  const tectonic = runTectonicStage(width, height, seed, validatedParams);
+  runStageHookSafe('onStageAfter', 'tectonic', validatedParams, tectonic);
   const checkpointTectonic = {
     plates: tectonic.plates,
     plateId: new Float32Array(tectonic.plateId),
@@ -127,7 +168,15 @@ export function generateMap(
 
   // 2. 高程生成
   advance('elevation');
-  const elevState = runElevationStage(width, height, seed, params, tectonic);
+  runStageHookSafe('onStageBefore', 'elevation', validatedParams);
+  let elevState;
+  try {
+    elevState = runElevationStage(width, height, seed, validatedParams, tectonic);
+  } catch (err) {
+    runPipelineErrorSafe('elevation', validatedParams, err as Error);
+    throw err;
+  }
+  runStageHookSafe('onStageAfter', 'elevation', validatedParams, elevState);
   const checkpointElevation = {
     elevation: new Float32Array(elevState.elevation),
     slope: new Float32Array(elevState.slope),
@@ -144,7 +193,15 @@ export function generateMap(
   advance('currents');
   advance('climate');
   advance('ice');
-  const climate = runClimateStage(width, height, seed, params, tectonic, elevState);
+  runStageHookSafe('onStageBefore', 'climate', validatedParams);
+  let climate;
+  try {
+    climate = runClimateStage(width, height, seed, validatedParams, tectonic, elevState);
+  } catch (err) {
+    runPipelineErrorSafe('climate', validatedParams, err as Error);
+    throw err;
+  }
+  runStageHookSafe('onStageAfter', 'climate', validatedParams, climate);
 
   // 4. 河流（含湖泊、生物群系、流域、火山、季节）
   advance('biomes');
@@ -153,16 +210,47 @@ export function generateMap(
   advance('seasons');
   advance('lakes');
   advance('rivers');
-  const riverState = runRiverStage(width, height, seed, params, tectonic, climate);
+  runStageHookSafe('onStageBefore', 'rivers', validatedParams);
+  let riverState;
+  try {
+    riverState = runRiverStage(width, height, seed, validatedParams, tectonic, climate);
+  } catch (err) {
+    runPipelineErrorSafe('rivers', validatedParams, err as Error);
+    throw err;
+  }
+  runStageHookSafe('onStageAfter', 'rivers', validatedParams, riverState);
 
   // 5. 区域分析 + 命名
   advance('regions');
   advance('naming');
-  const regionState = runRegionStage(width, height, seed, params, tectonic, climate, riverState);
+  runStageHookSafe('onStageBefore', 'regions', validatedParams);
+  let regionState;
+  try {
+    regionState = runRegionStage(width, height, seed, validatedParams, tectonic, climate, riverState);
+  } catch (err) {
+    runPipelineErrorSafe('regions', validatedParams, err as Error);
+    throw err;
+  }
+  runStageHookSafe('onStageAfter', 'regions', validatedParams, regionState);
 
   // 6. 纹理打包
   advance('packing');
-  const mapData = runPackingStage(width, height, seed, params, tectonic, climate, riverState, regionState);
+  runStageHookSafe('onStageBefore', 'packing', validatedParams);
+  let mapData;
+  try {
+    mapData = runPackingStage(width, height, seed, validatedParams, tectonic, climate, riverState, regionState);
+  } catch (err) {
+    runPipelineErrorSafe('packing', validatedParams, err as Error);
+    throw err;
+  }
+  runStageHookSafe('onStageAfter', 'packing', validatedParams, mapData);
+
+  // 最终 MapData 变换钩子（同步 transform 链）
+  mapData = runMapDataTransform(mapData);
+
+  // 触发 generate:after
+  genCtx.mapData = mapData;
+  runAsyncHookSafe('onGenerateAfter', genCtx);
 
   return {
     mapData,
@@ -185,4 +273,97 @@ export function generateMap(
       },
     },
   };
+}
+
+// ── Internal hook helpers ──────────────────────────────────────────────────
+
+function runParamValidation(params: MapParams): MapParams {
+  // 纯同步 transform 链，不调用 async 钩子
+  const { pluginRegistry } = require('./plugin.js') as typeof import('./plugin.js');
+  let current = params;
+  for (const plugin of pluginRegistry.getAll()) {
+    if (typeof plugin.onParamsValidate === 'function') {
+      try {
+        const result = plugin.onParamsValidate(current);
+        if (result !== undefined && result !== null) {
+          current = result;
+        }
+      } catch (err) {
+        console.error(`[EventService] Plugin "${plugin.name}" params validation error:`, err);
+      }
+    }
+  }
+  return current;
+}
+
+function runMapDataTransform(mapData: MapData): MapData {
+  const { pluginRegistry } = require('./plugin.js') as typeof import('./plugin.js');
+  let current = mapData;
+  for (const plugin of pluginRegistry.getAll()) {
+    if (typeof plugin.onMapDataTransform === 'function') {
+      try {
+        const result = plugin.onMapDataTransform(current);
+        if (result !== undefined && result !== null) {
+          current = result;
+        }
+      } catch (err) {
+        console.error(`[EventService] Plugin "${plugin.name}" mapData transform error:`, err);
+      }
+    }
+  }
+  return current;
+}
+
+function runStageHookSafe(
+  hook: 'onStageBefore' | 'onStageAfter',
+  stageName: string,
+  params: MapParams,
+  stageState?: unknown
+): void {
+  const { pluginRegistry } = require('./plugin.js') as typeof import('./plugin.js');
+  const ctx = { stageName, params, state: stageState };
+  for (const plugin of pluginRegistry.getAll()) {
+    const handler = plugin[hook];
+    if (typeof handler === 'function') {
+      try {
+        handler.call(plugin, ctx);
+      } catch (err) {
+        console.error(`[EventService] Plugin "${plugin.name}" ${hook} error:`, err);
+      }
+    }
+  }
+}
+
+function runPipelineErrorSafe(stageName: string, params: MapParams, error: Error): void {
+  const { pluginRegistry } = require('./plugin.js') as typeof import('./plugin.js');
+  const ctx = { stageName, params, error };
+  for (const plugin of pluginRegistry.getAll()) {
+    if (typeof plugin.onPipelineError === 'function') {
+      try {
+        plugin.onPipelineError.call(plugin, ctx);
+      } catch (err) {
+        console.error(`[EventService] Plugin "${plugin.name}" onPipelineError error:`, err);
+      }
+    }
+  }
+}
+
+function runAsyncHookSafe(hook: 'onGenerateBefore' | 'onGenerateAfter', ctx: unknown): void {
+  // 异步钩子 fire-and-forget，不阻塞 pipeline
+  const { pluginRegistry } = require('./plugin.js') as typeof import('./plugin.js');
+  for (const plugin of pluginRegistry.getAll()) {
+    const handler = plugin[hook];
+    if (typeof handler === 'function') {
+      try {
+        const result = handler.call(plugin, ctx);
+        if (result && typeof (result as Promise<void>).then === 'function') {
+          (result as Promise<void>).catch(err => {
+            console.error(`[EventService] Plugin "${plugin.name}" async ${hook} error:`, err);
+          });
+        }
+      } catch (err) {
+        console.error(`[EventService] Plugin "${plugin.name}" ${hook} error:`, err);
+      }
+    }
+  }
 }
