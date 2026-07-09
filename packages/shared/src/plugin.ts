@@ -5,7 +5,7 @@ import type { GenerateContext, StageContext } from './eventService.js';
  * 插件接口 —— 实现此接口即可挂载到 mapgen 的事件钩子上
  *
  * 所有钩子都是可选的，插件只需实现自己关心的即可。
- * 同步钩子直接执行，异步钩子通过 Promise.all 并行执行（不阻塞 pipeline）。
+ * 同步钩子直接执行，异步钩子通过 Promise.allSettled 并行执行（不阻塞 pipeline）。
  */
 export interface Plugin {
   /** 插件唯一标识 */
@@ -28,14 +28,20 @@ export interface Plugin {
   onDispose?(): void | Promise<void>;
 
   /**
+   * 当其他插件注册时通知
+   * 可用于插件间的依赖检查或联动
+   */
+  onPluginRegistered?(plugin: Plugin): void;
+
+  /**
    * 地图生成开始前
-   * 可在此修改 params（返回修改后的 params）
+   * 可在此检查或记录参数
    */
   onGenerateBefore?(ctx: GenerateContext): void | Promise<void>;
 
   /**
    * 地图生成完成后
-   * 可在此检查或修改最终的 mapData
+   * 可在此检查或记录最终结果
    */
   onGenerateAfter?(ctx: GenerateContext): void | Promise<void>;
 
@@ -70,14 +76,14 @@ export interface Plugin {
 export type PluginEventName =
   | 'init'
   | 'dispose'
+  | 'plugin:registered'
   | 'generate:before'
   | 'generate:after'
   | 'stage:before'
   | 'stage:after'
   | 'pipeline:error'
   | 'params:validate'
-  | 'mapdata:transform'
-  | 'plugin:loaded';
+  | 'mapdata:transform';
 
 export interface PluginRegistry {
   register(plugin: Plugin): void;
