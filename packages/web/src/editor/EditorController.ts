@@ -8,14 +8,6 @@ import { state } from '../core/appState.js';
 import { clientToMapUv, mapPixelToClient } from '../map/viewport.js';
 import {
   CommandStack,
-  applySmoothBrush,
-  applyNoiseBrush,
-  applySetElevationBrush,
-  applyRiverDraw,
-  applyLakeDraw,
-  type FalloffMode,
-  type BrushShape,
-  type NoiseBrushParams,
   applyVectorMountain,
   applyVectorPolygon,
   movePlate,
@@ -384,18 +376,18 @@ export class EditorController extends Colleague {
               after = before * (1 - fall) + (seaLevel - 0.3) * fall;
               break;
             case 'land':
+              after = before * (1 - fall) + 0.2 * fall;
+              break;
             case 'smooth': {
-              // 平滑：3x3 邻域均值
               let sum = 0, cnt = 0;
               for (let ny = Math.max(0, yy - 1); ny <= Math.min(md.height - 1, yy + 1); ny++)
                 for (let nx = Math.max(0, xx - 1); nx <= Math.min(md.width - 1, xx + 1); nx++)
-                  { sum += md.elevTex[ny * md.width + nx]; cnt++; }
+                  { sum += md.elevTex[(ny * md.width + nx) * 4]; cnt++; }
               const avg = sum / cnt;
               after = before + (avg - before) * str * fall;
               break;
             }
             case 'noise': {
-              // 噪声叠加
               let h = (xx * 374761393 + yy * 668265263 + 42) | 0;
               h = ((h ^ (h >> 13)) * 1274126177) | 0; h = h ^ (h >> 16);
               const noise = ((h & 0x7fffffff) / 0x7fffffff - 0.5) * 2 * 0.3;
@@ -414,8 +406,6 @@ export class EditorController extends Colleague {
               after = Math.min(before, lakeFloor + (before - lakeFloor) * (1 - fall));
               break;
             }
-              after = before * (1 - fall) + 0.2 * fall;
-              break;
           }
           md.elevTex[i4] = after;
         }

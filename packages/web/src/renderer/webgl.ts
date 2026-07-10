@@ -33,7 +33,7 @@ export class WebGLRenderer {
     this.gl = gl;
   }
 
-  async initShaders(fragSrc: string): Promise<void> {
+  initShaders(fragSrc: string): void {
     const gl = this.gl;
     const vs = this._compile(
       gl.VERTEX_SHADER,
@@ -60,7 +60,7 @@ export class WebGLRenderer {
     this.program = prog;
     gl.useProgram(prog);
 
-    const numUniforms = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
+    const numUniforms = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS) as number;
     for (let i = 0; i < numUniforms; i++) {
       const info = gl.getActiveUniform(prog, i);
       if (info) {
@@ -303,7 +303,7 @@ export class WebGLRenderer {
     this.setUniform('u_wireframeMode', this.wireframeMode ? 1.0 : 0.0);
     this.setUniform('u_mapSize', [this.mapWidth, this.mapHeight]);
 
-    for (const [key, value] of Object.entries(params)) {
+    for (const [key, value] of Object.entries(params) as Array<[string, UniformValue]>) {
       this.setUniform(key, value);
     }
 

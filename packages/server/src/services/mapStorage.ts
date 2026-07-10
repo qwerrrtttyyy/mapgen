@@ -52,10 +52,11 @@ export class MapStorage {
       });
     }
 
-    if (filter?.tags && filter.tags.length > 0) {
+    const requiredTags = filter?.tags;
+    if (requiredTags && requiredTags.length > 0) {
       rows = rows.filter(r => {
         const tags = JSON.parse(r.tags || '[]') as string[];
-        return filter.tags!.every(t => tags.includes(t));
+        return requiredTags.every(t => tags.includes(t));
       });
     }
 

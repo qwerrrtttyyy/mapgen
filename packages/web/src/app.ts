@@ -583,31 +583,42 @@ function bindEventBus(): void {
     if (renderer instanceof WebGLRenderer) renderer.updateSelectMask(plates);
     scheduleRender();
   });
-  bus.on('checkpoint.save.request', async () => {
+  bus.on('checkpoint.save.request', () => {
     if (!checkpointMgr || !state.mapData) return;
-    const ckpt = await checkpointMgr.save(
-      `检查点 ${checkpointMgr.checkpoints.length + 1}`,
-      'manual',
-      state.mapData,
-      state.params
-    );
-    if (ckpt) {
-      bus.emit('checkpoint.updated');
-    }
+    const md = state.mapData;
+    void (async (): Promise<void> => {
+      const ckpt = await checkpointMgr.save(
+        `检查点 ${checkpointMgr.checkpoints.length + 1}`,
+        'manual',
+        md,
+        state.params
+      );
+      if (ckpt) {
+        bus.emit('checkpoint.updated');
+      }
+    })().catch((err: Error) => {
+      logger.error('Checkpoint save failed:', err);
+      state.error = err.message;
+    });
   });
-  bus.on('checkpoint.restore.request', async (id: number) => {
+  bus.on('checkpoint.restore.request', (id: number) => {
     if (!checkpointMgr) return;
-    const ckpt = await checkpointMgr.restore(id);
-    if (!ckpt) return;
-    const restored = checkpointMgr.restoreMapData(ckpt);
-    if (!restored) return;
-    patchParams(ckpt.data.params as Partial<UIParams>);
-    syncUIFromParams();
-    state.mapData = restored;
-    renderer?.uploadMapData(restored);
-    mapInteraction?.setMapData(restored);
-    render();
-    bus.emit('generating.completed', { mapData: restored });
+    void (async (): Promise<void> => {
+      const ckpt = await checkpointMgr.restore(id);
+      if (!ckpt) return;
+      const restored = checkpointMgr.restoreMapData(ckpt);
+      if (!restored) return;
+      patchParams(ckpt.data.params as Partial<UIParams>);
+      syncUIFromParams();
+      state.mapData = restored;
+      renderer?.uploadMapData(restored);
+      mapInteraction?.setMapData(restored);
+      render();
+      bus.emit('generating.completed', { mapData: restored });
+    })().catch((err: Error) => {
+      logger.error('Checkpoint restore failed:', err);
+      state.error = err.message;
+    });
   });
   bus.on('editor.committed', () => {
     updateUndoRedo();
@@ -637,7 +648,7 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
     const r = new WebGLRenderer(canvas);
     const res = await fetch('shaders/fs-map.frag');
     if (!res.ok) throw new Error('Shader fetch failed');
-    await r.initShaders(await res.text());
+    r.initShaders(await res.text());
     renderer = r;
   } catch (e) {
     logger.warn('WebGL2 unavailable, trying Canvas2D:', (e as Error).message);
@@ -651,7 +662,8 @@ async function initRenderer(canvas: HTMLCanvasElement): Promise<void> {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+  void (async (): Promise<void> => {
   const canvas = $<HTMLCanvasElement>('glCanvas');
   const minimap = $<HTMLCanvasElement>('minimap');
   if (!canvas) {
@@ -777,7 +789,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const wInput = $<HTMLInputElement>('mapWidth');
   const hInput = $<HTMLInputElement>('mapHeight');
-  const onSizeChange = () => {
+  const onSizeChange = (): void => {
     const w = parseInt(wInput?.value || '512', 10);
     const h = parseInt(hInput?.value || '512', 10);
     patchParams({ mapWidth: w, mapHeight: h });
@@ -972,7 +984,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSliderFill(brushStrengthEl);
   });
 
-  const updateZoom = () => {
+  const updateZoom = (): void => {
     const zv = $('zoom-val');
     if (zv) zv.textContent = `${Math.round(state.zoom * 100)}%`;
     applyZoom();
@@ -994,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   mapInteraction = new MapInteraction(canvas);
   mapInteraction.bindEvents();
 
-  const handleResize = () => {
+  const handleResize = (): void => {
     if (!renderer) return;
     renderer.resize(window.innerWidth, window.innerHeight);
     render();
@@ -1062,4 +1074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!launched) {
     generateMap();
   }
+  })().catch((err: Error) => {
+    logger.error('App initialization failed:', err);
+  });
 });

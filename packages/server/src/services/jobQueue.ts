@@ -90,7 +90,7 @@ class JobQueue {
     return { queued, running, completed, failed };
   }
 
-  private async process(): Promise<void> {
+  private process(): void {
     while (this.activeCount < this.maxConcurrent && this.queue.length > 0) {
       const id = this.queue.shift();
       if (!id) continue;
@@ -98,7 +98,7 @@ class JobQueue {
       if (!job) continue;
       job.status = 'running';
       this.activeCount++;
-      this.executeJob(job);
+      void this.executeJob(job);
     }
   }
 

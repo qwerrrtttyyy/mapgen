@@ -7,6 +7,20 @@
 
 // ── 基础地理实体 ──
 
+export type PlateKind = 'continent' | 'ocean';
+
+export type TerrainType =
+  | 'mountain'
+  | 'plain'
+  | 'plateau'
+  | 'basin'
+  | 'desert'
+  | 'forest'
+  | 'glacier'
+  | 'delta'
+  | 'volcano'
+  | 'archipelago';
+
 /** 板块（与 shared/src/tectonic.ts Plate 兼容） */
 export interface Plate {
   id: number;
@@ -14,7 +28,7 @@ export interface Plate {
   y: number;
   vx: number;
   vy: number;
-  type: 'continent' | 'ocean';
+  type: PlateKind;
   color: number[];
   area: number;
   boundary: number;
@@ -79,18 +93,18 @@ export interface Hotspot {
   strength: number;
 }
 
-/** 命名板块 */
+/** 命名板块（与 shared/src/naming.ts NamedPlate 兼容） */
 export interface NamedPlate {
   plateId: number;
-  type: string;
+  type: PlateKind;
   name: string;
   centroid: [number, number];
 }
 
-/** 命名区域 */
+/** 命名区域（与 shared/src/naming.ts NamedRegion 兼容） */
 export interface NamedRegion {
   key: string;
-  type: string;
+  type: TerrainType;
   name: string;
   centroid: [number, number];
   area: number;

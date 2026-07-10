@@ -181,9 +181,9 @@ export class NoiseEngine {
           pts = [{ x: px, y: py }];
           this.worleyCache.set(key, pts);
           this.cacheInsertOrder.push(key);
-          if (this.cacheInsertOrder.length > WORLEY_CACHE_MAX) {
-            const oldest = this.cacheInsertOrder.shift()!;
-            this.worleyCache.delete(oldest);
+          while (this.cacheInsertOrder.length > WORLEY_CACHE_MAX) {
+            const oldest = this.cacheInsertOrder.shift();
+            if (oldest) this.worleyCache.delete(oldest);
           }
         }
         const { x: px, y: py } = pts[0];

@@ -25,7 +25,6 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "@mapgen/core": "*",
     "msgpackr": "^1.10.0"
   }
 }

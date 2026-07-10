@@ -342,17 +342,20 @@ export class DebugPanel extends Colleague {
 
     this.timingsElement.innerHTML = entries
       .map(
-        ([name, stat]) => `
+        ([name, stat]) => {
+          const s = stat as { avg: number; min: number; max: number; count: number };
+          return `
         <div class="dp-timing-item">
           <div class="dp-timing-name">${name}</div>
           <div class="dp-timing-values">
-            <span>avg: ${stat.avg.toFixed(2)}ms</span>
-            <span>min: ${stat.min.toFixed(2)}ms</span>
-            <span>max: ${stat.max.toFixed(2)}ms</span>
-            <span>n: ${stat.count}</span>
+            <span>avg: ${s.avg.toFixed(2)}ms</span>
+            <span>min: ${s.min.toFixed(2)}ms</span>
+            <span>max: ${s.max.toFixed(2)}ms</span>
+            <span>n: ${s.count}</span>
           </div>
         </div>
-      `
+      `;
+        }
       )
       .join('');
   }

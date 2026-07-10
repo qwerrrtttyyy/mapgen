@@ -96,7 +96,6 @@ const BASIN_SLOPE_MAX = 0.02;         // 盆地最大坡度
 const DESERT_MOIST_MAX = 0.3;         // 沙漠最大湿度
 const FOREST_MOIST_MIN = 0.6;         // 森林最小湿度
 const PLATEAU_ELEV_FACTOR = 0.7;      // 高原高程系数（snowLine * 此值）
-const DELTA_COAST_MAX = 10;           // 三角洲距海岸最大像素数
 
 
 function classifyTerrain(
@@ -1033,7 +1032,7 @@ export function applyRiverDraw(
   points: number[][],
   channelWidth: number,    // 河道宽度（像素）
   channelDepth: number,    // 河道深度（高程差）
-  seaLevel: number
+  _seaLevel: number
 ): Command {
   const elevChanges: Array<{ idx: number; before: number; after: number }> = [];
   const maskChanges: Array<{ idx: number; before: number; after: number }> = [];
@@ -1080,11 +1079,11 @@ export function applyRiverDraw(
           const elevBefore = elevation[idx];
           const elevAfter = elevBefore - depth;
           if (elevAfter < elevBefore) {
-            if (!elevChanges.some(c => c.idx === idx)) {
-              elevChanges.push({ idx, before: elevBefore, after: elevAfter });
+            const existingElev = elevChanges.find(c => c.idx === idx);
+            if (existingElev) {
+              existingElev.after = Math.min(existingElev.after, elevAfter);
             } else {
-              const c = elevChanges.find(c => c.idx === idx)!;
-              c.after = Math.min(c.after, elevAfter);
+              elevChanges.push({ idx, before: elevBefore, after: elevAfter });
             }
             elevation[idx] = Math.min(elevation[idx], elevAfter);
           }
@@ -1092,11 +1091,11 @@ export function applyRiverDraw(
           // 设置河流掩码
           const maskBefore = riverMask[idx];
           if (maskBefore < fall) {
-            if (!maskChanges.some(c => c.idx === idx)) {
-              maskChanges.push({ idx, before: maskBefore, after: fall });
+            const existingMask = maskChanges.find(c => c.idx === idx);
+            if (existingMask) {
+              existingMask.after = Math.max(existingMask.after, fall);
             } else {
-              const c = maskChanges.find(c => c.idx === idx)!;
-              c.after = Math.max(c.after, fall);
+              maskChanges.push({ idx, before: maskBefore, after: fall });
             }
             riverMask[idx] = Math.max(riverMask[idx], fall);
           }
@@ -1105,11 +1104,11 @@ export function applyRiverDraw(
           const wBefore = riverWidth[idx];
           const wAfter = channelWidth * fall;
           if (wAfter > wBefore) {
-            if (!widthChanges.some(c => c.idx === idx)) {
-              widthChanges.push({ idx, before: wBefore, after: wAfter });
+            const existingW = widthChanges.find(c => c.idx === idx);
+            if (existingW) {
+              existingW.after = Math.max(existingW.after, wAfter);
             } else {
-              const c = widthChanges.find(c => c.idx === idx)!;
-              c.after = Math.max(c.after, wAfter);
+              widthChanges.push({ idx, before: wBefore, after: wAfter });
             }
             riverWidth[idx] = Math.max(riverWidth[idx], wAfter);
           }
@@ -1118,11 +1117,11 @@ export function applyRiverDraw(
           const dBefore = riverDepth[idx];
           const dAfter = channelDepth * fall;
           if (dAfter > dBefore) {
-            if (!depthChanges.some(c => c.idx === idx)) {
-              depthChanges.push({ idx, before: dBefore, after: dAfter });
+            const existingD = depthChanges.find(c => c.idx === idx);
+            if (existingD) {
+              existingD.after = Math.max(existingD.after, dAfter);
             } else {
-              const c = depthChanges.find(c => c.idx === idx)!;
-              c.after = Math.max(c.after, dAfter);
+              depthChanges.push({ idx, before: dBefore, after: dAfter });
             }
             riverDepth[idx] = Math.max(riverDepth[idx], dAfter);
           }

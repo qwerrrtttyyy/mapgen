@@ -2,19 +2,9 @@
 // AC-8.1, AC-8.2, AC-8.4, AC-8.5, BR-4（种子驱动确定性）
 
 import { detectTerrainRegions } from './editor.js';
+import type { PlateKind, TerrainType } from '@mapgen/shared-types';
 
-export type PlateKind = 'continent' | 'ocean';
-export type TerrainType =
-  | 'mountain'
-  | 'plain'
-  | 'plateau'
-  | 'basin'
-  | 'desert'
-  | 'forest'
-  | 'glacier'
-  | 'delta'
-  | 'volcano'
-  | 'archipelago';
+export type { PlateKind, TerrainType };
 
 export interface NameablePlate {
   plateId: number;

@@ -52,6 +52,9 @@
     "packages/shared": {
       "name": "@mapgen/core",
       "version": "0.0.3-pre",
+      "dependencies": {
+        "@mapgen/shared-types": "*",
+      },
       "devDependencies": {
         "typescript": "^5.4.0",
         "vitest": "^1.6.0",
@@ -61,7 +64,6 @@
       "name": "@mapgen/shared-types",
       "version": "0.0.3-pre",
       "dependencies": {
-        "@mapgen/core": "*",
         "msgpackr": "^1.10.0",
       },
       "devDependencies": {

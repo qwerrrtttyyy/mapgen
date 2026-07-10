@@ -1,3 +1,4 @@
+import type { MapData } from '@mapgen/core';
 import { Colleague } from '../core/mediator.js';
 import { bus } from '../core/eventBus.js';
 import { state } from '../core/appState.js';
@@ -31,7 +32,9 @@ export class NameOverlay extends Colleague {
     this.canvas.style.height = '100%';
     this.canvas.style.pointerEvents = 'none';
     this.canvas.style.zIndex = '3';
-    this.ctx = this.canvas.getContext('2d')!;
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to get 2D context for name overlay canvas');
+    this.ctx = ctx;
     container.appendChild(this.canvas);
   }
 
@@ -92,8 +95,7 @@ export class NameOverlay extends Colleague {
     return { rect, baseScale, effectiveScale: baseScale * state.zoom };
   }
 
-  private mapToScreen(mx: number, my: number, rect: DOMRect): [number, number] {
-    const md = state.mapData!;
+  private mapToScreen(mx: number, my: number, rect: DOMRect, md: MapData): [number, number] {
     return mapPixelToClient(mx, my, rect, md.width, md.height);
   }
 
@@ -118,7 +120,7 @@ export class NameOverlay extends Colleague {
     if (showPlates) {
       ctx.font = `600 ${Math.max(11, Math.min(20, scale * 4))}px sans-serif`;
       for (const p of names.plates) {
-        const [sx, sy] = this.mapToScreen(p.centroid[0], p.centroid[1], rect);
+        const [sx, sy] = this.mapToScreen(p.centroid[0], p.centroid[1], rect, md);
         this.drawLabel(sx, sy, p.name, 'rgba(20,28,40,0.55)', '#f4f6ff');
       }
     }
@@ -127,7 +129,7 @@ export class NameOverlay extends Colleague {
       ctx.font = `500 ${Math.max(9, Math.min(14, scale * 3))}px sans-serif`;
       for (const r of names.regions) {
         if (r.area < regionMinArea) continue;
-        const [sx, sy] = this.mapToScreen(r.centroid[0], r.centroid[1], rect);
+        const [sx, sy] = this.mapToScreen(r.centroid[0], r.centroid[1], rect, md);
         const colors = showTypeColor
           ? this.typeColors(r.type)
           : { bg: 'rgba(40,30,20,0.5)', fg: '#fff7e6' };
@@ -136,15 +138,13 @@ export class NameOverlay extends Colleague {
     }
 
     if (scale >= 6) {
-      this.drawDetailPeaks(scale, rect);
+      this.drawDetailPeaks(scale, rect, md);
     }
 
-    this.drawVectorPreview(rect);
+    this.drawVectorPreview(rect, md);
   }
 
-  private drawDetailPeaks(scale: number, rect: DOMRect): void {
-    const md = state.mapData;
-    if (!md) return;
+  private drawDetailPeaks(scale: number, rect: DOMRect, md: MapData): void {
     const { width: mw, height: mh } = md;
     const visW = rect.width / scale;
     const visH = rect.height / scale;
@@ -182,7 +182,7 @@ export class NameOverlay extends Colleague {
     const ctx = this.ctx;
     ctx.font = `600 ${Math.max(8, Math.min(11, scale * 2))}px sans-serif`;
     for (const p of this.cachedPeaks) {
-      const [sx, sy] = this.mapToScreen(p.mapX, p.mapY, rect);
+      const [sx, sy] = this.mapToScreen(p.mapX, p.mapY, rect, md);
       if (sx < 0 || sy < 0 || sx > rect.width || sy > rect.height) continue;
       ctx.fillStyle = 'rgba(200,80,30,0.85)';
       ctx.beginPath();
@@ -254,7 +254,7 @@ export class NameOverlay extends Colleague {
     ctx.shadowOffsetY = 0;
   }
 
-  private drawVectorPreview(rect: DOMRect): void {
+  private drawVectorPreview(rect: DOMRect, md: MapData): void {
     const pts = this.vectorPreview.points;
     if (pts.length === 0) return;
     const ctx = this.ctx;
@@ -263,14 +263,14 @@ export class NameOverlay extends Colleague {
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (let i = 0; i < pts.length; i++) {
-      const [sx, sy] = this.mapToScreen(pts[i][0], pts[i][1], rect);
+      const [sx, sy] = this.mapToScreen(pts[i][0], pts[i][1], rect, md);
       if (i === 0) ctx.moveTo(sx, sy);
       else ctx.lineTo(sx, sy);
     }
     if (this.vectorPreview.mode === 'vector-poly' && pts.length > 2) ctx.closePath();
     ctx.stroke();
     for (const p of pts) {
-      const [sx, sy] = this.mapToScreen(p[0], p[1], rect);
+      const [sx, sy] = this.mapToScreen(p[0], p[1], rect, md);
       ctx.beginPath();
       ctx.arc(sx, sy, 3, 0, Math.PI * 2);
       ctx.fill();

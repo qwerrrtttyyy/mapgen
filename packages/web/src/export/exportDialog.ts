@@ -94,7 +94,7 @@ function createDialogElements(): DialogElements {
   container.innerHTML = DIALOG_HTML;
   document.body.appendChild(container);
 
-  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
   return {
     overlay: $('export-overlay'),
@@ -169,7 +169,12 @@ export class ExportDialog {
     });
 
     // 图片导出
-    els.btnExportImg.addEventListener('click', () => this.handleExportImage());
+    els.btnExportImg.addEventListener('click', () => {
+      void this.handleExportImage().catch((err: Error) => {
+        console.error('Export image failed:', err);
+        this.setStatus('导出失败: ' + err.message);
+      });
+    });
 
     // 数据导出
     els.btnExportData.addEventListener('click', () => this.handleExportData(false));

@@ -39,10 +39,10 @@ export class MapInteraction extends Colleague {
     this.tooltip = new Tooltip();
     this.laser = new LaserController(canvas);
 
-    const move = (e: MouseEvent) => this.scheduleMove(e);
-    const click = (e: MouseEvent) => this.handleClick(e);
-    const leave = () => this.handleLeave();
-    const context = (e: MouseEvent) => {
+    const move = (e: MouseEvent): void => this.scheduleMove(e);
+    const click = (e: MouseEvent): void => this.handleClick(e);
+    const leave = (): void => this.handleLeave();
+    const context = (e: MouseEvent): void => {
       e.preventDefault();
       this.handleContext(e);
     };
