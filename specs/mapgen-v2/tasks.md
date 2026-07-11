@@ -6,7 +6,7 @@
 
 - [ ] 1. 搭建测试基础设施
   - 安装 vitest 到 `@mapgen/core`
-  - 创建 `packages/shared/src/__tests__/` 目录
+  - 创建 `packages/core/src/__tests__/` 目录
   - 配置 `vitest.config.ts`
   - _Requirement: AC-1.1, AC-1.2_
 

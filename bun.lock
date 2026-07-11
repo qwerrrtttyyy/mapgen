@@ -19,6 +19,17 @@
         "turbo": "^2.0.0",
       },
     },
+    "packages/core": {
+      "name": "@mapgen/core",
+      "version": "0.0.3-pre",
+      "dependencies": {
+        "@mapgen/shared-types": "*",
+      },
+      "devDependencies": {
+        "typescript": "^5.4.0",
+        "vitest": "^1.6.0",
+      },
+    },
     "packages/manager": {
       "name": "@mapgen/manager",
       "version": "0.0.3-pre",
@@ -47,17 +58,6 @@
       "devDependencies": {
         "@types/node": "^20.0.0",
         "bun-types": "^1.2.0",
-        "typescript": "^5.4.0",
-        "vitest": "^1.6.0",
-      },
-    },
-    "packages/shared": {
-      "name": "@mapgen/core",
-      "version": "0.0.3-pre",
-      "dependencies": {
-        "@mapgen/shared-types": "*",
-      },
-      "devDependencies": {
         "typescript": "^5.4.0",
         "vitest": "^1.6.0",
       },
@@ -167,7 +167,7 @@
 
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
-    "@mapgen/core": ["@mapgen/core@workspace:packages/shared"],
+    "@mapgen/core": ["@mapgen/core@workspace:packages/core"],
 
     "@mapgen/manager": ["@mapgen/manager@workspace:packages/manager"],
 
