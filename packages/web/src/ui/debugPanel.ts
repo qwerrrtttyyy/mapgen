@@ -3,6 +3,20 @@ import { bus } from '../core/eventBus.js';
 import { logger } from '../core/logger.js';
 import { debug as coreDebug } from '@mapgen/core';
 
+/** 需要自动追踪的事件列表 */
+const TRACKED_EVENTS = [
+  'render.request',
+  'generate.request',
+  'generating.started',
+  'generating.completed',
+  'generating.failed',
+  'progress',
+  'selection.changed',
+  'params.changed',
+  'editor.committed',
+  'export.request',
+] as const;
+
 export class DebugPanel extends Colleague {
   private panel: HTMLElement | null = null;
   private toggleBtn: HTMLElement | null = null;
@@ -21,6 +35,8 @@ export class DebugPanel extends Colleague {
   private fps: number = 0;
   private listeners: Array<() => void> = [];
   private eventFilter: string = '';
+  private lastTimingsKey: string = '';
+  private lastEventCount: number = -1;
 
   constructor() {
     super('debug');
@@ -59,20 +75,7 @@ export class DebugPanel extends Colleague {
   }
 
   private bindGlobalEvents(): void {
-    const eventTypes = [
-      'render.request',
-      'generate.request',
-      'generating.started',
-      'generating.completed',
-      'generating.failed',
-      'progress',
-      'selection.changed',
-      'params.changed',
-      'editor.committed',
-      'export.request',
-    ];
-
-    eventTypes.forEach(eventName => {
+    for (const eventName of TRACKED_EVENTS) {
       this.listeners.push(
         bus.on(eventName, (payload: unknown) => {
           if (coreDebug.enabled) {
@@ -80,7 +83,7 @@ export class DebugPanel extends Colleague {
           }
         })
       );
-    });
+    }
   }
 
   private createPanel(): void {
@@ -222,7 +225,7 @@ export class DebugPanel extends Colleague {
   private bindPanelEvents(): void {
     const closeBtn = document.getElementById('dp-close');
     if (closeBtn) {
-      const handler = (): void => this.emit('debug.toggle');
+      const handler = (): void => this.send('debug.toggle');
       closeBtn.addEventListener('click', handler);
       this.listeners.push(() => closeBtn.removeEventListener('click', handler));
     }
@@ -232,7 +235,7 @@ export class DebugPanel extends Colleague {
       const handler = (e: Event): void => {
         const checked = (e.target as HTMLInputElement).checked;
         coreDebug.setShowWireframe(checked);
-        this.emit('debug.wireframe.changed', { enabled: checked });
+        this.send('debug.wireframe.changed', { enabled: checked });
       };
       wireframeEl.addEventListener('change', handler);
       this.listeners.push(() => wireframeEl.removeEventListener('change', handler));
@@ -243,7 +246,7 @@ export class DebugPanel extends Colleague {
       const handler = (e: Event): void => {
         const checked = (e.target as HTMLInputElement).checked;
         coreDebug.setShowNormals(checked);
-        this.emit('debug.normals.changed', { enabled: checked });
+        this.send('debug.normals.changed', { enabled: checked });
       };
       normalsEl.addEventListener('change', handler);
       this.listeners.push(() => normalsEl.removeEventListener('change', handler));
@@ -322,26 +325,6 @@ export class DebugPanel extends Colleague {
       const handler = (): void => this.takeSnapshot();
       snapshotBtn.addEventListener('click', handler);
       this.listeners.push(() => snapshotBtn.removeEventListener('click', handler));
-    }
-  }
-
-  private emit(
-    event:
-      | 'debug.toggle'
-      | 'debug.open'
-      | 'debug.close'
-      | 'debug.wireframe.changed'
-      | 'debug.normals.changed',
-    payload?: unknown
-  ): void {
-    if (this.mediator) {
-      (this.mediator as { send: (sender: string, event: string, payload?: unknown) => void }).send(
-        'debug',
-        event,
-        payload
-      );
-    } else {
-      bus.emit(event, payload);
     }
   }
 
@@ -451,6 +434,11 @@ export class DebugPanel extends Colleague {
     const stats = coreDebug.getAllTimingStats();
     const entries = Object.entries(stats);
 
+    // 生成签名检测变更，避免无变化时重建 DOM
+    const key = entries.map(([n, s]) => `${n}:${s.count}:${s.avg.toFixed(1)}`).join('|');
+    if (key === this.lastTimingsKey) return;
+    this.lastTimingsKey = key;
+
     if (entries.length === 0) {
       this.timingsElement.innerHTML = '<div class="dp-empty">暂无计时数据</div>';
       return;
@@ -477,12 +465,20 @@ export class DebugPanel extends Colleague {
 
     const events = coreDebug.getEventHistory(this.eventFilter || undefined);
 
+    // 仅在事件数量变化时重建 DOM
+    if (events.length === this.lastEventCount) return;
+    this.lastEventCount = events.length;
+
     if (events.length === 0) {
       this.eventsElement.innerHTML = '<div class="dp-empty">暂无事件数据</div>';
       return;
     }
 
-    this.eventsElement.innerHTML = events
+    // 只渲染最新 30 条，避免大量 DOM 节点
+    const visible = events.slice(-30);
+    const offset = events.length - visible.length;
+
+    this.eventsElement.innerHTML = visible
       .map(event => {
         const time = new Date(event.timestamp).toLocaleTimeString('zh-CN', {
           hour12: false,
@@ -502,24 +498,19 @@ export class DebugPanel extends Colleague {
       })
       .join('');
 
+    if (offset > 0) {
+      const hint = document.createElement('div');
+      hint.className = 'dp-empty';
+      hint.textContent = `（已省略前 ${offset} 条）`;
+      this.eventsElement.insertBefore(hint, this.eventsElement.firstChild);
+    }
+
     this.eventsElement.scrollTop = this.eventsElement.scrollHeight;
   }
 
   private exportDebugInfo(): void {
-    const info = {
-      timestamp: new Date().toISOString(),
-      metrics: coreDebug.metrics,
-      timings: coreDebug.getAllTimingStats(),
-      events: coreDebug.events,
-      state: {
-        enabled: coreDebug.enabled,
-        showWireframe: coreDebug.showWireframe,
-        showNormals: coreDebug.showNormals,
-        logLevel: coreDebug.logLevel,
-      },
-    };
-
-    const blob = new Blob([JSON.stringify(info, null, 2)], { type: 'application/json' });
+    const snapshot = coreDebug.snapshot();
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -531,8 +522,8 @@ export class DebugPanel extends Colleague {
   }
 
   private takeSnapshot(): void {
-    const snapshot = coreDebug.exportSnapshot();
-    const blob = new Blob([snapshot], { type: 'application/json' });
+    const json = coreDebug.exportSnapshot();
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

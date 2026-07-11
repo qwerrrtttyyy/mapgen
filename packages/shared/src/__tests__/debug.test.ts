@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { debug, setupDebugGlobal, getDebug } from '../debug.js';
 
 describe('Debug 调试模块', () => {
@@ -219,6 +219,18 @@ describe('Debug 调试模块', () => {
       const filtered = debug.getEventHistory('render');
       expect(filtered.length).toBe(2);
       expect(filtered.every(e => e.name.includes('render'))).toBe(true);
+    });
+
+    it('getEventHistory 非法正则降级为字符串匹配', () => {
+      debug.addEvent('render.request');
+      debug.addEvent('generate.request');
+
+      // 非法正则不应抛异常，应降级为 includes 匹配
+      const filtered = debug.getEventHistory('[');
+      expect(filtered.length).toBe(0);
+
+      const filtered2 = debug.getEventHistory('render');
+      expect(filtered2.length).toBe(1);
     });
 
     it('getRecentEvents 获取最近事件', () => {

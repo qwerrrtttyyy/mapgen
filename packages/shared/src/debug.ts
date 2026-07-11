@@ -20,6 +20,8 @@ export interface DebugEvent {
   source?: string;
 }
 
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
 export interface DebugSnapshot {
   timestamp: number;
   metrics: DebugMetrics;
@@ -27,7 +29,7 @@ export interface DebugSnapshot {
   events: DebugEvent[];
   state: {
     enabled: boolean;
-    logLevel: string;
+    logLevel: LogLevel;
     showWireframe: boolean;
     showNormals: boolean;
     showOverlay: boolean;
@@ -39,7 +41,7 @@ export interface DebugState {
   showOverlay: boolean;
   showWireframe: boolean;
   showNormals: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: LogLevel;
   metrics: DebugMetrics;
   timings: DebugTiming[];
   events: DebugEvent[];
@@ -119,7 +121,7 @@ export const debug = {
     return state.showNormals;
   },
 
-  get logLevel(): string {
+  get logLevel(): LogLevel {
     return state.logLevel;
   },
 
@@ -162,7 +164,7 @@ export const debug = {
     this.log('debug', 'Normals mode', show ? 'enabled' : 'disabled');
   },
 
-  setLogLevel(level: 'debug' | 'info' | 'warn' | 'error'): void {
+  setLogLevel(level: LogLevel): void {
     state.logLevel = level;
     this.log('info', `Log level changed to ${level}`);
   },
@@ -188,7 +190,7 @@ export const debug = {
     const event: DebugEvent = {
       id: generateId(),
       name,
-      timestamp: getPerformance().now(),
+      timestamp: Date.now(),
       payload,
       source,
     };
@@ -227,7 +229,7 @@ export const debug = {
     }
   },
 
-  log(level: 'debug' | 'info' | 'warn' | 'error', ...args: unknown[]): void {
+  log(level: LogLevel, ...args: unknown[]): void {
     if (!state.enabled) return;
     const ranks: Record<string, number> = { debug: 0, info: 1, warn: 2, error: 3 };
     if (ranks[level] < ranks[state.logLevel]) return;
@@ -239,7 +241,7 @@ export const debug = {
     else cons.debug(tag, ...args);
   },
 
-  logIf(condition: boolean, level: 'debug' | 'info' | 'warn' | 'error', ...args: unknown[]): void {
+  logIf(condition: boolean, level: LogLevel, ...args: unknown[]): void {
     if (condition) {
       this.log(level, ...args);
     }
@@ -326,8 +328,13 @@ export const debug = {
 
   getEventHistory(pattern?: string): DebugEvent[] {
     if (!pattern) return [...state.events];
-    const regex = new RegExp(pattern, 'i');
-    return state.events.filter(e => regex.test(e.name));
+    try {
+      const regex = new RegExp(pattern, 'i');
+      return state.events.filter(e => regex.test(e.name));
+    } catch {
+      const lower = pattern.toLowerCase();
+      return state.events.filter(e => e.name.toLowerCase().includes(lower));
+    }
   },
 
   getRecentEvents(count: number): DebugEvent[] {
