@@ -15,9 +15,9 @@
 
 ## Demo
 
-🌐 **在线 Demo**：<https://qwerrrtttyyy.github.io/mapgen/>
+🌐 **在线 Demo**：<https://mapgen.workers.dev>（首次部署后由 Cloudflare 分配实际 URL）
 
-Demo 通过 GitHub Pages 自动部署：每次 push 到 `main` 分支会触发 `.github/workflows/deploy-pages.yml`，构建 `@mapgen/web` 并发布到 GitHub Pages。Demo 是纯前端版本，所有地图生成在浏览器 Web Worker 中完成，无需后端。
+Demo 通过 Cloudflare Workers 自动部署：每次 push 到 `main` 分支会触发 `.github/workflows/deploy-cloudflare.yml`，构建 `@mapgen/web` 并发布到 Cloudflare 全球 CDN。Demo 是纯前端版本，所有地图生成在浏览器 Web Worker 中完成，无需后端。
 
 > 如需本地预览完整功能（含可选后端），参见下方 [快速开始](#快速开始)。
 
