@@ -13,6 +13,8 @@
     "build": "bunx turbo run build",
     "build:server": "bunx turbo run build --filter=@mapgen/server",
     "build:pages": "bunx turbo run build && cd packages/web && bunx vite build --base=/mapgen/",
+    "deploy:cloudflare": "bun run build && bunx wrangler deploy",
+    "preview:cloudflare": "bun run build && bunx wrangler dev",
     "typecheck": "bunx turbo run typecheck",
     "test": "bunx turbo run test",
     "lint": "bunx eslint packages/*/src --ext .ts,.tsx",
@@ -29,11 +31,12 @@
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
+    "jsdom": "^24.0.0",
     "playwright": "^1.61.1",
     "prettier": "^3.2.5",
     "puppeteer-core": "^25.2.1",
     "turbo": "^2.0.0",
-    "jsdom": "^24.0.0"
+    "wrangler": "^4.110.0"
   },
   "dependencies": {
     "pngjs": "^7.0.0"
