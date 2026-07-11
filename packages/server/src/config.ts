@@ -6,6 +6,8 @@ export interface ServerConfig {
   dataDir: string;
   corsOrigins: string[];
   maxResolution: number;
+  /** 绑定地址，默认 127.0.0.1（仅本地可达） */
+  hostname: string;
 }
 
 export function loadConfig(): ServerConfig {
@@ -16,5 +18,6 @@ export function loadConfig(): ServerConfig {
       ','
     ),
     maxResolution: parseInt(env.MAPGEN_MAX_RESOLUTION || '4096', 10),
+    hostname: env.MAPGEN_HOST || '127.0.0.1',
   };
 }

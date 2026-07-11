@@ -137,7 +137,7 @@ export class EditorController extends Colleague {
     const md = state.mapData;
     if (!md) return null;
     const rect = this.canvas.getBoundingClientRect();
-    const uv = clientToMapUv(clientX, clientY, rect, md.width, md.height);
+    const uv = clientToMapUv(clientX, clientY, rect);
     if (!uv) return null;
     return { x: Math.floor(uv.nx * md.width), y: Math.floor(uv.ny * md.height) };
   }

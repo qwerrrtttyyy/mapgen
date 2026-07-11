@@ -7,6 +7,9 @@ export function createMapsRoute(storage: MapStorage): Hono {
 
   app.post('/maps', async c => {
     const body = await c.req.json<CreateMapRequest>();
+    if (!body.map) {
+      return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Missing map data' } }, 400);
+    }
     const ref = storage.save(body.map, body.meta);
     return c.json(ref, 201);
   });
@@ -23,13 +26,6 @@ export function createMapsRoute(storage: MapStorage): Hono {
   });
 
   app.get('/maps/:id', c => {
-    const id = c.req.param('id');
-    const map = storage.load(id);
-    if (!map) return c.json({ error: { code: 'MAP_NOT_FOUND', message: 'Map not found' } }, 404);
-    return c.json(map);
-  });
-
-  app.get('/maps/:id/bin', c => {
     const id = c.req.param('id');
     const map = storage.load(id);
     if (!map) return c.json({ error: { code: 'MAP_NOT_FOUND', message: 'Map not found' } }, 404);

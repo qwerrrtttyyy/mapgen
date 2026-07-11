@@ -41,7 +41,10 @@ class JobQueue {
     };
     this.jobs.set(id, job);
     this.queue.push(id);
-    void this.process();
+    if (!this.running) {
+      this.running = true;
+      setImmediate(() => this.processAll());
+    }
     return id;
   }
 
@@ -53,9 +56,7 @@ class JobQueue {
     this.executor = executor;
   }
 
-  private async process(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
+  private async processAll(): Promise<void> {
     while (this.queue.length > 0) {
       const id = this.queue.shift();
       if (!id) continue;
@@ -63,7 +64,13 @@ class JobQueue {
       if (!job) continue;
       job.status = 'running';
       if (this.executor) {
-        await this.executor(job);
+        try {
+          await this.executor(job);
+        } catch (err) {
+          job.status = 'failed';
+          job.error = { code: 'GENERATION_FAILED', message: String(err) };
+          job.completedAt = Date.now();
+        }
       }
     }
     this.running = false;

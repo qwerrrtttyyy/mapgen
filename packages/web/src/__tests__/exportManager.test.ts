@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock DOM APIs
+// Mock DOM APIs — stub global document since vitest has no DOM environment
 const mockToBlob = vi.fn((cb: (blob: Blob | null) => void, _type?: string, _quality?: number) => {
   cb(new Blob(['test'], { type: 'image/png' }));
 });
@@ -16,31 +16,31 @@ const mockCanvas = {
   })),
 } as unknown as HTMLCanvasElement;
 
-// Mock document.createElement for canvas
-const originalCreateElement = document.createElement.bind(document);
-vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
-  if (tag === 'canvas') {
-    return mockCanvas as unknown as HTMLCanvasElement;
-  }
-  if (tag === 'a') {
-    return {
-      href: '',
-      download: '',
-      click: vi.fn(),
-    } as unknown as HTMLAnchorElement;
-  }
-  return originalCreateElement(tag);
-});
+const mockAnchor = {
+  href: '',
+  download: '',
+  click: vi.fn(),
+} as unknown as HTMLAnchorElement;
+
+const mockDocument = {
+  createElement: vi.fn((tag: string) => {
+    if (tag === 'canvas') return mockCanvas;
+    if (tag === 'a') return mockAnchor;
+    return {};
+  }),
+  body: {
+    appendChild: vi.fn(),
+    removeChild: vi.fn(),
+  },
+} as unknown as Document;
+
+vi.stubGlobal('document', mockDocument);
 
 // Mock URL
 vi.stubGlobal('URL', {
   createObjectURL: vi.fn(() => 'blob:test'),
   revokeObjectURL: vi.fn(),
 });
-
-// Mock document.body
-vi.spyOn(document.body, 'appendChild').mockImplementation(() => null as never);
-vi.spyOn(document.body, 'removeChild').mockImplementation(() => null as never);
 
 import { ExportManager, type ExportFormat, type ExportScale } from '../export/exportManager.js';
 

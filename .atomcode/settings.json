@@ -1,0 +1,63 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "tool_use",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$FILE\"",
+            "allowed_tools": ["Edit", "Write"],
+            "file_matcher": ["**/*.ts", "**/*.tsx", "**/*.css", "**/*.json", "**/*.md"]
+          }
+        ]
+      },
+      {
+        "matcher": "tool_use",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx eslint \"$FILE\" --fix",
+            "allowed_tools": ["Edit", "Write"],
+            "file_matcher": ["**/*.ts", "**/*.tsx"]
+          }
+        ]
+      },
+      {
+        "matcher": "tool_use",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx tsc --noEmit --project packages/shared/tsconfig.json 2>&1 | head -20",
+            "allowed_tools": ["Edit", "Write"],
+            "file_matcher": ["packages/shared/src/**/*.ts"]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "tool_use",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'ERROR: Lock files cannot be edited directly. Use npm install instead.' && exit 1",
+            "allowed_tools": ["Edit", "Write"],
+            "file_matcher": ["**/bun.lock", "**/package-lock.json", "**/yarn.lock", "**/pnpm-lock.yaml"]
+          }
+        ]
+      },
+      {
+        "matcher": "tool_use",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'ERROR: Environment files should not be edited directly.' && exit 1",
+            "allowed_tools": ["Edit", "Write"],
+            "file_matcher": ["**/.env", "**/.env.*", "**/credentials.json", "**/secrets.*"]
+          }
+        ]
+      }
+    ]
+  }
+}

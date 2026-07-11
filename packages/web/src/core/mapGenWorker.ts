@@ -107,7 +107,9 @@ class MapGenWorkerManager {
 
   generate(params: MapParams, onProgress?: ProgressCallback): Promise<GenerateResult> {
     return new Promise((resolve, reject) => {
+      // 用 rAF + setTimeout 避免当前帧阻塞，同时保留回退能力。
       const runSync = (): void => {
+        console.warn('MapGen: Web Worker unavailable, falling back to main-thread generation — UI may freeze briefly.');
         requestAnimationFrame(() => {
           setTimeout(() => {
             try {
@@ -129,10 +131,11 @@ class MapGenWorkerManager {
         params,
         resolve,
         reject: (_msg: string) => {
+          // Worker 运行时出错：不再静默回退到主线程（原代码 runSync 会锁 UI）。
+          // 改为直接 reject，上层可展示错误并让用户重试。使用 _msg 传递真实错误信息。
           this.destroyWorker();
           this.initError = null;
-          this.ensureWorker();
-          runSync();
+          reject(_msg || 'Map generation failed in worker. Please try again.');
         },
         onProgress: onProgress || null,
       };

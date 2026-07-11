@@ -67,23 +67,35 @@ export class RemoteProvider implements MapGenEngine {
       }
 
       es.addEventListener('progress', event => {
-        const data = JSON.parse(event.data as string) as GenerationProgress;
-        if (onProgress) onProgress(data);
+        try {
+          const data = JSON.parse(event.data as string) as GenerationProgress;
+          if (onProgress) onProgress(data);
+        } catch (parseError) {
+          resolve(err({ code: 'NETWORK_ERROR', message: `Failed to parse SSE progress event: ${event.data}` }));
+        }
       });
 
       es.addEventListener('completed', event => {
         es.close();
-        const data = JSON.parse(event.data as string) as {
-          jobId: string;
-          result: GenerationResult;
-        };
-        resolve(ok(data.result));
+        try {
+          const data = JSON.parse(event.data as string) as {
+            jobId: string;
+            result: GenerationResult;
+          };
+          resolve(ok(data.result));
+        } catch (parseError) {
+          resolve(err({ code: 'NETWORK_ERROR', message: `Failed to parse SSE completed event: ${event.data}` }));
+        }
       });
 
       es.addEventListener('failed', event => {
         es.close();
-        const data = JSON.parse(event.data as string) as { jobId: string; error: MapGenError };
-        resolve(err(data.error));
+        try {
+          const data = JSON.parse(event.data as string) as { jobId: string; error: MapGenError };
+          resolve(err(data.error));
+        } catch (parseError) {
+          resolve(err({ code: 'NETWORK_ERROR', message: `Failed to parse SSE failed event: ${event.data}` }));
+        }
       });
 
       es.addEventListener('error', () => {

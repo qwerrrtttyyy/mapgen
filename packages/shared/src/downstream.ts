@@ -1,22 +1,26 @@
 // 下游管线：climate → ice → lakes → rivers → regions 的统一编排。
-// 消除 partialRegenerate 各分支的重复链（高内聚：管线的组装知识集中于此）。
-// 含世界式增强 v2：coastDist + oceanCurrents + ice + biomes + watershed + volcanism + seasons，
-// 可通过 options 开关控制。
+// 现委托给 pipeline/*Stage（与 generateMap 共用同一套阶段实现），
+// 消除原先与此重复的内联下游链。含世界式增强 v2 子系统，可通过 options 开关控制。
 
-import { computeClimate, type ClimateEnhanceOptions } from './regions.js';
-import { generateLakes } from './erosion.js';
-import { generateRivers, type River } from './rivers.js';
-import { analyzeRegions, type Region } from './regions.js';
-import { computeCoastDistance } from './coastline.js';
-import { computeOceanCurrents, type OceanCurrentResult } from './oceanCurrents.js';
-import { computeIceSheet, type IceResult } from './ice.js';
-import { computeSlope } from './slope.js';
-import { classifyBiomes, type BiomeResult } from './biomes.js';
-import { computeWatershed, type WatershedResult } from './watershed.js';
-import { computeVolcanism, type VolcanismResult } from './volcanism.js';
-import { computeSeasonalVariation, type SeasonResult } from './seasons.js';
-import type { MapData } from './index.js';
+import type { MapParams } from './index.js';
 import type { Plate } from './tectonic.js';
+import { runClimateStage, type ClimateState } from './pipeline/climateStage.js';
+import { runRegionStage, type RegionState } from './pipeline/regionStage.js';
+import { runRiverStage, type RiverState } from './pipeline/riverStage.js';
+import type { TectonicState } from './pipeline/tectonicStage.js';
+import type { ElevationState } from './pipeline/elevationStage.js';
+import type {
+  OceanCurrentResult,
+  IceResult,
+  BiomeResult,
+  WatershedResult,
+  VolcanismResult,
+  SeasonResult,
+  Region,
+  River,
+  MapData,
+} from './index.js';
+import { f32 } from './pipeline/typedArrays.js';
 
 export interface DownstreamInput {
   width: number;
@@ -32,6 +36,8 @@ export interface DownstreamInput {
   lakeDensity: number;
   riverCount: number;
   seed: number;
+  // ── 生成模式（下游管线需要读取以判断是否 blank 模式）──
+  mode?: 'procedural' | 'blank';
   // ── 世界式生成开关（缺省全开）──
   enableOceanCurrents?: boolean;
   enableIceSheet?: boolean;
@@ -82,201 +88,70 @@ export interface DownstreamResult {
 /**
  * 运行 coast → currents → climate → ice → biomes → lakes → rivers → watershed
  *      → regions → volcanism → seasons 完整下游链。
- * 所有 partialRegenerate 分支（elevation/erosion/climate/editor-elevation）共用此入口。
+ * 所有 partialRegenerate 分支（elevation/erosion/climate/editor-elevation）共用此入口，
+ * 现已委托给 pipeline/*Stage，与 generateMap 共用同一实现，不再内联重复逻辑。
  * 冰川侵蚀会就地改写 elevationAfter（不影响输入 elevation）。
  */
 export function runDownstreamPipeline(input: DownstreamInput): DownstreamResult {
-  const { width, height, elevation, seaLevel } = input;
+  const { width, height, elevation, seed } = input;
   const size = width * height;
 
-  // 1. 海岸距离场
-  const coastDist = computeCoastDistance(width, height, elevation, seaLevel);
-
-  // 2. 洋流（开关默认开）
-  const useCurrents = input.enableOceanCurrents !== false;
-  const currents = useCurrents
-    ? computeOceanCurrents({
-        width,
-        height,
-        elevation,
-        seaLevel,
-        coastDist,
-        windDirX: input.windDirX,
-        windDirY: input.windDirY,
-        rainStrength: input.rainStrength,
-        seed: input.seed,
-      })
-    : {
-        vx: new Float32Array(size),
-        vy: new Float32Array(size),
-        tempDelta: new Float32Array(size),
-        speed: new Float32Array(size),
-      };
-
-  // 3. 气候（含世界式增强）
-  const enhance: ClimateEnhanceOptions = {
-    coastDist,
-    currentTempDelta: currents.tempDelta,
-    enableContinentality: input.enableContinentality !== false,
-    enableOceanCurrents: input.enableOceanCurrents !== false,
-    enableHadleyEnhancement: input.enableHadleyEnhancement !== false,
-    enableMonsoon: input.enableMonsoon !== false,
+  // 由 DownstreamInput 重建 TectonicState / ElevationState。
+  // 下游链只用到 plateId / plates / boundary / boundaryTypeArr，其余补零即可。
+  const params = input as unknown as MapParams;
+  const tectonic: TectonicState = {
+    plates: input.plates ?? [],
+    plateId: input.plateId,
+    plateDist: f32(size),
+    boundary: input.boundary ?? f32(size),
+    tectonicForce: f32(size),
+    boundaryTypeArr: input.boundaryType ?? f32(size),
   };
-  const climate = computeClimate(
-    width,
-    height,
+  const elevationState: ElevationState = {
+    elevationPre: elevation,
     elevation,
-    seaLevel,
-    input.tempOffset,
-    input.snowLine,
-    input.windDirX,
-    input.windDirY,
-    input.rainStrength,
-    enhance
-  );
+    slope: f32(size),
+    ridge: f32(size),
+    ridgeMask: f32(size),
+  };
 
-  // 4. 冰盖 + 冰川侵蚀（侵蚀改写 elevationAfter，不污染输入）
-  const useIce = input.enableIceSheet !== false;
-  let elevationAfter = elevation;
-  let slopeAfter: Float32Array;
-  let ice: IceResult;
-  if (useIce) {
-    // 复制 elevation 以免就地改写输入
-    elevationAfter = new Float32Array(elevation);
-    ice = computeIceSheet({
-      width,
-      height,
-      elevation: elevationAfter,
-      seaLevel,
-      temperature: climate.temperature,
-      snowLine: input.snowLine,
-      seed: input.seed,
-    });
-    slopeAfter = computeSlope(width, height, elevationAfter);
-  } else {
-    ice = {
-      landIce: new Float32Array(size),
-      seaIce: new Float32Array(size),
-      glacierVx: new Float32Array(size),
-      glacierVy: new Float32Array(size),
-    };
-    slopeAfter = computeSlope(width, height, elevationAfter);
-  }
+  const climate: ClimateState = runClimateStage(width, height, seed, params, elevationState);
+  const riverState: RiverState = runRiverStage(width, height, seed, params, tectonic, climate);
+  const regionState: RegionState = runRegionStage(width, height, seed, params, tectonic, climate, riverState);
 
-  // 5. 湖泊 + 河流 + 区域（用侵蚀后高程）
-  const lakes = generateLakes(
-    width,
-    height,
-    elevationAfter,
-    seaLevel,
-    input.lakeDensity,
-    input.seed
-  );
-  const riverResult = generateRivers(
-    width,
-    height,
-    elevationAfter,
-    climate.moisture,
-    seaLevel,
-    input.riverCount,
-    input.seed
-  );
-  const regions = analyzeRegions(
-    width,
-    height,
-    elevationAfter,
-    climate.moisture,
-    climate.temperature,
-    input.plateId,
-    seaLevel,
-    input.seed
-  );
-
-  // ── v2 新增阶段 ──
-  // 6. Köppen-Geiger 生物群系分类
-  let biomes: BiomeResult | undefined;
-  if (input.enableAdvancedBiomes !== false) {
-    biomes = classifyBiomes({
-      elevation: elevationAfter,
-      temperature: climate.temperature,
-      rainfall: climate.rainfall,
-      moisture: climate.moisture,
-      seaLevel,
-      snowLine: input.snowLine,
-      coastDist,
-      riverMask: riverResult.riverMask,
-      lakeMask: lakes,
-      landIce: ice.landIce,
-      seaIce: ice.seaIce,
-    });
-  }
-
-  // 7. 流域分析
-  let watershed: WatershedResult | undefined;
-  if (input.enableWatershed !== false) {
-    watershed = computeWatershed({
-      width,
-      height,
-      elevation: elevationAfter,
-      seaLevel,
-      riverMask: riverResult.riverMask,
-      lakeMask: lakes,
-      minBasinArea: 30,
-    });
-  }
-
-  // 8. 火山系统
-  let volcanism: VolcanismResult | undefined;
-  if (input.enableVolcanism !== false && input.plates && input.boundary) {
-    volcanism = computeVolcanism({
-      width,
-      height,
-      elevation: elevationAfter,
-      seaLevel,
-      plateId: input.plateId,
-      plates: input.plates,
-      boundary: input.boundary,
-      boundaryType: input.boundaryType,
-      hotspotCount: 3,
-      intensity: 1,
-      seed: input.seed,
-    });
-  }
-
-  // 9. 季节性气候变差
-  let seasons: SeasonResult | undefined;
-  if (input.enableSeasons !== false) {
-    seasons = computeSeasonalVariation({
-      width,
-      height,
-      elevation: elevationAfter,
-      seaLevel,
-      temperature: climate.temperature,
-      rainfall: climate.rainfall,
-      coastDist,
-    });
-  }
-
+  // runClimateStage / runRiverStage 已包含全部世界式子系统（洋流、冰盖、生物群系、
+  // 流域、火山、季节）。此处仅将结果组装为 DownstreamResult，
+  // 并保留完整的 WatershedResult / SeasonResult 等 partial-regen 所需的富字段。
   return {
     moisture: climate.moisture,
     rainfall: climate.rainfall,
     temperature: climate.temperature,
     tempZone: climate.tempZone,
-    riverMask: riverResult.riverMask,
-    riverWidth: riverResult.riverWidth,
-    riverDepth: riverResult.riverDepth,
-    lakes,
-    rivers: riverResult.rivers,
-    regions,
-    coastDist,
-    currents,
-    ice,
-    elevationAfter,
-    slopeAfter,
-    biomes,
-    watershed,
-    volcanism,
-    seasons,
+    riverMask: riverState.riverMask,
+    riverWidth: riverState.riverWidth,
+    riverDepth: riverState.riverDepth,
+    lakes: riverState.lakes,
+    rivers: riverState.rivers,
+    regions: regionState.regions,
+    coastDist: climate.coastDist,
+    currents: {
+      vx: climate.currentVx,
+      vy: climate.currentVy,
+      tempDelta: climate.currentTempDelta,
+      speed: climate.currentSpeed,
+    },
+    ice: {
+      landIce: climate.landIce,
+      seaIce: climate.seaIce,
+      glacierVx: climate.glacierVx,
+      glacierVy: climate.glacierVy,
+    },
+    elevationAfter: climate.elevation,
+    slopeAfter: climate.slope,
+    biomes: riverState.biomes,
+    watershed: riverState.watershed,
+    volcanism: riverState.volcanism,
+    seasons: riverState.seasons,
   };
 }
 

@@ -19,6 +19,7 @@ export class MapStorage {
       id,
       name: meta?.name || null,
       seed: map.seed.toString(),
+      // SerializedMapData 暂无 params 字段 —— 存空对象，TODO: 从 generate 路由传入真实参数
       params: JSON.stringify({}),
       mapData: encodeMapData(map),
       width: map.width,

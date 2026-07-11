@@ -22,7 +22,7 @@ export class MapPicker {
   pick(clientX: number, clientY: number, canvas: HTMLCanvasElement): PickerResult | null {
     const rect = canvas.getBoundingClientRect();
     const { width, height } = this.mapData;
-    const uv = clientToMapUv(clientX, clientY, rect, width, height);
+    const uv = clientToMapUv(clientX, clientY, rect);
     if (!uv) return null;
     const { nx, ny } = uv;
 

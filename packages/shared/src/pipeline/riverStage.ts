@@ -1,9 +1,9 @@
 import { generateLakes } from '../erosion.js';
 import { generateRivers } from '../rivers.js';
-import { classifyBiomes } from '../biomes.js';
-import { computeWatershed } from '../watershed.js';
-import { computeVolcanism } from '../volcanism.js';
-import { computeSeasonalVariation } from '../seasons.js';
+import { classifyBiomes, type BiomeResult } from '../biomes.js';
+import { computeWatershed, type WatershedResult } from '../watershed.js';
+import { computeVolcanism, type VolcanismResult } from '../volcanism.js';
+import { computeSeasonalVariation, type SeasonResult } from '../seasons.js';
 import type { MapParams } from '../index.js';
 import type { TectonicState } from './tectonicStage.js';
 import type { ClimateState } from './climateStage.js';
@@ -26,6 +26,14 @@ export interface RiverState {
   seasonTex: Float32Array;
   volcanoSites: VolcanoSite[];
   hotspots: Hotspot[];
+  /** 完整生物群系结果（供 downstream 管线直接复用，避免重复计算） */
+  biomes?: BiomeResult;
+  /** 完整流域分析结果（含 flowDir / basinOutlets 等打包阶段不需要的字段） */
+  watershed?: WatershedResult;
+  /** 完整火山系统结果 */
+  volcanism?: VolcanismResult;
+  /** 完整季节变差结果（含四季分列 delta） */
+  seasons?: SeasonResult;
 }
 
 export function runRiverStage(
@@ -98,8 +106,9 @@ export function runRiverStage(
   riverWidth = riverResult.riverWidth;
   riverDepth = riverResult.riverDepth;
 
+  let biomesResult: BiomeResult | undefined;
   if (params.enableAdvancedBiomes !== false) {
-    const biomes = classifyBiomes({
+    biomesResult = classifyBiomes({
       elevation: climate.elevation,
       temperature: climate.temperature,
       rainfall: climate.rainfall,
@@ -112,12 +121,13 @@ export function runRiverStage(
       landIce: climate.landIce,
       seaIce: climate.seaIce,
     });
-    biomeId = biomes.biomeId;
-    biomeNormalized = biomes.biomeNormalized;
+    biomeId = biomesResult.biomeId;
+    biomeNormalized = biomesResult.biomeNormalized;
   }
 
+  let watershedResult: WatershedResult | undefined;
   if (params.enableWatershed !== false) {
-    const ws = computeWatershed({
+    watershedResult = computeWatershed({
       width,
       height,
       elevation: climate.elevation,
@@ -126,13 +136,14 @@ export function runRiverStage(
       lakeMask: lakes,
       minBasinArea: 30,
     });
-    basinId = ws.basinId;
-    isDivide = ws.isDivide;
-    streamOrder = ws.streamOrder;
+    basinId = watershedResult.basinId;
+    isDivide = watershedResult.isDivide;
+    streamOrder = watershedResult.streamOrder;
   }
 
+  let volcanismResult: VolcanismResult | undefined;
   if (params.enableVolcanism !== false) {
-    const volc = computeVolcanism({
+    volcanismResult = computeVolcanism({
       width,
       height,
       elevation: climate.elevation,
@@ -145,14 +156,15 @@ export function runRiverStage(
       intensity: 1,
       seed,
     });
-    volcanoProb = volc.volcanoProb;
-    calderaMask = volc.calderaMask;
-    volcanoSites = volc.volcanoSites;
-    hotspots = volc.hotspots;
+    volcanoProb = volcanismResult.volcanoProb;
+    calderaMask = volcanismResult.calderaMask;
+    volcanoSites = volcanismResult.volcanoSites;
+    hotspots = volcanismResult.hotspots;
   }
 
+  let seasonsResult: SeasonResult | undefined;
   if (params.enableSeasons !== false) {
-    const seas = computeSeasonalVariation({
+    seasonsResult = computeSeasonalVariation({
       width,
       height,
       elevation: climate.elevation,
@@ -161,7 +173,7 @@ export function runRiverStage(
       rainfall: climate.rainfall,
       coastDist: climate.coastDist,
     });
-    seasonTex = seas.seasonTex;
+    seasonTex = seasonsResult.seasonTex;
   }
 
   return {
@@ -180,5 +192,9 @@ export function runRiverStage(
     seasonTex,
     volcanoSites,
     hotspots,
+    biomes: biomesResult,
+    watershed: watershedResult,
+    volcanism: volcanismResult,
+    seasons: seasonsResult,
   };
 }

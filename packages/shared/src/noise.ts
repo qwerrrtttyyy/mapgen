@@ -16,7 +16,7 @@ function seedPermutation(seed: number): Uint8Array {
   for (let i = 0; i < 256; i++) p[i] = i;
   let s = seed >>> 0;
   for (let i = 255; i > 0; i--) {
-    s = (s * 16807 + 0) % 2147483647;
+    s = (s * 16807) % 2147483647;
     const j = s % (i + 1);
     [p[i], p[j]] = [p[j], p[i]];
   }

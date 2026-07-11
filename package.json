@@ -7,17 +7,17 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bunx turbo run dev",
-    "dev:server": "bunx turbo run dev --filter=@mapgen/server",
-    "dev:all": "bunx turbo run dev --filter=@mapgen/web --filter=@mapgen/server",
-    "build": "bunx turbo run build",
-    "build:server": "bunx turbo run build --filter=@mapgen/server",
-    "typecheck": "bunx turbo run typecheck",
-    "test": "bunx turbo run test",
-    "lint": "bunx eslint packages/*/src --ext .ts,.tsx",
-    "lint:fix": "bunx eslint packages/*/src --ext .ts,.tsx --fix",
-    "format": "bunx prettier --write \"packages/*/src/**/*.{ts,tsx,css,json,md}\"",
-    "format:check": "bunx prettier --check \"packages/*/src/**/*.{ts,tsx,css,json,md}\""
+    "dev": "node node_modules/.bin/turbo run dev",
+    "dev:server": "node node_modules/.bin/turbo run dev --filter=@mapgen/server",
+    "dev:all": "node node_modules/.bin/turbo run dev --filter=@mapgen/web --filter=@mapgen/server",
+    "build": "node node_modules/.bin/turbo run build",
+    "build:server": "node node_modules/.bin/turbo run build --filter=@mapgen/server",
+    "typecheck": "node node_modules/.bin/turbo run typecheck",
+    "test": "node node_modules/.bin/turbo run test",
+    "lint": "npx eslint packages/*/src --ext .ts,.tsx",
+    "lint:fix": "npx eslint packages/*/src --ext .ts,.tsx --fix",
+    "format": "npx prettier --write \"packages/*/src/**/*.{ts,tsx,css,json,md}\"",
+    "format:check": "npx prettier --check \"packages/*/src/**/*.{ts,tsx,css,json,md}\""
   },
   "packageManager": "bun@1.2.14",
   "engines": {

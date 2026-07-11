@@ -5,7 +5,6 @@ import { computeClimate } from '../regions.js';
 import { computeIceSheet } from '../ice.js';
 import type { MapParams } from '../index.js';
 import type { ElevationState } from './elevationStage.js';
-import type { TectonicState } from './tectonicStage.js';
 import { f32 } from './typedArrays.js';
 
 export interface ClimateState {
@@ -33,7 +32,6 @@ export function runClimateStage(
   height: number,
   seed: number,
   params: MapParams,
-  tectonic: TectonicState,
   elevationState: ElevationState
 ): ClimateState {
   const size = width * height;

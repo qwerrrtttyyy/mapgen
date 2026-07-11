@@ -16,7 +16,7 @@ function clientToUv(clientX: number, clientY: number, canvas: HTMLCanvasElement)
   const { mapData } = state;
   if (!mapData) return null;
   const rect = canvas.getBoundingClientRect();
-  return clientToMapUv(clientX, clientY, rect, mapData.width, mapData.height);
+  return clientToMapUv(clientX, clientY, rect);
 }
 
 export class LaserController extends Colleague {

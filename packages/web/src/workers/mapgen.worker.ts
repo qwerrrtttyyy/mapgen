@@ -9,15 +9,25 @@ interface WorkerMessage {
 }
 
 let isGenerating = false;
+// 模块级取消信号引用，使 cancel 消息能中止进行中的生成任务。
+let currentCancelSignal: CancelSignal | null = null;
 
 function postProgress(requestId: number, progress: number, phase: string): void {
   self.postMessage({ type: 'progress', requestId, progress, phase });
 }
 
+// 每个生成任务独立的取消信号，通过 MapParams.cancelSignal 注入 generateMap。
+// 避免模块级 flag 在并发/重入场景下的竞态。
+type CancelSignal = { aborted: boolean };
+
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   const msg = e.data;
 
   if (msg.type === 'cancel') {
+    // 设置当前任务的取消信号，使 generateMap 在阶段边界尽早中止。
+    if (currentCancelSignal) {
+      currentCancelSignal.aborted = true;
+    }
     isGenerating = false;
     return;
   }
@@ -34,13 +44,17 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
 
     isGenerating = true;
 
+    // 创建取消信号并注入 params，使 generateMap 在阶段边界尽早响应取消。
+    const cancelSignal: CancelSignal = { aborted: false };
+    currentCancelSignal = cancelSignal;
+    // cast 绕过 MapParams 类型检查 —— cancelSignal 在运行时始终存在
+    const params = { ...msg.params, cancelSignal } as MapParams;
+
     try {
-      const result = generateMap(msg.params, (progress, phase) => {
+      const result = generateMap(params, (progress, phase) => {
         if (!isGenerating) return;
         postProgress(msg.requestId, progress, phase);
       });
-
-      if (!isGenerating) return;
 
       const { mapData, checkpoints } = result;
 
@@ -99,14 +113,16 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         { transfer: transferables }
       );
     } catch (err) {
-      if (!isGenerating) return;
+      // 始终发送错误消息：取消引发的中止也返回 Cancelled 错误，
+      // 避免 Promise 永久挂起（原代码在取消后同时跳过 complete 与 error 路径）。
       self.postMessage({
         type: 'error',
         requestId: msg.requestId,
-        message: (err as Error).message,
+        message: isGenerating ? (err as Error).message : 'Cancelled',
       });
     } finally {
       isGenerating = false;
+      currentCancelSignal = null;
     }
   }
 };

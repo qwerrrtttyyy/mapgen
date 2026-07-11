@@ -20,6 +20,12 @@ jobQueue.setExecutor(executeGenerationJob);
 const app = new Hono();
 app.use('*', cors({ origin: config.corsOrigins }));
 
+// 全局错误兜底：不对外暴露栈信息。
+app.onError((err, c) => {
+  console.error(err);
+  return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500);
+});
+
 app.route('/api/v1', createHealthRoute(config));
 app.route('/api/v1', createGenerateRoute());
 app.route('/api/v1', createJobsRoute());
@@ -30,6 +36,7 @@ export default app;
 
 if (typeof Bun !== 'undefined' && import.meta.url === `file://${Bun.main}`) {
   const port = config.port;
-  Bun.serve({ fetch: app.fetch, port });
-  console.log(`MapGen server listening on http://localhost:${port}`);
+  // 默认绑定 localhost 防止非预期外部访问。
+  Bun.serve({ fetch: app.fetch, port, hostname: config.hostname });
+  console.log(`MapGen server listening on http://127.0.0.1:${port}`);
 }

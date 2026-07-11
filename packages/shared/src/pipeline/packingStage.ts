@@ -76,6 +76,15 @@ export function runPackingStage(
   const volcanoSites = riverState.volcanoSites;
   const hotspots = riverState.hotspots;
 
+  // 火山纹理 B 通道：取最近热点的高斯衰减强度（替代原先的「全局最大值」简化）。
+  // 与 volcanism.ts 一致，采用 R=8 的高斯衰减：sigma^2 = R^2 * 0.5 = 32。
+  const HOTSPOT_SIGMA2 = 32;
+  let maxBasin = 0;
+  for (let i = 0; i < size; i++) {
+    const b = basinId[i];
+    if (b > maxBasin) maxBasin = b;
+  }
+
   for (let i = 0; i < size; i++) {
     const pid = plateId[i] | 0;
     const i4 = i * 4;
@@ -127,14 +136,26 @@ export function runPackingStage(
     biomeTex[i4 + 3] = streamOrder[i] * inv7;
 
     const b = basinId[i];
-    watershedTex[i4 + 0] = b < 0 ? 0 : Math.min(1, b / 65535);
+    // 按实际最大流域 id 归一化，避免大地图 id 超过 65535 被截断成同色。
+    watershedTex[i4 + 0] = b < 0 ? 0 : (maxBasin > 0 ? b / maxBasin : 0);
     watershedTex[i4 + 1] = isDivide[i];
     watershedTex[i4 + 2] = streamOrder[i] * inv7;
 
     volcanismTex[i4 + 0] = volcanoProb[i];
     volcanismTex[i4 + 1] = calderaMask[i] * 0.5;
-    volcanismTex[i4 + 2] =
-      hotspots.length > 0 ? Math.max(...hotspots.map(h => h.strength)) * 0.5 : 0;
+    // 最近热点高斯衰减强度：距离越近越强，远离热点归零。
+    let hotspotStrength = 0;
+    if (hotspots.length > 0) {
+      const px = i % width;
+      const py = (i / width) | 0;
+      for (let h = 0; h < hotspots.length; h++) {
+        const dx = px - hotspots[h].x;
+        const dy = py - hotspots[h].y;
+        const s = hotspots[h].strength * Math.exp(-(dx * dx + dy * dy) / (2 * HOTSPOT_SIGMA2));
+        if (s > hotspotStrength) hotspotStrength = s;
+      }
+    }
+    volcanismTex[i4 + 2] = Math.min(1, hotspotStrength) * 0.5;
     volcanismTex[i4 + 3] = 0;
   }
 
