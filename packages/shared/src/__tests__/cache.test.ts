@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { LRUCache, TerrainCache, terrainCacheKey, memoize } from '../cache.js';
 
 describe('LRUCache', () => {
@@ -77,39 +77,41 @@ describe('LRUCache', () => {
     expect(cache.get('a')).toBeUndefined();
   });
 
-  it('should handle TTL expiry', () => {
-    vi.useFakeTimers();
-    const cache = new LRUCache<string, number>({ maxSize: 10, ttlMs: 1000 });
+  it('should handle TTL expiry', async () => {
+    const cache = new LRUCache<string, number>({ maxSize: 10, ttlMs: 50 });
     cache.put('a', 1);
     expect(cache.get('a')).toBe(1);
 
-    vi.advanceTimersByTime(500);
+    await Bun.sleep(30);
     expect(cache.get('a')).toBe(1);
 
-    vi.advanceTimersByTime(600); // total 1100ms
+    await Bun.sleep(30);
     expect(cache.get('a')).toBeUndefined();
-    vi.useRealTimers();
   });
 
   it('should call onEvict callback', () => {
-    const onEvict = vi.fn();
+    let evictedKey = '';
+    let evictedValue = 0;
+    const onEvict = (key: string, value: unknown) => {
+      evictedKey = key;
+      evictedValue = value as number;
+    };
     const cache = new LRUCache<string, number>({ maxSize: 2, onEvict });
     cache.put('a', 1);
     cache.put('b', 2);
     cache.put('c', 3); // evicts 'a'
-    expect(onEvict).toHaveBeenCalledWith('a', 1);
+    expect(evictedKey).toBe('a');
+    expect(evictedValue).toBe(1);
   });
 
-  it('should purge expired entries', () => {
-    vi.useFakeTimers();
-    const cache = new LRUCache<string, number>({ maxSize: 10, ttlMs: 1000 });
+  it('should purge expired entries', async () => {
+    const cache = new LRUCache<string, number>({ maxSize: 10, ttlMs: 50 });
     cache.put('a', 1);
     cache.put('b', 2);
-    vi.advanceTimersByTime(1100);
+    await Bun.sleep(60);
     const purged = cache.purge();
     expect(purged).toBe(2);
     expect(cache.size).toBe(0);
-    vi.useRealTimers();
   });
 
   it('should return keys in access order', () => {
