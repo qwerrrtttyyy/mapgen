@@ -261,13 +261,43 @@ function parseParams(args: string[]): MapgenParams {
     seedStr: getArg(args, '--seed') ?? 'default',
     plateCount: parseInt(getArg(args, '--plates') ?? '10', 10),
     landmass: parseFloat(getArg(args, '--landmass') ?? '0.5'),
-    noiseType: getArg(args, '--noise') ?? 'perlin',
-    fbmType: getArg(args, '--fbm') ?? 'standard',
+    noiseType: parseNoiseType(getArg(args, '--noise')),
+    fbmType: parseFbmType(getArg(args, '--fbm')),
+    octaves: parseInt(getArg(args, '--octaves') ?? '5', 10),
+    lacunarity: parseFloat(getArg(args, '--lacunarity') ?? '2.0'),
+    persistence: parseFloat(getArg(args, '--persistence') ?? '0.5'),
+    seaLevel: parseFloat(getArg(args, '--sea-level') ?? '0.3'),
+    mountainFold: parseFloat(getArg(args, '--mountain-fold') ?? '0.5'),
+    coastDetail: parseFloat(getArg(args, '--coast-detail') ?? '0.5'),
+    erosionIterations: parseInt(getArg(args, '--erosion-iterations') ?? '50000', 10),
+    erosionStrength: parseFloat(getArg(args, '--erosion-strength') ?? '0.4'),
+    lakeDensity: parseFloat(getArg(args, '--lake-density') ?? '0.02'),
+    tempOffset: parseFloat(getArg(args, '--temp-offset') ?? '0.0'),
+    snowLine: parseFloat(getArg(args, '--snow-line') ?? '0.7'),
     mapAspect: getArg(args, '--aspect'),
     mapSize: size ? parseInt(size, 10) : undefined,
     mapWidth: width ? parseInt(width, 10) : undefined,
     mapHeight: height ? parseInt(height, 10) : undefined,
   };
+}
+
+const VALID_NOISE_TYPES = ['perlin', 'simplex', 'value', 'worley'] as const;
+const VALID_FBM_TYPES = ['standard', 'ridged', 'billowy', 'warped'] as const;
+
+function parseNoiseType(value: string | undefined): MapgenParams['noiseType'] {
+  if (!value) return 'perlin';
+  if (!VALID_NOISE_TYPES.includes(value as (typeof VALID_NOISE_TYPES)[number])) {
+    throw new Error(`Invalid --noise value: ${value}. Valid: ${VALID_NOISE_TYPES.join(', ')}`);
+  }
+  return value as MapgenParams['noiseType'];
+}
+
+function parseFbmType(value: string | undefined): MapgenParams['fbmType'] {
+  if (!value) return 'standard';
+  if (!VALID_FBM_TYPES.includes(value as (typeof VALID_FBM_TYPES)[number])) {
+    throw new Error(`Invalid --fbm value: ${value}. Valid: ${VALID_FBM_TYPES.join(', ')}`);
+  }
+  return value as MapgenParams['fbmType'];
 }
 
 function parseParamsPartial(args: string[]): Partial<MapgenParams> {
@@ -279,9 +309,9 @@ function parseParamsPartial(args: string[]): Partial<MapgenParams> {
   const landmass = getArg(args, '--landmass');
   if (landmass) params.landmass = parseFloat(landmass);
   const noise = getArg(args, '--noise');
-  if (noise) params.noiseType = noise;
+  if (noise) params.noiseType = parseNoiseType(noise);
   const fbm = getArg(args, '--fbm');
-  if (fbm) params.fbmType = fbm;
+  if (fbm) params.fbmType = parseFbmType(fbm);
   return params;
 }
 

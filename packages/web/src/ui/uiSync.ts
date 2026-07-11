@@ -1,7 +1,7 @@
 /**
  * UI ↔ 参数同步
  */
-import { state, type UIParams } from '../core/appState.js';
+import { state } from '../core/appState.js';
 import { setParam } from '../core/actions.js';
 import { RENDER_STYLES } from '../launcher/presets.js';
 import { createSvgIcon } from '../core/svgIcon.js';
