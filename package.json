@@ -31,7 +31,8 @@
     "playwright": "^1.61.1",
     "prettier": "^3.2.5",
     "puppeteer-core": "^25.2.1",
-    "turbo": "^2.0.0"
+    "turbo": "^2.0.0",
+    "jsdom": "^24.0.0"
   },
   "dependencies": {
     "pngjs": "^7.0.0"
