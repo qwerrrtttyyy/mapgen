@@ -15,9 +15,11 @@
 
 ## Demo
 
-> 🌐 在线 Demo 待部署。计划通过 GitHub Pages 提供静态演示，地址会在发布后填入此处。
+🌐 **在线 Demo**：<https://qwerrrtttyyy.github.io/mapgen/>
 
-如需本地预览，参见下方 [快速开始](#快速开始)。
+Demo 通过 GitHub Pages 自动部署：每次 push 到 `main` 分支会触发 `.github/workflows/deploy-pages.yml`，构建 `@mapgen/web` 并发布到 GitHub Pages。Demo 是纯前端版本，所有地图生成在浏览器 Web Worker 中完成，无需后端。
+
+> 如需本地预览完整功能（含可选后端），参见下方 [快速开始](#快速开始)。
 
 ## 发行版
 
