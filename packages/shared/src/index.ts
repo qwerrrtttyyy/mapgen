@@ -1,22 +1,46 @@
 // ── Re-exports (保持向后兼容) ────────────────────────────────────────────────
 export { hashSeed, createNoise, NoiseEngine, type NoiseType, type FbmType } from './noise.js';
 export {
-  generatePlates, assignPlates, computeBoundaries, computeBoundaryTypes,
-  type Plate, type BoundaryType,
+  generatePlates,
+  assignPlates,
+  computeBoundaries,
+  computeBoundaryTypes,
+  type Plate,
+  type BoundaryType,
 } from './tectonic.js';
 export { generateElevation, hydraulicErosion, generateLakes } from './erosion.js';
 export { generateRivers, type River, type RiverSegment } from './rivers.js';
 export {
-  analyzeRegions, computeClimate, type Region, type ClimateData, type ClimateEnhanceOptions,
+  analyzeRegions,
+  computeClimate,
+  type Region,
+  type ClimateData,
+  type ClimateEnhanceOptions,
 } from './regions.js';
 export {
-  generateNames, regenerateNames, type NameManifest, type NameablePlate, type NameableRegion,
-  type NamedPlate, type NamedRegion, type PlateKind, type TerrainType,
+  generateNames,
+  regenerateNames,
+  type NameManifest,
+  type NameablePlate,
+  type NameableRegion,
+  type NamedPlate,
+  type NamedRegion,
+  type PlateKind,
+  type TerrainType,
 } from './naming.js';
 export {
-  detectTerrainRegions, type DetectedRegion, type TerrainDetectOptions,
-  CommandStack, type Command, applyBrushStroke, applyVectorMountain, applyVectorPolygon,
-  movePlate, recomputePlateGeometry, type BrushTarget, type VectorTarget,
+  detectTerrainRegions,
+  type DetectedRegion,
+  type TerrainDetectOptions,
+  CommandStack,
+  type Command,
+  applyBrushStroke,
+  applyVectorMountain,
+  applyVectorPolygon,
+  movePlate,
+  recomputePlateGeometry,
+  type BrushTarget,
+  type VectorTarget,
   applySmoothBrush,
   applyNoiseBrush,
   applySetElevationBrush,
@@ -28,41 +52,95 @@ export {
 } from './editor.js';
 export { computeSlope } from './slope.js';
 export {
-  classifyBiome, extractChannel, extractPlateId, packAllTextures, packClimateRiverTextures,
-  packElevTex, packCurrentTex, packIceTex, packBiomeTex, packWatershedTex,
-  packVolcanismTex, packSeasonTex, type TexturePackParams,
+  classifyBiome,
+  extractChannel,
+  extractPlateId,
+  packAllTextures,
+  packClimateRiverTextures,
+  packElevTex,
+  packCurrentTex,
+  packIceTex,
+  packBiomeTex,
+  packWatershedTex,
+  packVolcanismTex,
+  packSeasonTex,
+  type TexturePackParams,
 } from './texturePack.js';
 export {
-  runDownstreamPipeline, applyDownstreamToMapData, type DownstreamInput, type DownstreamResult,
+  runDownstreamPipeline,
+  applyDownstreamToMapData,
+  type DownstreamInput,
+  type DownstreamResult,
 } from './downstream.js';
 export { computeCoastDistance, continentalityFactor } from './coastline.js';
-export { computeOceanCurrents, type OceanCurrentInput, type OceanCurrentResult } from './oceanCurrents.js';
+export {
+  computeOceanCurrents,
+  type OceanCurrentInput,
+  type OceanCurrentResult,
+} from './oceanCurrents.js';
 export { computeIceSheet, type IceInput, type IceResult } from './ice.js';
 export {
-  computeDetailPatch, detectDetailPeaks, type ViewportRegion, type DetailPatch, type DetailPeak,
+  computeDetailPatch,
+  detectDetailPeaks,
+  type ViewportRegion,
+  type DetailPatch,
+  type DetailPeak,
 } from './lazyGen.js';
 export {
-  classifyBiomes, biomeNormalize, getBiomeInfo, type BiomeId, type BiomeInfo,
-  type BiomeClassifyInput, type BiomeResult, BIOME_INFO, BIOME_COUNT,
+  classifyBiomes,
+  biomeNormalize,
+  getBiomeInfo,
+  type BiomeId,
+  type BiomeInfo,
+  type BiomeClassifyInput,
+  type BiomeResult,
+  BIOME_INFO,
+  BIOME_COUNT,
 } from './biomes.js';
 export { computeWatershed, type WatershedInput, type WatershedResult } from './watershed.js';
 export {
-  computeVolcanism, type VolcanismInput, type VolcanismResult, type VolcanoSite, type Hotspot,
+  computeVolcanism,
+  type VolcanismInput,
+  type VolcanismResult,
+  type VolcanoSite,
+  type Hotspot,
 } from './volcanism.js';
 export {
-  computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonInput, type SeasonResult,
+  computeSeasonalVariation,
+  decodeSeasonDelta,
+  type Season,
+  type SeasonInput,
+  type SeasonResult,
 } from './seasons.js';
-export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming } from './debug.js';
-export { t, getPreferredLocale, createTranslator, translations, type Locale } from './i18n/index.js';
+export {
+  debug,
+  setupDebugGlobal,
+  getDebug,
+  type DebugState,
+  type DebugMetrics,
+  type DebugTiming,
+} from './debug.js';
+export {
+  t,
+  getPreferredLocale,
+  createTranslator,
+  translations,
+  type Locale,
+} from './i18n/index.js';
 export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
 
 // ── Pipeline stages (新增导出) ───────────────────────────────────────────────
 export {
-  runTectonicStage, type TectonicState,
-  runElevationStage, type ElevationState,
-  runClimateStage, type ClimateState,
-  runRiverStage, type RiverState,
-  runRegionStage, type RegionState,
+  runTectonicStage,
+  type TectonicState,
+  runElevationStage,
+  type ElevationState,
+  runClimateStage,
+  type ClimateState,
+  runRiverStage,
+  type RiverState,
+  runRegionStage,
+  type RegionState,
   runPackingStage,
 } from './pipeline/index.js';
 
@@ -80,13 +158,30 @@ import { runRegionStage } from './pipeline/regionStage.js';
 import { runPackingStage } from './pipeline/packingStage.js';
 
 const ASPECT_MAP: Record<string, number> = {
-  '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9, '2:1': 2, '3:2': 3 / 2,
+  '1:1': 1,
+  '4:3': 4 / 3,
+  '16:9': 16 / 9,
+  '2:1': 2,
+  '3:2': 3 / 2,
 };
 
 const PHASE_WEIGHTS: Record<string, number> = {
-  tectonic: 8, elevation: 22, erosion: 16, coastline: 4, currents: 5,
-  climate: 9, ice: 6, biomes: 3, watershed: 4, volcanism: 3, seasons: 3,
-  lakes: 3, rivers: 7, regions: 4, naming: 2, packing: 1,
+  tectonic: 8,
+  elevation: 22,
+  erosion: 16,
+  coastline: 4,
+  currents: 5,
+  climate: 9,
+  ice: 6,
+  biomes: 3,
+  watershed: 4,
+  volcanism: 3,
+  seasons: 3,
+  lakes: 3,
+  rivers: 7,
+  regions: 4,
+  naming: 2,
+  packing: 1,
 };
 const TOTAL_WEIGHT = Object.values(PHASE_WEIGHTS).reduce((s, w) => s + w, 0);
 
@@ -162,7 +257,16 @@ export function generateMap(
 
   // 6. 纹理打包
   advance('packing');
-  const mapData = runPackingStage(width, height, seed, params, tectonic, climate, riverState, regionState);
+  const mapData = runPackingStage(
+    width,
+    height,
+    seed,
+    params,
+    tectonic,
+    climate,
+    riverState,
+    regionState
+  );
 
   return {
     mapData,
