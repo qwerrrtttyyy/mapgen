@@ -54,7 +54,7 @@ Development server runs at `http://127.0.0.1:3000` by default.
 ```
 mapgen/
 ├── packages/
-│   ├── shared/          # Shared engine modules (TypeScript)
+│   ├── core/            # Core engine modules (TypeScript) — @mapgen/core
 │   │   ├── src/
 │   │   │   ├── pipeline/      # Generation pipeline stages
 │   │   │   ├── noise.ts       # Noise generation (Perlin, Simplex, Value, Worley)

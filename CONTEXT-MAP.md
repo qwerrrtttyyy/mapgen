@@ -8,7 +8,7 @@ mapgen/
 │   ├── agents/          # Agent skill configs
 │   └── adr/             # Architecture decision records
 ├── packages/
-│   ├── shared/          → CONTEXT.md (core engine)
+│   ├── core/            → CONTEXT.md (core engine, @mapgen/core)
 │   ├── shared-types/    → CONTEXT.md (type contracts)
 │   ├── web/             → CONTEXT.md (frontend)
 │   ├── manager/         → CONTEXT.md (CLI)
