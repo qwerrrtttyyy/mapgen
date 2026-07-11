@@ -23,11 +23,11 @@ Demo 通过 GitHub Pages 自动部署：每次 push 到 `main` 分支会触发 `
 
 ## 发行版
 
-| 版本 | 日期 | 说明 |
-|------|------|------|
-| [v0.0.3-pre](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.3-pre) | 2026-07-06 | 后端抽象层、模块质量提升、Bun 迁移 |
-| [v0.0.2](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.2) | 2026-06-28 | 复杂世界式全局生成 — 洋流/冰盖/流域/火山/季节 |
-| [v0.0.1](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.1) | 2026-06-26 | Monorepo 重写版 — WebGL2 + Material Design 3 |
+| 版本                                                                         | 日期       | 说明                                          |
+| ---------------------------------------------------------------------------- | ---------- | --------------------------------------------- |
+| [v0.0.3-pre](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.3-pre) | 2026-07-06 | 后端抽象层、模块质量提升、Bun 迁移            |
+| [v0.0.2](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.2)         | 2026-06-28 | 复杂世界式全局生成 — 洋流/冰盖/流域/火山/季节 |
+| [v0.0.1](https://github.com/qwerrrtttyyy/mapgen/releases/tag/v0.0.1)         | 2026-06-26 | Monorepo 重写版 — WebGL2 + Material Design 3  |
 
 完整历史：[CHANGELOG.md](CHANGELOG.md) · [GitHub Releases](https://github.com/qwerrrtttyyy/mapgen/releases)
 
@@ -48,24 +48,24 @@ bun test           # 运行全部测试
 
 ## 功能
 
-| 类别 | 功能 |
-|------|------|
-| 噪声 | Perlin, Simplex, Value, Worley |
-| FBM | 标准, 山脊, 膨胀, 扭曲 |
-| 构造 | 板块生成, 边界计算, 碰撞检测 |
-| 侵蚀 | 水力侵蚀, 湖泊生成, 河流网络 |
-| 气候 | 温度, 湿度, 生物群落分带 |
-| 行星系统 | 洋流, 冰盖, 火山, 流域, 季节 |
-| 渲染 | 地形, 板块, 羊皮纸, 卫星, 低多边形, 生物群落, 等高线, 浮雕, Azgaar, 洋流条纹, 冰盖覆盖 等 19 种风格 |
-| 交互 | 板块选区, 激光工具, 光标悬停, 检查点保存/恢复 |
-| 界面 | Material Design 3, 深色/亮色主题, 响应式布局, 移动端适配 |
+| 类别     | 功能                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------- |
+| 噪声     | Perlin, Simplex, Value, Worley                                                                      |
+| FBM      | 标准, 山脊, 膨胀, 扭曲                                                                              |
+| 构造     | 板块生成, 边界计算, 碰撞检测                                                                        |
+| 侵蚀     | 水力侵蚀, 湖泊生成, 河流网络                                                                        |
+| 气候     | 温度, 湿度, 生物群落分带                                                                            |
+| 行星系统 | 洋流, 冰盖, 火山, 流域, 季节                                                                        |
+| 渲染     | 地形, 板块, 羊皮纸, 卫星, 低多边形, 生物群落, 等高线, 浮雕, Azgaar, 洋流条纹, 冰盖覆盖 等 19 种风格 |
+| 交互     | 板块选区, 激光工具, 光标悬停, 检查点保存/恢复                                                       |
+| 界面     | Material Design 3, 深色/亮色主题, 响应式布局, 移动端适配                                            |
 
 ## 架构
 
 ```
 mapgen/
 ├── packages/
-│   ├── shared/          @mapgen/core — 核心引擎（TypeScript）
+│   ├── core/            @mapgen/core — 核心引擎（TypeScript）
 │   │   └── src/
 │   │       ├── pipeline/      # 分阶段生成管线
 │   │       ├── noise.ts       # 噪声生成
@@ -100,17 +100,17 @@ mapgen/
 
 ## 技术栈
 
-| 层 | 技术 |
-|----|------|
-| 语言 | TypeScript (ES2020, strict) |
-| 渲染 | WebGL2 / Canvas2D |
-| 样式 | Material Design 3 (CSS Custom Properties) |
-| 着色器 | GLSL ES 3.00 |
-| 构建 | Turborepo + Vite + tsc |
-| 包管理 | Bun workspaces |
-| 后端（可选）| Hono + in-memory 存储 + REST + SSE |
-| 测试 | Bun test |
-| Lint | ESLint + Prettier |
+| 层           | 技术                                      |
+| ------------ | ----------------------------------------- |
+| 语言         | TypeScript (ES2020, strict)               |
+| 渲染         | WebGL2 / Canvas2D                         |
+| 样式         | Material Design 3 (CSS Custom Properties) |
+| 着色器       | GLSL ES 3.00                              |
+| 构建         | Turborepo + Vite + tsc                    |
+| 包管理       | Bun workspaces                            |
+| 后端（可选） | Hono + in-memory 存储 + REST + SSE        |
+| 测试         | Bun test                                  |
+| Lint         | ESLint + Prettier                         |
 
 ## 开发
 
@@ -122,7 +122,7 @@ bun run typecheck     # 类型检查
 bun test              # 运行测试
 ```
 
-当前测试状态：**213/213 通过**（core 185 + manager 25 + shared-types 1 + server 2）
+当前测试状态：**269/269 通过**（core 229 + manager 25 + web 12 + shared-types 1 + server 2）
 
 ## 贡献
 
@@ -135,6 +135,7 @@ bun test              # 运行测试
 ### 提交截图
 
 如果你运行后想分享截图，请：
+
 1. 保存到 `docs/screenshots/` 目录
 2. 在 README 的"截图"章节插入图片
 3. 提交 PR
