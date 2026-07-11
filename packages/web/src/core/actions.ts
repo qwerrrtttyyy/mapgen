@@ -89,7 +89,9 @@ export function generate(): void {
       // 与 core 的 MapData（运行时层）结构等价但 NamedPlate.type 字面量类型不同。
       // 这里通过 unknown 中转做一次结构化断言，避免引入两份类型的耦合。
       // 后续 P0-3 完整修复应让 core 直接 re-export shared-types 的 MapData。
-      const mapData = deserializeMapData(result.value.mapData) as unknown as import('@mapgen/core').MapData;
+      const mapData = deserializeMapData(
+        result.value.mapData
+      ) as unknown as import('@mapgen/core').MapData;
       state.mapData = mapData;
       state.checkpoints = result.value.checkpoints ?? null;
       bus.emit('generating.completed', { mapData });

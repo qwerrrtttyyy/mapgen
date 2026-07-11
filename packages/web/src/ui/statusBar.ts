@@ -2,10 +2,7 @@
  * 状态栏与进度条管理
  */
 
-export function setGeneratingStatus(
-  generating: boolean,
-  error?: string
-): void {
+export function setGeneratingStatus(generating: boolean, error?: string): void {
   const dot = document.getElementById('status-dot');
   const text = document.getElementById('status-text');
   const progOverlay = document.getElementById('progress-overlay');
