@@ -66,4 +66,4 @@ target/
 *.gz
 *.rar
 *.7z
-```
+```.turbo/

@@ -34,17 +34,29 @@ export function drawMinimap(ctx: CanvasRenderingContext2D | null): void {
 
       let r: number, g: number, b: number;
       if (e < seaLevel - 0.15) {
-        r = 20; g = 50; b = 100;
+        r = 20;
+        g = 50;
+        b = 100;
       } else if (e < seaLevel) {
-        r = 40; g = 80; b = 140;
+        r = 40;
+        g = 80;
+        b = 140;
       } else if (e < seaLevel + 0.05) {
-        r = 194; g = 178; b = 128;
+        r = 194;
+        g = 178;
+        b = 128;
       } else if (e < snowLine - 0.1) {
-        r = 60; g = 120; b = 50;
+        r = 60;
+        g = 120;
+        b = 50;
       } else if (e < snowLine) {
-        r = 100; g = 90; b = 70;
+        r = 100;
+        g = 90;
+        b = 70;
       } else {
-        r = 240; g = 245; b = 255;
+        r = 240;
+        g = 245;
+        b = 255;
       }
 
       data[di] = r;
