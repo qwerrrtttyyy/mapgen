@@ -1,6 +1,7 @@
 /**
  * Mapgen Manager - Type Definitions
  */
+import type { MapParams } from '@mapgen/core';
 
 /** Mapgen configuration preset */
 export interface MapgenConfig {
@@ -22,17 +23,14 @@ export interface MapgenConfig {
   metadata?: Record<string, unknown>;
 }
 
-/** Map generation parameters (compatible with @mapgen/core) */
-export interface MapgenParams {
-  seedStr: string;
-  mapAspect?: string;
-  mapSize?: number;
-  mapWidth?: number;
-  mapHeight?: number;
-  plateCount: number;
-  landmass: number;
-  noiseType: string;
-  fbmType: string;
+/**
+ * Map generation parameters.
+ *
+ * 以 @mapgen/core 的 MapParams 为基础（type-only import，无运行时依赖），
+ * 额外允许任意字符串键以兼容 CLI 用户传入的额外参数。
+ * 这样 core 的 MapParams 字段增减会自动反映到 manager，避免类型漂移。
+ */
+export interface MapgenParams extends MapParams {
   [key: string]: unknown;
 }
 

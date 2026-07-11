@@ -4,11 +4,11 @@
 
 Procedural noise & tectonic simulation tool rendering on WebGL with a Material Design 3 UI. Generates terrain/material maps in the browser.
 
-- **Latest:** `v0.0.3-pre` (Monorepo: Turborepo + npm workspaces)
+- **Latest:** `v0.0.3-pre` (Monorepo: Turborepo + Bun workspaces)
 - **Changelog:** CHANGELOG.md
 - **Language:** zh-CN primary
 - **Runtime:** Browser (pure frontend, no server required); optional Bun reference backend
-- **Package manager:** npm (bun lockfile also available for bun users)
+- **Package manager:** Bun ≥ 1.2.0 (see `package.json` → `packageManager` field; `bun.lock` is the source of truth)
 - **Build / test / lint:** Turborepo tasks
 - **GitHub:** https://github.com/qwerrrtttyyy/mapgen
 
@@ -16,40 +16,40 @@ Procedural noise & tectonic simulation tool rendering on WebGL with a Material D
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development mode (frontend only)
-npm run dev
+bun run dev
 
 # Development mode (frontend + backend)
-npm run dev:all
+bun run dev:all
 
 # Backend only
-npm run dev:server
+bun run dev:server
 
 # Build all packages
-npm run build
+bun run build
 
 # Build backend only
-npm run build:server
+bun run build:server
 
 # Type check all packages
-npm run typecheck
+bun run typecheck
 
 # Run all tests
-npm test
+bun test
 
 # Build specific package
-npx turbo run build --filter=@mapgen/core
-npx turbo run build --filter=@mapgen/web
-npx turbo run build --filter=@mapgen/server
+bunx turbo run build --filter=@mapgen/core
+bunx turbo run build --filter=@mapgen/web
+bunx turbo run build --filter=@mapgen/server
 ```
 
 Development server runs at `http://127.0.0.1:3000` by default.
 
 ## Architecture
 
-**Monorepo structure (Turborepo + npm workspaces):**
+**Monorepo structure (Turborepo + Bun workspaces):**
 
 ```
 mapgen/
@@ -116,12 +116,12 @@ mapgen/
 
 ### Package responsibilities
 
-| Package | Purpose | Dependencies |
-|---------|---------|--------------|
-| `@mapgen/core` | Core algorithms (noise, tectonic, erosion, rivers, regions) | None |
-| `@mapgen/shared-types` | Cross-boundary type contracts and serialization | `msgpackr` |
-| `@mapgen/web` | TypeScript + Vite frontend, WebGL/Canvas2D rendering | `@mapgen/core`, `@mapgen/shared-types` |
-| `@mapgen/server` | Optional reference backend (Hono + in-memory storage) | `@mapgen/core`, `@mapgen/shared-types`, `hono` |
+| Package                | Purpose                                                     | Dependencies                                   |
+| ---------------------- | ----------------------------------------------------------- | ---------------------------------------------- |
+| `@mapgen/core`         | Core algorithms (noise, tectonic, erosion, rivers, regions) | None                                           |
+| `@mapgen/shared-types` | Cross-boundary type contracts and serialization             | `msgpackr`                                     |
+| `@mapgen/web`          | TypeScript + Vite frontend, WebGL/Canvas2D rendering        | `@mapgen/core`, `@mapgen/shared-types`         |
+| `@mapgen/server`       | Optional reference backend (Hono + in-memory storage)       | `@mapgen/core`, `@mapgen/shared-types`, `hono` |
 
 ## Code conventions
 
@@ -133,13 +133,13 @@ mapgen/
 ## Commands
 
 ```bash
-npm run dev          # Start frontend in dev mode
-npm run dev:server   # Start backend in dev mode
-npm run dev:all      # Start frontend + backend in dev mode
-npm run build        # Build all packages
-npm run build:server # Build backend only
-npm run typecheck    # Type check all packages
-npm test             # Run all tests
+bun run dev          # Start frontend in dev mode
+bun run dev:server   # Start backend in dev mode
+bun run dev:all      # Start frontend + backend in dev mode
+bun run build        # Build all packages
+bun run build:server # Build backend only
+bun run typecheck    # Type check all packages
+bun test             # Run all tests
 ```
 
 ## Features
@@ -162,7 +162,7 @@ npm test             # Run all tests
 - **Rendering:** WebGL2 / Canvas2D
 - **Styling:** Material Design 3 (CSS Custom Properties)
 - **Build tool:** Turborepo
-- **Package manager:** npm workspaces
+- **Package manager:** Bun workspaces (packageManager: bun@1.2.14)
 - **Backend (optional):** Hono + in-memory storage + REST + SSE
 
 ## License

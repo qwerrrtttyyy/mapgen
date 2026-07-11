@@ -1,3 +1,8 @@
+// @vitest-environment jsdom
+// 显式声明测试环境为 jsdom（虽然 vitest.config.ts 已全局设置 environment: 'jsdom'）。
+// 防御性措施：CI 上若 bun install 与 lockfile 行为不一致导致 jsdom 解析失败时，
+// 显式注释能让 vitest 在文件级别强制加载 jsdom 环境，避免 'document is not defined'。
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock DOM APIs

@@ -86,20 +86,19 @@ const VOLCANO_PROB_THRESHOLD = 0.35; // v2: 火山概率阈值
 const ARCHIPELAGO_MAX_AREA = 50; // 群岛：小岛最大面积
 
 // classifyTerrain 阈值
-const DELTA_SLOPE_MAX = 0.03;        // 三角洲最大坡度
-const DELTA_ELEV_MAX = 0.08;          // 三角洲最大高程（seaLevel + 此值）
-const VOLCANO_SEA_OFFSET = 0.3;       // 火山最低高程偏移（seaLevel + 此值）
-const VOLCANO_SLOPE_FACTOR = 0.7;     // 火山坡度阈值系数（SLOPE_MOUNTAIN * 此值）
-const BASIN_ELEV_MAX = 0.12;          // 盆地最大高程（seaLevel + 此值）
-const BASIN_SLOPE_MAX = 0.02;         // 盆地最大坡度
-const DESERT_MOIST_MAX = 0.3;         // 沙漠最大湿度
-const FOREST_MOIST_MIN = 0.6;         // 森林最小湿度
-const PLATEAU_ELEV_FACTOR = 0.7;      // 高原高程系数（snowLine * 此值）
-const DELTA_COAST_MAX = 10;           // 三角洲距海岸最大像素数
-const SEA_TARGET_OFFSET = 0.3;        // 海洋目标高程偏移
-const LAND_TARGET_ELEV = 0.2;         // 陆地目标高程
-const LAKE_TARGET_OFFSET = 0.05;      // 湖泊目标高程偏移
-
+const DELTA_SLOPE_MAX = 0.03; // 三角洲最大坡度
+const DELTA_ELEV_MAX = 0.08; // 三角洲最大高程（seaLevel + 此值）
+const VOLCANO_SEA_OFFSET = 0.3; // 火山最低高程偏移（seaLevel + 此值）
+const VOLCANO_SLOPE_FACTOR = 0.7; // 火山坡度阈值系数（SLOPE_MOUNTAIN * 此值）
+const BASIN_ELEV_MAX = 0.12; // 盆地最大高程（seaLevel + 此值）
+const BASIN_SLOPE_MAX = 0.02; // 盆地最大坡度
+const DESERT_MOIST_MAX = 0.3; // 沙漠最大湿度
+const FOREST_MOIST_MIN = 0.6; // 森林最小湿度
+const PLATEAU_ELEV_FACTOR = 0.7; // 高原高程系数（snowLine * 此值）
+const DELTA_COAST_MAX = 10; // 三角洲距海岸最大像素数
+const SEA_TARGET_OFFSET = 0.3; // 海洋目标高程偏移
+const LAND_TARGET_ELEV = 0.2; // 陆地目标高程
+const LAKE_TARGET_OFFSET = 0.05; // 湖泊目标高程偏移
 
 function classifyTerrain(
   elev: number,
@@ -392,7 +391,17 @@ export class CommandStack {
 }
 
 // ── 画笔 ──
-export type BrushTarget = 'raise' | 'lower' | 'sea' | 'land' | 'plate-paint' | 'smooth' | 'noise' | 'set' | 'river' | 'lake';
+export type BrushTarget =
+  | 'raise'
+  | 'lower'
+  | 'sea'
+  | 'land'
+  | 'plate-paint'
+  | 'smooth'
+  | 'noise'
+  | 'set'
+  | 'river'
+  | 'lake';
 export type VectorTarget = 'sea' | 'land' | 'lake';
 
 /** 高斯衰减（中心 1，边缘趋近 0） */
@@ -587,7 +596,12 @@ export function applyVectorPolygon(
   target: VectorTarget,
   seaLevel: number = 0
 ): Command {
-  const targetElev = target === 'sea' ? seaLevel - SEA_TARGET_OFFSET : target === 'lake' ? seaLevel + LAKE_TARGET_OFFSET : LAND_TARGET_ELEV;
+  const targetElev =
+    target === 'sea'
+      ? seaLevel - SEA_TARGET_OFFSET
+      : target === 'lake'
+        ? seaLevel + LAKE_TARGET_OFFSET
+        : LAND_TARGET_ELEV;
   const changes: Array<{ idx: number; before: number; after: number }> = [];
 
   // 多边形包围盒
@@ -779,26 +793,31 @@ function linearFalloff(dist: number, radius: number): number {
 /** 根据模式获取衰减值 */
 function getFalloff(dist: number, radius: number, mode: FalloffMode): number {
   switch (mode) {
-    case 'gaussian': return gaussianFalloff(dist, radius);
-    case 'linear': return linearFalloff(dist, radius);
-    case 'constant': return 1;
+    case 'gaussian':
+      return gaussianFalloff(dist, radius);
+    case 'linear':
+      return linearFalloff(dist, radius);
+    case 'constant':
+      return 1;
   }
 }
 
 /** 判断像素是否在画笔范围内 */
 function isInBrush(dx: number, dy: number, radius: number, shape: BrushShape): boolean {
   switch (shape) {
-    case 'circle': return dx * dx + dy * dy <= radius * radius;
-    case 'square': return Math.abs(dx) <= radius && Math.abs(dy) <= radius;
+    case 'circle':
+      return dx * dx + dy * dy <= radius * radius;
+    case 'square':
+      return Math.abs(dx) <= radius && Math.abs(dy) <= radius;
   }
 }
 
 // ── 噪声画笔参数 ──
 export interface NoiseBrushParams {
-  frequency: number;   // 噪声频率（默认 0.05）
-  amplitude: number;   // 噪声幅度（默认 0.3）
-  octaves: number;     // 八度数（默认 3）
-  seed: number;        // 随机种子
+  frequency: number; // 噪声频率（默认 0.05）
+  amplitude: number; // 噪声幅度（默认 0.3）
+  octaves: number; // 八度数（默认 3）
+  seed: number; // 随机种子
 }
 
 // ── 平滑画笔：对区域内像素做均值滤波 ──
@@ -864,8 +883,12 @@ export function applySmoothBrush(
 
   return {
     kind: 'brush-smooth',
-    redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
-    undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) elevation[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) elevation[c.idx] = c.before;
+    },
   };
 }
 
@@ -960,8 +983,12 @@ export function applyNoiseBrush(
 
   return {
     kind: 'brush-noise',
-    redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
-    undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) elevation[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) elevation[c.idx] = c.before;
+    },
   };
 }
 
@@ -1010,8 +1037,12 @@ export function applySetElevationBrush(
 
   return {
     kind: 'brush-set',
-    redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
-    undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) elevation[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) elevation[c.idx] = c.before;
+    },
   };
 }
 
@@ -1033,9 +1064,9 @@ export function applyRiverDraw(
   riverWidth: Float32Array,
   riverDepth: Float32Array,
   points: number[][],
-  channelWidth: number,    // 河道宽度（像素）
-  channelDepth: number,    // 河道深度（高程差）
-  seaLevel: number
+  channelWidth: number, // 河道宽度（像素）
+  channelDepth: number, // 河道深度（高程差）
+  _seaLevel: number // 保留参数以维持 API 签名兼容；当前实现未直接使用
 ): Command {
   const elevChanges: Array<{ idx: number; before: number; after: number }> = [];
   const maskChanges: Array<{ idx: number; before: number; after: number }> = [];
@@ -1204,7 +1235,11 @@ export function applyLakeDraw(
 
   return {
     kind: 'lake-draw',
-    redo: () => { for (const c of changes) elevation[c.idx] = c.after; },
-    undo: () => { for (const c of changes) elevation[c.idx] = c.before; },
+    redo: () => {
+      for (const c of changes) elevation[c.idx] = c.after;
+    },
+    undo: () => {
+      for (const c of changes) elevation[c.idx] = c.before;
+    },
   };
 }

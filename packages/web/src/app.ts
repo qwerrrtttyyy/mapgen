@@ -32,7 +32,6 @@ import {
   updateStyleDots,
   updateUndoRedo,
   updateWindArrow,
-  setSliderVal,
   setDispVal,
   isRenderOnlyParam,
   applyZoom,
@@ -339,7 +338,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const savedTheme = localStorage.getItem('mapgen:theme');
     if (savedTheme) document.documentElement.dataset.theme = savedTheme;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // ── Launcher ──
   let launched = false;
@@ -378,7 +379,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     root.classList.add('theme-transition');
     root.dataset.theme = next;
     window.setTimeout(() => root.classList.remove('theme-transition'), 400);
-    try { localStorage.setItem('mapgen:theme', next); } catch { /* ignore */ }
+    try {
+      localStorage.setItem('mapgen:theme', next);
+    } catch {
+      /* ignore */
+    }
   });
 
   // ── 选项卡切换 ──
@@ -386,7 +391,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     tab.addEventListener('click', () => {
       const target = tab.dataset.tab;
       if (!target) return;
-      document.querySelectorAll<HTMLElement>('.panel-tab').forEach(t => t.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLElement>('.panel-tab')
+        .forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       document.querySelectorAll<HTMLElement>('.panel-section').forEach(s => {
         s.classList.toggle('active', s.dataset.section === target);
@@ -436,14 +443,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.sz-btn').forEach(b => b.classList.remove('active'));
     updateSizeInfo();
   };
-  wInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
-  hInput?.addEventListener('change', () => { onSizeChange(); generateMap(); });
+  wInput?.addEventListener('change', () => {
+    onSizeChange();
+    generateMap();
+  });
+  hInput?.addEventListener('change', () => {
+    onSizeChange();
+    generateMap();
+  });
 
   document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const w = parseInt(btn.dataset.w || '512', 10);
       const h = parseInt(btn.dataset.h || '512', 10);
-      document.querySelectorAll<HTMLButtonElement>('.sz-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.sz-btn')
+        .forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       patchParams({ mapWidth: w, mapHeight: h });
       if (wInput) wInput.value = String(w);
@@ -454,44 +469,121 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── 滑块绑定 ──
-  bindSliderEx('octaves', 'octaves', { toParam: raw => raw, toDisplay: raw => String(raw), autoGen: true });
-  bindSliderEx('lacunarity', 'lacunarity', { toParam: raw => raw, toDisplay: raw => raw.toFixed(1), autoGen: true });
-  bindSliderEx('persistence', 'persistence', { toParam: raw => raw, toDisplay: raw => raw.toFixed(2), autoGen: true });
-  bindSliderEx('plateCount', 'plateCount', { toParam: raw => raw, toDisplay: raw => String(raw), autoGen: true });
-  bindSliderEx('landmass', 'landmass', { toParam: raw => raw / 100, toDisplay: raw => raw + '%', autoGen: true });
-  bindSliderEx('mountainFold', 'mountainFold', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(2), autoGen: true });
-  bindSliderEx('coastDetail', 'coastDetail', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(2), autoGen: true });
+  bindSliderEx('octaves', 'octaves', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('lacunarity', 'lacunarity', {
+    toParam: raw => raw,
+    toDisplay: raw => raw.toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('persistence', 'persistence', {
+    toParam: raw => raw,
+    toDisplay: raw => raw.toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('plateCount', 'plateCount', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('landmass', 'landmass', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => raw + '%',
+    autoGen: true,
+  });
+  bindSliderEx('mountainFold', 'mountainFold', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('coastDetail', 'coastDetail', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
   bindCheckbox('enableOceanCurrents', 'enableOceanCurrents', true);
   bindCheckbox('enableIceSheet', 'enableIceSheet', true);
   bindCheckbox('enableMonsoon', 'enableMonsoon', true);
   bindCheckbox('enableContinentality', 'enableContinentality', true);
   bindCheckbox('enableHadleyEnhancement', 'enableHadleyEnhancement', true);
-  bindSliderEx('seaLevel', 'seaLevel', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(2), autoGen: true });
-  bindSliderEx('erosionStrength', 'erosionStrength', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(1), autoGen: true });
-  bindSliderEx('erosionIterations', 'erosionIterations', { toParam: raw => raw, toDisplay: raw => String(raw), autoGen: true });
-  bindSliderEx('lakeDensity', 'lakeDensity', { toParam: raw => raw / 1000, toDisplay: raw => (raw / 1000).toFixed(3), autoGen: true });
-  bindSliderEx('tempOffset', 'tempOffset', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(2), autoGen: true });
-  bindSliderEx('snowLine', 'snowLine', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(2), autoGen: true });
-  bindSliderEx('rainStrength', 'rainStrength', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(1), autoGen: true });
-  bindSliderEx('windDirX', 'windDirX', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(1), autoGen: true });
-  bindSliderEx('windDirY', 'windDirY', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(1), autoGen: true });
-  bindSliderEx('riverCount', 'riverCount', { toParam: raw => raw, toDisplay: raw => String(raw), autoGen: true });
+  bindSliderEx('seaLevel', 'seaLevel', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('erosionStrength', 'erosionStrength', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('erosionIterations', 'erosionIterations', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
+  bindSliderEx('lakeDensity', 'lakeDensity', {
+    toParam: raw => raw / 1000,
+    toDisplay: raw => (raw / 1000).toFixed(3),
+    autoGen: true,
+  });
+  bindSliderEx('tempOffset', 'tempOffset', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('snowLine', 'snowLine', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+    autoGen: true,
+  });
+  bindSliderEx('rainStrength', 'rainStrength', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('windDirX', 'windDirX', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('windDirY', 'windDirY', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(1),
+    autoGen: true,
+  });
+  bindSliderEx('riverCount', 'riverCount', {
+    toParam: raw => raw,
+    toDisplay: raw => String(raw),
+    autoGen: true,
+  });
   bindSelect('noiseType', 'noiseType', true);
   bindSelect('fbmType', 'fbmType', true);
   bindSelect('style', 'style');
   bindCheckbox('showBoundaries', 'showBoundaries');
-  bindSliderEx('boundaryWidth', 'boundaryWidth', { toParam: raw => raw / 10, toDisplay: raw => (raw / 10).toFixed(1) });
+  bindSliderEx('boundaryWidth', 'boundaryWidth', {
+    toParam: raw => raw / 10,
+    toDisplay: raw => (raw / 10).toFixed(1),
+  });
   bindCheckbox('showRivers', 'showRivers');
   bindCheckbox('showContours', 'showContours');
   bindCheckbox('showTerrain', 'showTerrain');
   bindCheckbox('showSelection', 'showSelection');
   bindCheckbox('showClimate', 'showClimate');
-  bindSliderEx('lightAngle', 'lightAngle', { toParam: raw => raw / 100, toDisplay: raw => (raw / 100).toFixed(2) });
+  bindSliderEx('lightAngle', 'lightAngle', {
+    toParam: raw => raw / 100,
+    toDisplay: raw => (raw / 100).toFixed(2),
+  });
   bindCheckbox('pointLightEnabled', 'pointLightEnabled');
   bindCheckbox('glowEnabled', 'glowEnabled');
   bindCheckbox('laserActive', 'laserActive');
   bindCheckbox('laserSelection', 'laserSelection');
-  bindSliderEx('laserWidth', 'laserWidth', { toParam: raw => raw / 1000, toDisplay: raw => (raw / 1000).toFixed(3) });
+  bindSliderEx('laserWidth', 'laserWidth', {
+    toParam: raw => raw / 1000,
+    toDisplay: raw => (raw / 1000).toFixed(3),
+  });
   bindCheckbox('cursorActive', 'cursorActive');
   bindCheckbox('trailEnabled', 'trailEnabled');
 
@@ -500,7 +592,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => {
       const tool = btn.dataset.tool;
       if (!tool) return;
-      document.querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll<HTMLButtonElement>('.et-btn[data-tool]')
+        .forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const brushCtrls = $('brush-ctrls');
       if (brushCtrls) brushCtrls.style.display = tool === 'brush' ? '' : 'none';
@@ -535,9 +629,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyZoom();
     scheduleRender();
   };
-  $('btn-zoom-in')?.addEventListener('click', () => { state.zoom = Math.min(4, state.zoom * 1.25); updateZoom(); });
-  $('btn-zoom-out')?.addEventListener('click', () => { state.zoom = Math.max(0.25, state.zoom / 1.25); updateZoom(); });
-  $('btn-zoom-reset')?.addEventListener('click', () => { state.zoom = 1; updateZoom(); });
+  $('btn-zoom-in')?.addEventListener('click', () => {
+    state.zoom = Math.min(4, state.zoom * 1.25);
+    updateZoom();
+  });
+  $('btn-zoom-out')?.addEventListener('click', () => {
+    state.zoom = Math.max(0.25, state.zoom / 1.25);
+    updateZoom();
+  });
+  $('btn-zoom-reset')?.addEventListener('click', () => {
+    state.zoom = 1;
+    updateZoom();
+  });
 
   // ── 地图交互 ──
   mapInteraction = new MapInteraction(canvas);
@@ -555,7 +658,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── 快捷键 ──
   document.addEventListener('keydown', e => {
     const t = e.target as HTMLElement;
-    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+    if (
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      t instanceof HTMLSelectElement
+    )
+      return;
 
     if (e.code === 'Space') {
       e.preventDefault();
@@ -577,12 +685,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (e.shiftKey) editorController?.redo();
       else editorController?.undo();
       updateUndoRedo();
-    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+    } else if (
+      (e.ctrlKey || e.metaKey) &&
+      (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))
+    ) {
       e.preventDefault();
       editorController?.redo();
       updateUndoRedo();
     } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      const toolMap: Record<string, string> = { v: 'idle', b: 'brush', m: 'vector-line', p: 'vector-poly', d: 'drag-plate', a: 'annotate' };
+      const toolMap: Record<string, string> = {
+        v: 'idle',
+        b: 'brush',
+        m: 'vector-line',
+        p: 'vector-poly',
+        d: 'drag-plate',
+        a: 'annotate',
+      };
       const tool = toolMap[e.key.toLowerCase()];
       if (tool) {
         const btn = document.querySelector<HTMLButtonElement>(`.et-btn[data-tool="${tool}"]`);

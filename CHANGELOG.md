@@ -30,7 +30,7 @@ All notable changes to the Material Map Generator.
 
 - **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
 - **包管理器迁移**: 从 npm 迁移到 Bun，删除 `package-lock.json`，使用 `bun.lock`
-- **代码质量验证**: 
+- **代码质量验证**:
   - ✅ typecheck: 3/3 通过
   - ✅ build: 2/2 通过（web 44 modules）
   - ✅ tests: 72/72 通过
@@ -66,13 +66,16 @@ All notable changes to the Material Map Generator.
 
 ### 项目结构概览
 
-| 指标 | 数值 |
-|------|------|
-| TypeScript 文件 | 49 个 (core 20 + web 29) |
-| 测试文件 | 11 个 |
-| 测试用例 | 72 个 |
-| 总代码行数 | ~7,878 行 (不含测试) |
-| 测试代码行数 | 1,337 行 |
+> ⚠️ 下表为 v0.0.3-pre 发版时的快照；当前 main 分支实际规模已显著增长。
+> 截至 2026-07-11，实际值为：175 个 TS 文件、~24,164 行代码、25 个测试文件、269 个测试用例。
+
+| 指标            | 数值（v0.0.3-pre 发版快照） | 当前 main 实际值 |
+| --------------- | --------------------------- | ---------------- |
+| TypeScript 文件 | 49 个 (core 20 + web 29)    | 175 个           |
+| 测试文件        | 11 个                       | 25 个            |
+| 测试用例        | 72 个                       | 269 个           |
+| 总代码行数      | ~7,878 行 (不含测试)        | ~24,164 行       |
+| 测试代码行数    | 1,337 行                    | ~3,800 行        |
 
 ### 核心功能模块 (@mapgen/core)
 
@@ -135,7 +138,7 @@ All notable changes to the Material Map Generator.
 
 ### 测试
 
-- 测试用例从 44 增至 **72**（11 个测试文件）
+- 测试用例从 44 增至 **72**（11 个测试文件）<!-- v0.0.1 → v0.0.2 增量；v0.0.3-pre 已达 269 个，见上方项目结构概览 -->
 - 新增 `biomes.test.ts` (9) / `watershed.test.ts` (6) / `volcanism.test.ts` (6) / `seasons.test.ts` (7)
 
 ### 验证
@@ -152,14 +155,14 @@ All notable changes to the Material Map Generator.
 
 从旧版单体架构完全重写为 **Monorepo**（Turborepo + npm workspaces）：
 
-| 组件 | 旧架构 | 新架构 |
-|------|--------|--------|
-| 组织方式 | 扁平目录 | `packages/shared` + `packages/web` |
-| 构建工具 | 无统一构建 | Turborepo 增量构建 |
-| 核心引擎 | 内联 JS | `@mapgen/core` 独立 TypeScript 包 |
-| 前端 | 原生 JS + HTML | TypeScript + Vite |
-| 类型安全 | 无 | 全量 TypeScript strict mode |
-| 渲染 | 单一 Canvas2D | WebGL2 主渲染 + Canvas2D 回退 |
+| 组件     | 旧架构         | 新架构                             |
+| -------- | -------------- | ---------------------------------- |
+| 组织方式 | 扁平目录       | `packages/shared` + `packages/web` |
+| 构建工具 | 无统一构建     | Turborepo 增量构建                 |
+| 核心引擎 | 内联 JS        | `@mapgen/core` 独立 TypeScript 包  |
+| 前端     | 原生 JS + HTML | TypeScript + Vite                  |
+| 类型安全 | 无             | 全量 TypeScript strict mode        |
+| 渲染     | 单一 Canvas2D  | WebGL2 主渲染 + Canvas2D 回退      |
 
 ### 新增
 
