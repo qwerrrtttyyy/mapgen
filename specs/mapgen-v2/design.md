@@ -31,6 +31,7 @@ packages/
 ## 2. 数据模型
 
 ### 2.1 现有纹理格式（不变，BR-2）
+
 - `elevTex`: [elevation, slope, ridge, ridgeMask] (RGBA32F)
 - `plateTex`: [plateId, boundary, boundaryType, plateDist] (RGBA32F)
 - `moistTex`: [moisture, rainfall, biome, tempZone] (RGBA32F)
@@ -38,47 +39,78 @@ packages/
 - `riverTex`: [riverMask, riverWidth, riverDepth, _] (RGBA32F)
 
 ### 2.2 新增：编辑器状态
+
 ```typescript
 interface EditorState {
-  mode: EditorMode;              // idle | brush | vector-line | vector-poly | drag-plate | annotate
+  mode: EditorMode; // idle | brush | vector-line | vector-poly | drag-plate | annotate
   activeTool: ToolId;
   brush: { radius: number; strength: number; target: BrushTarget }; // raise|lower|sea|land|plate-paint
   vector: { points: number[]; closed: boolean; targetType: VectorTarget }; // mountain|coast|lake|river
   selection: { plateId: number | null };
   names: {
-    plates: Map<number, string>;       // plateId → 名称
-    regions: Map<string, string>;      // regionKey → 名称
+    plates: Map<number, string>; // plateId → 名称
+    regions: Map<string, string>; // regionKey → 名称
   };
-  commandStack: Command[];        // 撤销栈，max 50
+  commandStack: Command[]; // 撤销栈，max 50
   redoStack: Command[];
 }
 ```
 
 ### 2.3 新增：命名数据
+
 ```typescript
 interface NameManifest {
   plates: Array<{ plateId: number; name: string; centroid: [number, number] }>;
-  regions: Array<{ key: string; name: string; type: TerrainType; centroid: [number, number]; area: number }>;
+  regions: Array<{
+    key: string;
+    name: string;
+    type: TerrainType;
+    centroid: [number, number];
+    area: number;
+  }>;
 }
 type TerrainType = 'mountain' | 'plain' | 'plateau' | 'basin' | 'desert' | 'forest' | 'ocean';
 ```
 
 ### 2.4 新增：编辑命令（Command 模式）
+
 ```typescript
 type Command =
-  | { type: 'brush'; target: BrushTarget; pixels: Array<{ idx: number; before: number; after: number }> }
-  | { type: 'vector-mountain'; line: number[]; width: number; affected: Array<{ idx: number; before: number; after: number }> }
-  | { type: 'vector-terrain'; polygon: number[]; targetType: VectorTarget; affected: Array<{ idx: number; before: number; after: number }> }
+  | {
+      type: 'brush';
+      target: BrushTarget;
+      pixels: Array<{ idx: number; before: number; after: number }>;
+    }
+  | {
+      type: 'vector-mountain';
+      line: number[];
+      width: number;
+      affected: Array<{ idx: number; before: number; after: number }>;
+    }
+  | {
+      type: 'vector-terrain';
+      polygon: number[];
+      targetType: VectorTarget;
+      affected: Array<{ idx: number; before: number; after: number }>;
+    }
   | { type: 'plate-move'; plateId: number; dx: number; dy: number; beforePlateId: Float32Array }
-  | { type: 'rename'; target: 'plate' | 'region'; key: string | number; before: string; after: string };
+  | {
+      type: 'rename';
+      target: 'plate' | 'region';
+      key: string | number;
+      before: string;
+      after: string;
+    };
 ```
 
 ## 3. 算法设计
 
 ### 3.1 FBM 体系重构（noise.ts）
+
 **问题根因**：当前 FBM 直接叠加等频噪声，且 simplex 实现存在网格伪影。
 
 **新方案**：
+
 1. **谱权重**：每 octave 权重 = `persistence^i × spectral(i)`，spectral 补偿高频衰减
 2. **域形变**：用低频 simplex 扰动采样坐标（warpStrength 随 octave 递减）
 3. **各向异性**：山脊模式沿主方向拉伸（用户可调 ridgeAngle），保证山脊连续
@@ -87,7 +119,15 @@ type Command =
 
 ```typescript
 class FbmGenerator {
-  fbmNatural(x, y, octaves, lac, pers, type, opts: { warpStrength, ridgeAngle, anisotropy }): number
+  fbmNatural(
+    x,
+    y,
+    octaves,
+    lac,
+    pers,
+    type,
+    opts: { warpStrength; ridgeAngle; anisotropy }
+  ): number;
   // 谱权重：w_i = pers^i * (1 - 0.4 * i / octaves)  防止高频过强
   // 域形变：dx = simplex(x*f, y*f) * warp * 0.5^i
   // 各向异性（ridged）：x' = x*cos(θ)+y*sin(θ), 沿 θ 方向 elongate
@@ -95,18 +135,22 @@ class FbmGenerator {
 ```
 
 ### 3.2 板块边界平滑（tectonic.ts + erosion.ts）
+
 **问题根因**：边界为硬切，无过渡带。
 
 **新方案**：
+
 1. `computeBoundaries` 输出 `boundaryWidth`（0-1 距离场，边界=1，向内衰减）
 2. `generateElevation` 在边界处用 `smoothstep` 混合两板块高程（过渡带 ≥ 3px）
 3. 汇聚边界山脉：沿边界切向生成 ridged 噪声，保证走向与边界夹角 ≤ 30°
 4. 海岸线：域形变 + 海岸细节噪声让海岸蜿蜒
 
 ### 3.3 河流汇流（rivers.ts）
+
 **问题根因**：当前逐源追踪，不检测汇流。
 
 **新方案**：
+
 1. D8 流向（已有）
 2. 流量累积（已有）：每个像素累积上游贡献
 3. **汇流检测**：追踪时若遇到已有河流像素（riverMask > 0.5），则汇入该河流下游，下游宽度按 `√(上游流量和)` 增长
@@ -114,13 +158,16 @@ class FbmGenerator {
 5. **逆坡禁止**：D8 已保证流向最低邻居，无逆坡
 
 ### 3.4 气候验证（regions.ts，已重构）
+
 当前实现已满足 AC-3.1/3.2（风带+雨影+海洋蒸发源）。需补充：
+
 - 雨影强度阈值校验：背风坡湿度差 ≥ 0.3
 - 副热带干燥带：纬度 20°-35° 强制湿度上限 0.4
 
 ## 4. 编辑器设计
 
 ### 4.1 状态机
+
 ```
 idle ──select tool──> brush | vector-line | vector-poly | drag-plate | annotate
 brush ──mousedown──> brushing ──mousemove──> brushing ──mouseup──> idle (commit)
@@ -131,6 +178,7 @@ annotate ──dblclick on name──> editing ──Enter──> idle (commit)
 ```
 
 ### 4.2 画笔引擎（BrushEngine）
+
 - 涂刷时记录 `pixels[]`（idx, before, after）作为 Command
 - 实时更新 `elevTex` 通道 0，并标记 `dirty`
 - 触发 `render.request`（仅渲染，不重生成）
@@ -138,17 +186,20 @@ annotate ──dblclick on name──> editing ──Enter──> idle (commit)
 - 板块涂刷：直接写 `plateTex` 通道 0
 
 ### 4.3 矢量工具（VectorTool）
+
 - **线→山脉**：沿线像素用 ridged 噪声抬升，宽度参数控制影响半径
 - **多边形→地形**：扫描线填充，按 targetType 设高程（陆地 +0.2 / 海洋 -0.3 / 湖泊 seaLevel+0.05）
 - 完成后重新计算 slope（局部）
 
 ### 4.4 板块拖拽（PlateDragger）
+
 - mousedown 选中 plateId（取 plateTex[idx].r）
 - 记录所有该 plateId 像素
 - mousemove 平移偏移
 - mouseup：写入新位置，旧位置由相邻板块填充或设为海洋；重算边界
 
 ### 4.5 撤销/重做（CommandStack）
+
 - 每个 Command 实现 `undo()` / `redo()`
 - 栈 max 50（BR-3）
 - Ctrl+Z = pop commandStack → redoStack → undo()
@@ -156,6 +207,7 @@ annotate ──dblclick on name──> editing ──Enter──> idle (commit)
 - 编辑后清空 redoStack
 
 ### 4.6 名称叠加层（NameOverlay）
+
 - 独立 Canvas2D 叠加在 WebGL 之上
 - 按 plateId/regionKey 的 centroid 渲染文字
 - 双击命中检测：点-文字包围盒
@@ -164,6 +216,7 @@ annotate ──dblclick on name──> editing ──Enter──> idle (commit)
 ## 5. 命名系统设计（naming.ts）
 
 ### 5.1 词库
+
 ```typescript
 const LEXICON = {
   direction: ['北极', '北', '东北', '东', '东南', '南', '南极', '西南', '西', '西北', '中央'],
@@ -176,11 +229,23 @@ const LEXICON = {
     desert: ['沙漠', '荒原'],
     forest: ['森林', '林地'],
   },
-  proper: ['龙脊', '银沙', '苍穹', '碧落', '玄铁', '霜语', '烈焰', '深岚', '星陨', '月隐', /* +50 */],
+  proper: [
+    '龙脊',
+    '银沙',
+    '苍穹',
+    '碧落',
+    '玄铁',
+    '霜语',
+    '烈焰',
+    '深岚',
+    '星陨',
+    '月隐' /* +50 */,
+  ],
 };
 ```
 
 ### 5.2 生成器
+
 ```typescript
 function generateNames(seed, plates, plateCentroids, regions): NameManifest {
   const rng = mulberry32(seed);
@@ -190,9 +255,10 @@ function generateNames(seed, plates, plateCentroids, regions): NameManifest {
 ```
 
 ### 5.3 区域检测（editor.ts）
+
 ```typescript
 function detectTerrainRegions(width, height, elevation, slope, moisture, seaLevel): Region[] {
-  // 1. 阈值分类：mountain(elev>snowLine*0.7 && slope>thr) / plain(slope<low && elev<mid) / 
+  // 1. 阈值分类：mountain(elev>snowLine*0.7 && slope>thr) / plain(slope<low && elev<mid) /
   //              plateau(elev>high && slope<low) / basin(局部洼地) / desert(moisture<0.3) / forest(moisture>0.6)
   // 2. 连通域标记（4邻接）
   // 3. 过滤面积 < minArea 的碎片
@@ -209,21 +275,22 @@ function detectTerrainRegions(width, height, elevation, slope, moisture, seaLeve
 ## 7. 测试策略（TDD）
 
 核心算法与命名系统使用 TDD（用户已请求 tdd skill）：
-- `packages/shared/src/__tests__/noise.test.ts`：FBM 无伪影、各向异性山脊连续性
-- `packages/shared/src/__tests__/rivers.test.ts`：汇流、入海、无逆坡
-- `packages/shared/src/__tests__/naming.test.ts`：确定性、唯一性、命名格式
-- `packages/shared/src/__tests__/editor.test.ts`：命令栈、区域检测
+
+- `packages/core/src/__tests__/noise.test.ts`：FBM 无伪影、各向异性山脊连续性
+- `packages/core/src/__tests__/rivers.test.ts`：汇流、入海、无逆坡
+- `packages/core/src/__tests__/naming.test.ts`：确定性、唯一性、命名格式
+- `packages/core/src/__tests__/editor.test.ts`：命令栈、区域检测
 - 测试框架：vitest（轻量，与 Vite 集成）
 
 ## 8. 技术选择与权衡
 
-| 决策 | 选择 | 理由 |
-|------|------|------|
-| 撤销实现 | Command 模式 | 比 snapshot 节省内存，可精确还原 |
-| 编辑器叠加层 | 独立 Canvas2D | 不污染 WebGL 管线，文字渲染简单 |
-| 区域检测 | 连通域标记 + 阈值 | 经典 CV 方法，纯 TS 可实现 |
-| 命名 PRNG | mulberry32 | 极轻量，确定性，种子驱动 |
-| 测试框架 | vitest | 已有 Vite，零额外配置 |
+| 决策         | 选择              | 理由                             |
+| ------------ | ----------------- | -------------------------------- |
+| 撤销实现     | Command 模式      | 比 snapshot 节省内存，可精确还原 |
+| 编辑器叠加层 | 独立 Canvas2D     | 不污染 WebGL 管线，文字渲染简单  |
+| 区域检测     | 连通域标记 + 阈值 | 经典 CV 方法，纯 TS 可实现       |
+| 命名 PRNG    | mulberry32        | 极轻量，确定性，种子驱动         |
+| 测试框架     | vitest            | 已有 Vite，零额外配置            |
 
 ## 9. 模块边界与依赖
 

@@ -11,7 +11,7 @@ MapGen Studio 已实现完整的国际化系统，支持以下语言：
 ## 文件结构
 
 ```
-packages/shared/src/i18n/
+packages/core/src/i18n/
 └── index.ts          # 核心翻译模块
 ```
 
