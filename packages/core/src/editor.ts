@@ -15,12 +15,21 @@
 
 export type { DetectedRegion, TerrainDetectOptions } from './editorModules/terrainDetection.js';
 export { detectTerrainRegions } from './editorModules/terrainDetection.js';
-export { SEA_TARGET_OFFSET, LAND_TARGET_ELEV, LAKE_TARGET_OFFSET } from './editorModules/terrainDetection.js';
+export {
+  SEA_TARGET_OFFSET,
+  LAND_TARGET_ELEV,
+  LAKE_TARGET_OFFSET,
+} from './editorModules/terrainDetection.js';
 
 export type { Command } from './editorModules/commandStack.js';
 export { CommandStack } from './editorModules/commandStack.js';
 
-export type { BrushTarget, FalloffMode, BrushShape, NoiseBrushParams } from './editorModules/brushes.js';
+export type {
+  BrushTarget,
+  FalloffMode,
+  BrushShape,
+  NoiseBrushParams,
+} from './editorModules/brushes.js';
 export {
   applyBrushStroke,
   applySmoothBrush,
