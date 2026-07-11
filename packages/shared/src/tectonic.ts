@@ -1,4 +1,5 @@
 import { createNoise } from './noise.js';
+import { PRNG } from './utils.js';
 
 export interface Plate {
   id: number;
@@ -29,6 +30,9 @@ export function generatePlates(
 ): Plate[] {
   const plates: Plate[] = [];
   const noise = createNoise(seed, 'simplex');
+  // 用主 seed 派生的 PRNG 替代 Math.random()，保证种子可重现性。
+  // 派生 seed 用异或偏移避免与 noise 模块的 seed 完全相同，但仍确定性地源自同一输入。
+  const prng = new PRNG(seed ^ 0x5d5b4d3);
 
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2 + noise.perlin2(i * 0.5, 0) * 0.5;
@@ -55,9 +59,9 @@ export function generatePlates(
       area: 0,
       boundary: 0,
       growth: 0,
-      elevation: isLand ? 0.3 + Math.random() * 0.4 : -0.3 - Math.random() * 0.3,
-      moisture: isLand ? 0.3 + Math.random() * 0.4 : 0.7 + Math.random() * 0.3,
-      temperature: isLand ? 0.4 + Math.random() * 0.3 : 0.5 + Math.random() * 0.2,
+      elevation: isLand ? prng.range(0.3, 0.7) : prng.range(-0.6, -0.3),
+      moisture: isLand ? prng.range(0.3, 0.7) : prng.range(0.7, 1.0),
+      temperature: isLand ? prng.range(0.4, 0.7) : prng.range(0.5, 0.7),
       name: `Plate ${i + 1}`,
       selected: false,
     });

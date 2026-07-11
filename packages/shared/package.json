@@ -21,6 +21,9 @@
   "keywords": ["map-generator", "noise", "tectonic", "erosion", "typescript"],
   "author": "qwerrrtttyyy",
   "license": "MIT",
+  "dependencies": {
+    "@mapgen/shared-types": "*"
+  },
   "devDependencies": {
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"

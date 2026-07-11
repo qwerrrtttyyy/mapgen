@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeBoundaryTypes } from '../tectonic.js';
+import { computeBoundaryTypes, generatePlates } from '../tectonic.js';
 import type { Plate } from '../tectonic.js';
 
 const W = 32,
@@ -71,5 +71,54 @@ describe('computeBoundaryTypes 边界类型符号判定（Bug-A 回归）', () =
     const leftEdge = midY * W + (W / 2 - 1);
     // relSpeed < 1e-6 → type=0
     expect(boundaryType[leftEdge] === 0 || boundaryType[leftEdge] === 3).toBe(true);
+  });
+});
+
+describe('generatePlates 种子可重现性（P0-1 回归）', () => {
+  // 回归测试：原实现使用 Math.random() 为板块生成 elevation/moisture/temperature，
+  // 导致同一种子在不同运行中生成不同地图。修复后用 PRNG 替代，必须保证确定性。
+
+  it('相同 seed 产生完全相同的板块属性', () => {
+    const a = generatePlates(12345, 8, 256, 256, 0.5);
+    const b = generatePlates(12345, 8, 256, 256, 0.5);
+    expect(a.length).toBe(b.length);
+    for (let i = 0; i < a.length; i++) {
+      expect(a[i].elevation).toBe(b[i].elevation);
+      expect(a[i].moisture).toBe(b[i].moisture);
+      expect(a[i].temperature).toBe(b[i].temperature);
+      // 几何属性本来就确定性（依赖 noise）
+      expect(a[i].x).toBe(b[i].x);
+      expect(a[i].y).toBe(b[i].y);
+    }
+  });
+
+  it('不同 seed 产生不同的板块属性', () => {
+    const a = generatePlates(12345, 8, 256, 256, 0.5);
+    const b = generatePlates(99999, 8, 256, 256, 0.5);
+    let differs = false;
+    for (let i = 0; i < a.length; i++) {
+      if (
+        a[i].elevation !== b[i].elevation ||
+        a[i].moisture !== b[i].moisture ||
+        a[i].temperature !== b[i].temperature
+      ) {
+        differs = true;
+        break;
+      }
+    }
+    expect(differs).toBe(true);
+  });
+
+  it('大陆板块 elevation 在 [0.3, 0.7)，海洋板块在 [-0.6, -0.3)', () => {
+    const plates = generatePlates(42, 10, 128, 128, 0.6); // 6 大陆 + 4 海洋
+    for (const p of plates) {
+      if (p.type === 'continent') {
+        expect(p.elevation).toBeGreaterThanOrEqual(0.3);
+        expect(p.elevation).toBeLessThan(0.7);
+      } else {
+        expect(p.elevation).toBeGreaterThanOrEqual(-0.6);
+        expect(p.elevation).toBeLessThan(-0.3);
+      }
+    }
   });
 });

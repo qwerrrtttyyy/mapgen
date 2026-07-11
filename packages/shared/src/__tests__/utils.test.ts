@@ -11,6 +11,7 @@ import {
   normalizeArray,
   argMax,
   argMin,
+  PRNG,
 } from '../utils.js';
 
 describe('Utils 模块', () => {
@@ -180,6 +181,53 @@ describe('Utils 模块', () => {
     it('首个最小值', () => {
       const arr = [1, 1, 3];
       expect(argMin(arr)).toBe(0);
+    });
+  });
+
+  describe('PRNG 确定性伪随机数生成器', () => {
+    it('相同种子产生相同序列', () => {
+      const a = new PRNG(12345);
+      const b = new PRNG(12345);
+      for (let i = 0; i < 100; i++) {
+        expect(a.next()).toBe(b.next());
+      }
+    });
+
+    it('不同种子产生不同序列', () => {
+      const a = new PRNG(12345);
+      const b = new PRNG(54321);
+      let differs = false;
+      for (let i = 0; i < 10; i++) {
+        if (a.next() !== b.next()) {
+          differs = true;
+          break;
+        }
+      }
+      expect(differs).toBe(true);
+    });
+
+    it('next() 输出在 [0, 1) 区间', () => {
+      const prng = new PRNG(42);
+      for (let i = 0; i < 1000; i++) {
+        const v = prng.next();
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThan(1);
+      }
+    });
+
+    it('range(min, max) 输出在 [min, max) 区间', () => {
+      const prng = new PRNG(7);
+      for (let i = 0; i < 1000; i++) {
+        const v = prng.range(-0.5, 0.8);
+        expect(v).toBeGreaterThanOrEqual(-0.5);
+        expect(v).toBeLessThan(0.8);
+      }
+    });
+
+    it('负数种子也能正常工作（被强制 uint32）', () => {
+      const a = new PRNG(-1);
+      const b = new PRNG(0xffffffff);
+      expect(a.next()).toBe(b.next());
     });
   });
 });
