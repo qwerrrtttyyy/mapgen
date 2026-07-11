@@ -4,6 +4,12 @@ import type p5 from 'p5';
 import { state } from '../core/appState.js';
 import { bus } from '../core/eventBus.js';
 
+/** p5.js 实例扩展属性（p5.js 未暴露的内部状态） */
+interface P5WithImages extends p5 {
+  _mapImage?: p5.Graphics;
+  _thumbImage?: p5.Graphics;
+}
+
 interface P5Particle {
   x: number;
   y: number;
@@ -166,7 +172,7 @@ export class P5Renderer {
     p.tint(255, tAlpha);
 
     // 使用 p5.js image 绘制
-    const img = (p as any)._mapImage;
+    const img = (p as P5WithImages)._mapImage;
     if (img) {
       p.image(img, sx, sy, drawW, drawH);
     } else {
@@ -281,7 +287,7 @@ export class P5Renderer {
 
     // 绘制微缩图内容
     if (this.imageData) {
-      const thumbImg = (p as any)._thumbImage;
+      const thumbImg = (p as P5WithImages)._thumbImage;
       if (thumbImg) {
         p.image(thumbImg, thumbX, thumbY, thumbSize, thumbSize);
       }
@@ -438,13 +444,13 @@ export class P5Renderer {
       dst[i] = src[i];
     }
     gfx.updatePixels();
-    (p as any)._mapImage = gfx;
+    (p as P5WithImages)._mapImage = gfx;
 
     // 创建缩略图
     const thumb = p.createGraphics(80, 80);
     thumb.pixelDensity(1);
     thumb.image(gfx, 0, 0, 80, 80);
-    (p as any)._thumbImage = thumb;
+    (p as P5WithImages)._thumbImage = thumb;
   }
 
   render(): void {
