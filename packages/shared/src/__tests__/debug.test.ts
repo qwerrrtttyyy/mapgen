@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { debug, setupDebugGlobal, getDebug } from '../debug.js';
 
 describe('Debug 调试模块', () => {
   beforeEach(() => {
     debug.enable(false);
     debug.resetMetrics();
+    debug.clearEvents();
   });
 
   describe('基本开关控制', () => {
@@ -142,6 +143,14 @@ describe('Debug 调试模块', () => {
       expect(debug.timings[0].duration).toBeGreaterThanOrEqual(10);
     });
 
+    it('time 返回停止函数', () => {
+      const stop = debug.time('manual-op');
+      expect(typeof stop).toBe('function');
+      stop();
+      expect(debug.timings.length).toBe(1);
+      expect(debug.timings[0].name).toBe('manual-op');
+    });
+
     it('getTimingStats 返回统计', () => {
       debug.addTiming('test', 10);
       debug.addTiming('test', 20);
@@ -174,6 +183,76 @@ describe('Debug 调试模块', () => {
     });
   });
 
+  describe('事件追踪', () => {
+    beforeEach(() => {
+      debug.enable(true);
+    });
+
+    it('addEvent 添加事件', () => {
+      debug.addEvent('test.event', { value: 42 }, 'test-source');
+      const events = debug.events;
+      expect(events.length).toBe(1);
+      expect(events[0].name).toBe('test.event');
+      expect(events[0].payload).toEqual({ value: 42 });
+      expect(events[0].source).toBe('test-source');
+    });
+
+    it('禁用时不记录事件', () => {
+      debug.enable(false);
+      debug.addEvent('test.event', { value: 1 }, 'test');
+      expect(debug.events.length).toBe(0);
+    });
+
+    it('clearEvents 清空事件', () => {
+      debug.addEvent('event1');
+      debug.addEvent('event2');
+      expect(debug.events.length).toBe(2);
+      debug.clearEvents();
+      expect(debug.events.length).toBe(0);
+    });
+
+    it('getEventHistory 过滤事件', () => {
+      debug.addEvent('render.request');
+      debug.addEvent('generate.request');
+      debug.addEvent('render.completed');
+
+      const filtered = debug.getEventHistory('render');
+      expect(filtered.length).toBe(2);
+      expect(filtered.every(e => e.name.includes('render'))).toBe(true);
+    });
+
+    it('getRecentEvents 获取最近事件', () => {
+      for (let i = 0; i < 10; i++) {
+        debug.addEvent(`event${i}`);
+      }
+      const recent = debug.getRecentEvents(3);
+      expect(recent.length).toBe(3);
+      expect(recent.map(e => e.name)).toEqual(['event7', 'event8', 'event9']);
+    });
+
+    it('最大事件数限制', () => {
+      for (let i = 0; i < 150; i++) {
+        debug.addEvent(`event${i}`);
+      }
+      expect(debug.events.length).toBe(100);
+    });
+  });
+
+  describe('条件日志', () => {
+    beforeEach(() => {
+      debug.enable(true);
+      debug.setLogLevel('debug');
+    });
+
+    it('logIf 条件为真时记录', () => {
+      expect(() => debug.logIf(true, 'debug', 'test message')).not.toThrow();
+    });
+
+    it('logIf 条件为假时不记录', () => {
+      expect(() => debug.logIf(false, 'debug', 'test message')).not.toThrow();
+    });
+  });
+
   describe('断言功能', () => {
     beforeEach(() => {
       debug.enable(true);
@@ -181,6 +260,44 @@ describe('Debug 调试模块', () => {
 
     it('条件为真时不触发', () => {
       expect(() => debug.assert(true, 'test')).not.toThrow();
+    });
+
+    it('assertWithData 条件为真时不触发', () => {
+      expect(() => debug.assertWithData(true, 'test', { data: 1 })).not.toThrow();
+    });
+
+    it('assertWithData 条件为假时记录事件', () => {
+      debug.assertWithData(false, 'test assertion', { key: 'value' });
+      const events = debug.getEventHistory('assertion');
+      expect(events.length).toBe(1);
+      expect(events[0].name).toBe('assertion_failure');
+    });
+  });
+
+  describe('性能快照', () => {
+    beforeEach(() => {
+      debug.enable(true);
+    });
+
+    it('snapshot 返回完整状态', () => {
+      debug.updateMetrics({ fps: 60 });
+      debug.addTiming('test', 10);
+      debug.addEvent('test.event');
+
+      const snapshot = debug.snapshot();
+      expect(snapshot.metrics.fps).toBe(60);
+      expect(snapshot.timings.length).toBe(1);
+      expect(snapshot.events.length).toBe(1);
+      expect(snapshot.state.enabled).toBe(true);
+    });
+
+    it('exportSnapshot 返回 JSON 字符串', () => {
+      const json = debug.exportSnapshot();
+      expect(typeof json).toBe('string');
+      const parsed = JSON.parse(json);
+      expect(parsed.timestamp).toBeDefined();
+      expect(parsed.metrics).toBeDefined();
+      expect(parsed.state).toBeDefined();
     });
   });
 
@@ -201,6 +318,7 @@ describe('Debug 调试模块', () => {
       expect(json.enabled).toBe(true);
       expect(json.metrics.fps).toBe(60);
       expect(Array.isArray(json.timings)).toBe(true);
+      expect(Array.isArray(json.events)).toBe(true);
     });
   });
 });

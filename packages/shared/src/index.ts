@@ -52,7 +52,7 @@ export {
 export {
   computeSeasonalVariation, decodeSeasonDelta, type Season, type SeasonInput, type SeasonResult,
 } from './seasons.js';
-export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming } from './debug.js';
+export { debug, setupDebugGlobal, getDebug, type DebugState, type DebugMetrics, type DebugTiming, type DebugEvent, type DebugSnapshot } from './debug.js';
 export { t, getPreferredLocale, createTranslator, translations, type Locale } from './i18n/index.js';
 export { LRUCache, TerrainCache, terrainCacheKey, memoize, type CacheOptions } from './cache.js';
 
