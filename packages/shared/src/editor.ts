@@ -79,17 +79,16 @@ const TYPE_NAMES = [
 const SLOPE_MOUNTAIN = 0.15;
 const SLOPE_FLAT = 0.05;
 const GLACIER_ICE_THRESHOLD = 0.3; // 陆地冰厚超过此值 → 冰川
-const DELTA_COAST_RANGE = 10; // 距海岸像素数
 const DELTA_RIVER_THRESHOLD = 0.05; // 河流掩码
 const VOLCANO_MAX_AREA = 100; // 火山：孤立小山峰
-const VOLCANO_MIN_ELEV = 0.75; // 火山最低高程
+const VOLCANO_ABS_ELEV_MIN = 0.75; // 火山最低绝对高程（用于连通域后处理）
 const VOLCANO_PROB_THRESHOLD = 0.35; // v2: 火山概率阈值
 const ARCHIPELAGO_MAX_AREA = 50; // 群岛：小岛最大面积
 
 // classifyTerrain 阈值
 const DELTA_SLOPE_MAX = 0.03;        // 三角洲最大坡度
 const DELTA_ELEV_MAX = 0.08;          // 三角洲最大高程（seaLevel + 此值）
-const VOLCANO_ELEV_MIN = 0.3;         // 火山最低高程（seaLevel + 此值）
+const VOLCANO_SEA_OFFSET = 0.3;       // 火山最低高程偏移（seaLevel + 此值）
 const VOLCANO_SLOPE_FACTOR = 0.7;     // 火山坡度阈值系数（SLOPE_MOUNTAIN * 此值）
 const BASIN_ELEV_MAX = 0.12;          // 盆地最大高程（seaLevel + 此值）
 const BASIN_SLOPE_MAX = 0.02;         // 盆地最大坡度
@@ -97,6 +96,9 @@ const DESERT_MOIST_MAX = 0.3;         // 沙漠最大湿度
 const FOREST_MOIST_MIN = 0.6;         // 森林最小湿度
 const PLATEAU_ELEV_FACTOR = 0.7;      // 高原高程系数（snowLine * 此值）
 const DELTA_COAST_MAX = 10;           // 三角洲距海岸最大像素数
+const SEA_TARGET_OFFSET = 0.3;        // 海洋目标高程偏移
+const LAND_TARGET_ELEV = 0.2;         // 陆地目标高程
+const LAKE_TARGET_OFFSET = 0.05;      // 湖泊目标高程偏移
 
 
 function classifyTerrain(
@@ -116,7 +118,7 @@ function classifyTerrain(
     const cd = opts.coastDist[idx];
     if (
       cd > 0 &&
-      cd < DELTA_COAST_RANGE &&
+      cd < DELTA_COAST_MAX &&
       opts.riverMask[idx] > DELTA_RIVER_THRESHOLD &&
       slope < DELTA_SLOPE_MAX &&
       elev < seaLevel + DELTA_ELEV_MAX
@@ -128,7 +130,7 @@ function classifyTerrain(
   if (
     opts?.volcanoProb &&
     opts.volcanoProb[idx] > VOLCANO_PROB_THRESHOLD &&
-    elev > seaLevel + VOLCANO_ELEV_MIN &&
+    elev > seaLevel + VOLCANO_SEA_OFFSET &&
     slope > SLOPE_MOUNTAIN * VOLCANO_SLOPE_FACTOR
   ) {
     return TYPE_IDS.volcano;
@@ -243,7 +245,7 @@ export function detectTerrainRegions(
     if (t === TYPE_IDS.mountain && count2 < VOLCANO_MAX_AREA) {
       const avgE = sumElev[lbl] / count2;
       const totalBorder = ob + lb;
-      if (avgE > VOLCANO_MIN_ELEV && (totalBorder === 0 || ob / totalBorder > 0.4)) {
+      if (avgE > VOLCANO_ABS_ELEV_MIN && (totalBorder === 0 || ob / totalBorder > 0.4)) {
         regions.push({
           key: `r${regionCounter++}`,
           type: 'volcano' as TerrainType,
@@ -459,12 +461,12 @@ export function applyBrushStroke(
           after = Math.max(-1, before - strength * fall);
           break;
         case 'sea': {
-          const seaTarget = seaLevel - 0.3;
+          const seaTarget = seaLevel - SEA_TARGET_OFFSET;
           after = before * (1 - fall) + seaTarget * fall;
           break;
         }
         case 'land': {
-          const landTarget = 0.2;
+          const landTarget = LAND_TARGET_ELEV;
           after = before * (1 - fall) + landTarget * fall;
           break;
         }
@@ -585,7 +587,7 @@ export function applyVectorPolygon(
   target: VectorTarget,
   seaLevel: number = 0
 ): Command {
-  const targetElev = target === 'sea' ? seaLevel - 0.3 : target === 'lake' ? seaLevel + 0.05 : 0.2;
+  const targetElev = target === 'sea' ? seaLevel - SEA_TARGET_OFFSET : target === 'lake' ? seaLevel + LAKE_TARGET_OFFSET : LAND_TARGET_ELEV;
   const changes: Array<{ idx: number; before: number; after: number }> = [];
 
   // 多边形包围盒
@@ -683,7 +685,7 @@ export function recomputePlateGeometry(
     const ccy = cnt[i] > 0 ? sumY[i] / cnt[i] : p.y * height;
     cx[i] = ccx;
     cy[i] = ccy;
-    const meanElev = cnt[i] > 0 ? sumElev[i] / cnt[i] : seaLevel - 0.3;
+    const meanElev = cnt[i] > 0 ? sumElev[i] / cnt[i] : seaLevel - SEA_TARGET_OFFSET;
     return {
       ...p,
       x: ccx / width,
