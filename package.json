@@ -12,6 +12,7 @@
     "dev:all": "bunx turbo run dev --filter=@mapgen/web --filter=@mapgen/server",
     "build": "bunx turbo run build",
     "build:server": "bunx turbo run build --filter=@mapgen/server",
+    "build:pages": "bunx turbo run build && cd packages/web && bunx vite build --base=/mapgen/",
     "typecheck": "bunx turbo run typecheck",
     "test": "bunx turbo run test",
     "lint": "bunx eslint packages/*/src --ext .ts,.tsx",
