@@ -4,6 +4,38 @@
  */
 
 /**
+ * 确定性伪随机数生成器（Deterministic PRNG）。
+ *
+ * 基于 mulberry32 算法。给定相同种子，每次调用 next() 都会返回相同序列的 [0,1) 浮点数，
+ * 保证整个生成管线在相同 seedStr 输入下输出完全一致——这是 seed 参数的可重现性契约。
+ *
+ * 替代 Math.random() 后，tectonic.ts / erosion.ts 等模块不再依赖全局 RNG 状态，
+ * 同一种子在任何时间、任何设备上都会生成相同的地图。
+ */
+export class PRNG {
+  private state: number;
+
+  constructor(seed: number) {
+    // 强制 uint32，避免负数和高位丢失
+    this.state = seed >>> 0;
+  }
+
+  /** 返回下一个 [0, 1) 浮点数 */
+  next(): number {
+    this.state = (this.state + 0x6d2b79f5) >>> 0;
+    let t = this.state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  /** 返回 [min, max) 区间的浮点数 */
+  range(min: number, max: number): number {
+    return min + this.next() * (max - min);
+  }
+}
+
+/**
  * 平滑阶跃函数 - smoothstep 插值
  * @param edge0 - 下边缘
  * @param edge1 - 上边缘
