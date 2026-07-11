@@ -21,7 +21,9 @@ export type ColleagueName =
   | 'contextMenu'
   | 'laserController'
   | 'p5renderer'
-  | 'debug';
+  | 'debug'
+  | 'instructionRecorder'
+  | 'instructionPreparator';
 
 export type MediatorEvent =
   | 'render.request'
@@ -59,7 +61,8 @@ export type MediatorEvent =
   | 'debug.close'
   | 'debug.wireframe.changed'
   | 'debug.normals.changed'
-  | 'render.frame';
+  | 'render.frame'
+  | 'prediction.update';
 
 export interface MediatorEventPayload {
   'render.request': void;
@@ -105,6 +108,7 @@ export interface MediatorEventPayload {
   'debug.wireframe.changed': { enabled: boolean };
   'debug.normals.changed': { enabled: boolean };
   'render.frame': { drawCalls: number; textureCount: number };
+  'prediction.update': import('./instructionTypes.js').PredictionResult;
 }
 
 export interface Mediator {

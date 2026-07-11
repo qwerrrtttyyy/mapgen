@@ -66,4 +66,10 @@ target/
 *.gz
 *.rar
 *.7z
+
+# FaMou experiment data (regenerate with generate_mock_data.py)
+famou-experiment/data/
+
+# Lock files (project uses bun.lock)
+package-lock.json
 ```

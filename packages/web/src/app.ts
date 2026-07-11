@@ -26,6 +26,8 @@ import { buildRenderParams } from './ui/renderHelper.js';
 import { drawMinimap, markMinimapDirty } from './ui/minimap.js';
 import { setGeneratingStatus, setProgress } from './ui/statusBar.js';
 import { buildPresetGrid, initPresetGrid } from './ui/presetGrid.js';
+import { InstructionRecorder } from './core/instructionRecorder.js';
+import { InstructionPreparator } from './core/instructionPreparator.js';
 import {
   syncUIFromParams,
   updateSizeInfo,
@@ -51,6 +53,8 @@ let checkpointPanel: CheckpointPanel | null = null;
 let nameOverlay: NameOverlay | null = null;
 let launcher: Launcher | null = null;
 let debugPanel: DebugPanel | null = null;
+let instructionRecorder: InstructionRecorder | null = null;
+let instructionPreparator: InstructionPreparator | null = null;
 let isDraggingSize = false;
 let dragStartX = 0;
 let dragStartY = 0;
@@ -277,6 +281,15 @@ function bindEventBus(): void {
     }, 'image/png');
   });
   bus.on('export.dialog.open', () => exportDialog.open());
+
+  // ── 指令预测结果 ──
+  bus.on('prediction.update', (result: { candidates: Array<{ event: string; probability: number; reason: string }>; selected: string | null; historyLength: number }) => {
+    if (result.candidates.length === 0) return;
+    const top3 = result.candidates
+      .map(c => `${c.event}(${(c.probability * 100).toFixed(0)}%)`)
+      .join(', ');
+    logger.debug(`Prediction [hist=${result.historyLength}]: ${top3} → selected: ${result.selected ?? 'none'}`);
+  });
 }
 
 // ── 渲染器初始化 ──────────────────────────────────
@@ -308,7 +321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  (window as unknown as { __mapgen: unknown }).__mapgen = { state };
+  (window as unknown as { __mapgen: unknown }).__mapgen = { state, instructionRecorder, instructionPreparator };
   if (minimap) minimapCtx = minimap.getContext('2d');
 
   await initRenderer(canvas);
@@ -326,6 +339,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkpointPanel.bind(checkpointMgr);
   debugPanel = new DebugPanel();
   debugPanel.bind();
+
+  // ── 指令系统初始化 ──
+  instructionRecorder = new InstructionRecorder();
+  instructionRecorder.bind();
+
+  instructionPreparator = new InstructionPreparator();
+  instructionPreparator.bind();
 
   // 初始化子模块的回调依赖
   initUiSync(scheduleRender, editorController);
