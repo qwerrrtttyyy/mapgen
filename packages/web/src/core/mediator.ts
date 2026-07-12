@@ -21,7 +21,8 @@ export type ColleagueName =
   | 'contextMenu'
   | 'laserController'
   | 'p5renderer'
-  | 'debug';
+  | 'debug'
+  | 'instructionRecorder';
 
 export type MediatorEvent =
   | 'render.request'
