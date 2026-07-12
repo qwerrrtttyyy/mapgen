@@ -21,8 +21,8 @@ export function mapUvToClient(
   nx: number,
   ny: number,
   rect: DOMRect,
-  mapW: number,
-  mapH: number
+  _mapW: number,
+  _mapH: number
 ): [number, number] {
   const { zoom, panX, panY } = state;
   const mapV = 1 - ny;
