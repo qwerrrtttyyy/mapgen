@@ -13,7 +13,6 @@
     "build": "bunx turbo run build",
     "build:server": "bunx turbo run build --filter=@mapgen/server",
     "build:pages": "bunx turbo run build && cd packages/web && bunx vite build --base=/mapgen/",
-    "deploy:cloudflare": "bun run build && bunx wrangler deploy",
     "preview:cloudflare": "bun run build && bunx wrangler dev",
     "typecheck": "bunx turbo run typecheck",
     "test": "bunx turbo run test",
