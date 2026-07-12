@@ -69,7 +69,8 @@ export interface CheckpointData {
 }
 
 function float32ToBase64(arr: Float32Array): string {
-  const bytes = new Uint8Array(arr.buffer);
+  // Use byteOffset/byteLength to correctly handle sub-array views.
+  const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
   const len = bytes.byteLength;
   // Batch approach: process in chunks to avoid call stack overflow
   const chunkSize = 0x8000; // 32768
