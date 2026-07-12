@@ -330,6 +330,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   initUiSync(scheduleRender, editorController);
   initPresetGrid(syncUIFromParams, generateMap);
 
+  // 指令记录器：仅在 DEV 模式下启用，收集用户行为数据用于未来预测器训练
+  // 详见 PR #41 review 建议：先收集真实数据再决定是否上线预测器
+  if (import.meta.env.DEV) {
+    try {
+      const { InstructionRecorder } = await import('./core/instructionRecorder.js');
+      const recorder = new InstructionRecorder({ persist: true });
+      recorder.bind();
+      (window as unknown as { __instructionRecorder?: unknown }).__instructionRecorder = recorder;
+      logger.info('InstructionRecorder: enabled (DEV mode)');
+    } catch (e) {
+      logger.warn('InstructionRecorder: failed to init', e);
+    }
+  }
+
   buildPresetGrid();
   syncUIFromParams();
   bindEventBus();
