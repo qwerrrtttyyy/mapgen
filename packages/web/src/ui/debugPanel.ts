@@ -3,6 +3,20 @@ import { bus } from '../core/eventBus.js';
 import { logger } from '../core/logger.js';
 import { debug as coreDebug } from '@mapgen/core';
 
+/** 需要自动追踪的事件列表 */
+const TRACKED_EVENTS = [
+  'render.request',
+  'generate.request',
+  'generating.started',
+  'generating.completed',
+  'generating.failed',
+  'progress',
+  'selection.changed',
+  'params.changed',
+  'editor.committed',
+  'export.request',
+] as const;
+
 export class DebugPanel extends Colleague {
   private panel: HTMLElement | null = null;
   private toggleBtn: HTMLElement | null = null;
@@ -11,12 +25,18 @@ export class DebugPanel extends Colleague {
   private drawCallsElement: HTMLElement | null = null;
   private memoryElement: HTMLElement | null = null;
   private timingsElement: HTMLElement | null = null;
+  private eventsElement: HTMLElement | null = null;
+  private eventFilterInput: HTMLInputElement | null = null;
+  private renderInfoElement: HTMLElement | null = null;
   private isOpen: boolean = false;
   private animationFrameId: number | null = null;
   private lastFrameTime: number = 0;
   private frameCount: number = 0;
   private fps: number = 0;
   private listeners: Array<() => void> = [];
+  private eventFilter: string = '';
+  private lastTimingsKey: string = '';
+  private lastEventCount: number = -1;
 
   constructor() {
     super('debug');
@@ -29,6 +49,7 @@ export class DebugPanel extends Colleague {
       this.bindWithBus();
     }
     this.createPanel();
+    this.bindGlobalEvents();
   }
 
   private bindWithMediator(): void {
@@ -51,6 +72,18 @@ export class DebugPanel extends Colleague {
         coreDebug.updateMetrics({ drawCalls: data.drawCalls, textureCount: data.textureCount });
       })
     );
+  }
+
+  private bindGlobalEvents(): void {
+    for (const eventName of TRACKED_EVENTS) {
+      this.listeners.push(
+        bus.on(eventName, (payload: unknown) => {
+          if (coreDebug.enabled) {
+            coreDebug.addEvent(eventName, payload, 'eventBus');
+          }
+        })
+      );
+    }
   }
 
   private createPanel(): void {
@@ -82,22 +115,24 @@ export class DebugPanel extends Colleague {
       </div>
       <div class="dp-body">
         <div class="dp-section">
-          <div class="dp-section-title">性能</div>
-          <div class="dp-row">
-            <span class="dp-label">FPS</span>
-            <span class="dp-value dp-fps" id="dp-fps">0</span>
-          </div>
-          <div class="dp-row">
-            <span class="dp-label">帧时间</span>
-            <span class="dp-value dp-frametime" id="dp-frametime">0ms</span>
-          </div>
-          <div class="dp-row">
-            <span class="dp-label">Draw Calls</span>
-            <span class="dp-value" id="dp-drawcalls">0</span>
-          </div>
-          <div class="dp-row">
-            <span class="dp-label">内存</span>
-            <span class="dp-value" id="dp-memory">—</span>
+          <div class="dp-section-title">性能指标</div>
+          <div class="dp-grid">
+            <div class="dp-stat">
+              <span class="dp-stat-label">FPS</span>
+              <span class="dp-stat-value dp-fps" id="dp-fps">0</span>
+            </div>
+            <div class="dp-stat">
+              <span class="dp-stat-label">帧时间</span>
+              <span class="dp-stat-value" id="dp-frametime">0ms</span>
+            </div>
+            <div class="dp-stat">
+              <span class="dp-stat-label">Draw Calls</span>
+              <span class="dp-stat-value" id="dp-drawcalls">0</span>
+            </div>
+            <div class="dp-stat">
+              <span class="dp-stat-label">内存</span>
+              <span class="dp-stat-value" id="dp-memory">—</span>
+            </div>
           </div>
         </div>
 
@@ -128,14 +163,47 @@ export class DebugPanel extends Colleague {
         </div>
 
         <div class="dp-section">
-          <div class="dp-section-title">计时统计</div>
+          <div class="dp-section-title">渲染状态</div>
+          <div class="dp-info-list" id="dp-render-info">
+            <div class="dp-info-item">
+              <span class="dp-info-label">纹理数量</span>
+              <span class="dp-info-value" id="dp-texcount">0</span>
+            </div>
+            <div class="dp-info-item">
+              <span class="dp-info-label">地图尺寸</span>
+              <span class="dp-info-value" id="dp-mapsize">—</span>
+            </div>
+            <div class="dp-info-item">
+              <span class="dp-info-label">着色器程序</span>
+              <span class="dp-info-value" id="dp-program">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dp-section">
+          <div class="dp-section-header">
+            <span class="dp-section-title">计时统计</span>
+            <button class="dp-btn-sm" id="dp-reset-timings">重置</button>
+          </div>
           <div class="dp-timings" id="dp-timings"></div>
         </div>
 
         <div class="dp-section">
+          <div class="dp-section-header">
+            <span class="dp-section-title">事件日志</span>
+            <button class="dp-btn-sm" id="dp-clear-events">清空</button>
+          </div>
+          <input type="text" id="dp-event-filter" class="dp-input" placeholder="过滤事件...">
+          <div class="dp-events" id="dp-events"></div>
+        </div>
+
+        <div class="dp-section">
           <div class="dp-section-title">快捷操作</div>
-          <button class="dp-btn" id="dp-reset">重置统计</button>
-          <button class="dp-btn" id="dp-export">导出调试信息</button>
+          <div class="dp-btn-group">
+            <button class="dp-btn" id="dp-reset-all">重置所有</button>
+            <button class="dp-btn" id="dp-export">导出调试信息</button>
+            <button class="dp-btn" id="dp-snapshot">生成快照</button>
+          </div>
         </div>
       </div>
     `;
@@ -147,10 +215,17 @@ export class DebugPanel extends Colleague {
     this.drawCallsElement = document.getElementById('dp-drawcalls');
     this.memoryElement = document.getElementById('dp-memory');
     this.timingsElement = document.getElementById('dp-timings');
+    this.eventsElement = document.getElementById('dp-events');
+    this.renderInfoElement = document.getElementById('dp-render-info');
+    this.eventFilterInput = document.getElementById('dp-event-filter') as HTMLInputElement | null;
 
+    this.bindPanelEvents();
+  }
+
+  private bindPanelEvents(): void {
     const closeBtn = document.getElementById('dp-close');
     if (closeBtn) {
-      const handler = (): void => this.emit('debug.toggle');
+      const handler = (): void => this.send('debug.toggle');
       closeBtn.addEventListener('click', handler);
       this.listeners.push(() => closeBtn.removeEventListener('click', handler));
     }
@@ -160,7 +235,7 @@ export class DebugPanel extends Colleague {
       const handler = (e: Event): void => {
         const checked = (e.target as HTMLInputElement).checked;
         coreDebug.setShowWireframe(checked);
-        this.emit('debug.wireframe.changed', { enabled: checked });
+        this.send('debug.wireframe.changed', { enabled: checked });
       };
       wireframeEl.addEventListener('change', handler);
       this.listeners.push(() => wireframeEl.removeEventListener('change', handler));
@@ -171,7 +246,7 @@ export class DebugPanel extends Colleague {
       const handler = (e: Event): void => {
         const checked = (e.target as HTMLInputElement).checked;
         coreDebug.setShowNormals(checked);
-        this.emit('debug.normals.changed', { enabled: checked });
+        this.send('debug.normals.changed', { enabled: checked });
       };
       normalsEl.addEventListener('change', handler);
       this.listeners.push(() => normalsEl.removeEventListener('change', handler));
@@ -197,14 +272,45 @@ export class DebugPanel extends Colleague {
       this.listeners.push(() => logLevelEl.removeEventListener('change', handler));
     }
 
-    const resetBtn = document.getElementById('dp-reset');
-    if (resetBtn) {
+    const resetTimingsBtn = document.getElementById('dp-reset-timings');
+    if (resetTimingsBtn) {
       const handler = (): void => {
         coreDebug.resetMetrics();
         this.updateTimings();
       };
-      resetBtn.addEventListener('click', handler);
-      this.listeners.push(() => resetBtn.removeEventListener('click', handler));
+      resetTimingsBtn.addEventListener('click', handler);
+      this.listeners.push(() => resetTimingsBtn.removeEventListener('click', handler));
+    }
+
+    const clearEventsBtn = document.getElementById('dp-clear-events');
+    if (clearEventsBtn) {
+      const handler = (): void => {
+        coreDebug.clearEvents();
+        this.updateEvents();
+      };
+      clearEventsBtn.addEventListener('click', handler);
+      this.listeners.push(() => clearEventsBtn.removeEventListener('click', handler));
+    }
+
+    if (this.eventFilterInput) {
+      const handler = (e: Event): void => {
+        this.eventFilter = (e.target as HTMLInputElement).value;
+        this.updateEvents();
+      };
+      this.eventFilterInput.addEventListener('input', handler);
+      this.listeners.push(() => this.eventFilterInput?.removeEventListener('input', handler));
+    }
+
+    const resetAllBtn = document.getElementById('dp-reset-all');
+    if (resetAllBtn) {
+      const handler = (): void => {
+        coreDebug.resetMetrics();
+        coreDebug.clearEvents();
+        this.updateTimings();
+        this.updateEvents();
+      };
+      resetAllBtn.addEventListener('click', handler);
+      this.listeners.push(() => resetAllBtn.removeEventListener('click', handler));
     }
 
     const exportBtn = document.getElementById('dp-export');
@@ -213,25 +319,12 @@ export class DebugPanel extends Colleague {
       exportBtn.addEventListener('click', handler);
       this.listeners.push(() => exportBtn.removeEventListener('click', handler));
     }
-  }
 
-  private emit(
-    event:
-      | 'debug.toggle'
-      | 'debug.open'
-      | 'debug.close'
-      | 'debug.wireframe.changed'
-      | 'debug.normals.changed',
-    payload?: unknown
-  ): void {
-    if (this.mediator) {
-      (this.mediator as { send: (sender: string, event: string, payload?: unknown) => void }).send(
-        'debug',
-        event,
-        payload
-      );
-    } else {
-      bus.emit(event, payload);
+    const snapshotBtn = document.getElementById('dp-snapshot');
+    if (snapshotBtn) {
+      const handler = (): void => this.takeSnapshot();
+      snapshotBtn.addEventListener('click', handler);
+      this.listeners.push(() => snapshotBtn.removeEventListener('click', handler));
     }
   }
 
@@ -287,6 +380,7 @@ export class DebugPanel extends Colleague {
       this.frameCount = 0;
       this.lastFrameTime = now;
       this.updateTimings();
+      this.updateEvents();
     }
 
     this.animationFrameId = requestAnimationFrame(() => this.updateLoop());
@@ -297,7 +391,7 @@ export class DebugPanel extends Colleague {
 
     if (this.fpsElement) {
       this.fpsElement.textContent = String(metrics.fps);
-      this.fpsElement.className = 'dp-value dp-fps ' + this.getFpsClass(metrics.fps);
+      this.fpsElement.className = 'dp-stat-value dp-fps ' + this.getFpsClass(metrics.fps);
     }
 
     if (this.frameTimeElement) {
@@ -321,6 +415,11 @@ export class DebugPanel extends Colleague {
         this.memoryElement.textContent = 'N/A';
       }
     }
+
+    const texCountEl = document.getElementById('dp-texcount');
+    if (texCountEl) {
+      texCountEl.textContent = String(metrics.textureCount || 0);
+    }
   }
 
   private getFpsClass(fps: number): string {
@@ -335,6 +434,11 @@ export class DebugPanel extends Colleague {
     const stats = coreDebug.getAllTimingStats();
     const entries = Object.entries(stats);
 
+    // 生成签名检测变更，避免无变化时重建 DOM
+    const key = entries.map(([n, s]) => `${n}:${s.count}:${s.avg.toFixed(1)}`).join('|');
+    if (key === this.lastTimingsKey) return;
+    this.lastTimingsKey = key;
+
     if (entries.length === 0) {
       this.timingsElement.innerHTML = '<div class="dp-empty">暂无计时数据</div>';
       return;
@@ -346,10 +450,9 @@ export class DebugPanel extends Colleague {
         <div class="dp-timing-item">
           <div class="dp-timing-name">${name}</div>
           <div class="dp-timing-values">
-            <span>avg: ${stat.avg.toFixed(2)}ms</span>
-            <span>min: ${stat.min.toFixed(2)}ms</span>
-            <span>max: ${stat.max.toFixed(2)}ms</span>
-            <span>n: ${stat.count}</span>
+            <span class="dp-timing-avg">${stat.avg.toFixed(2)}ms</span>
+            <span class="dp-timing-range">${stat.min.toFixed(2)}~${stat.max.toFixed(2)}ms</span>
+            <span class="dp-timing-count">×${stat.count}</span>
           </div>
         </div>
       `
@@ -357,20 +460,57 @@ export class DebugPanel extends Colleague {
       .join('');
   }
 
-  private exportDebugInfo(): void {
-    const info = {
-      timestamp: new Date().toISOString(),
-      metrics: coreDebug.metrics,
-      timings: coreDebug.getAllTimingStats(),
-      state: {
-        enabled: coreDebug.enabled,
-        showWireframe: coreDebug.showWireframe,
-        showNormals: coreDebug.showNormals,
-        logLevel: coreDebug.logLevel,
-      },
-    };
+  private updateEvents(): void {
+    if (!this.eventsElement) return;
 
-    const blob = new Blob([JSON.stringify(info, null, 2)], { type: 'application/json' });
+    const events = coreDebug.getEventHistory(this.eventFilter || undefined);
+
+    // 仅在事件数量变化时重建 DOM
+    if (events.length === this.lastEventCount) return;
+    this.lastEventCount = events.length;
+
+    if (events.length === 0) {
+      this.eventsElement.innerHTML = '<div class="dp-empty">暂无事件数据</div>';
+      return;
+    }
+
+    // 只渲染最新 30 条，避免大量 DOM 节点
+    const visible = events.slice(-30);
+    const offset = events.length - visible.length;
+
+    this.eventsElement.innerHTML = visible
+      .map(event => {
+        const time = new Date(event.timestamp).toLocaleTimeString('zh-CN', {
+          hour12: false,
+        });
+        const payloadStr = event.payload
+          ? typeof event.payload === 'string'
+            ? event.payload
+            : JSON.stringify(event.payload)
+          : '';
+        return `
+        <div class="dp-event-item">
+          <div class="dp-event-time">${time}</div>
+          <div class="dp-event-name">${event.name}</div>
+          ${payloadStr ? `<div class="dp-event-payload">${payloadStr}</div>` : ''}
+        </div>
+      `;
+      })
+      .join('');
+
+    if (offset > 0) {
+      const hint = document.createElement('div');
+      hint.className = 'dp-empty';
+      hint.textContent = `（已省略前 ${offset} 条）`;
+      this.eventsElement.insertBefore(hint, this.eventsElement.firstChild);
+    }
+
+    this.eventsElement.scrollTop = this.eventsElement.scrollHeight;
+  }
+
+  private exportDebugInfo(): void {
+    const snapshot = coreDebug.snapshot();
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -379,6 +519,19 @@ export class DebugPanel extends Colleague {
     URL.revokeObjectURL(url);
 
     logger.info('Debug info exported');
+  }
+
+  private takeSnapshot(): void {
+    const json = coreDebug.exportSnapshot();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mapgen-snapshot-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    logger.info('Debug snapshot taken');
   }
 
   destroy(): void {

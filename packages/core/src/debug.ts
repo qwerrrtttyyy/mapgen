@@ -12,15 +12,41 @@ export interface DebugTiming {
   start: number;
 }
 
+export interface DebugEvent {
+  id: string;
+  name: string;
+  timestamp: number;
+  payload?: unknown;
+  source?: string;
+}
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface DebugSnapshot {
+  timestamp: number;
+  metrics: DebugMetrics;
+  timings: DebugTiming[];
+  events: DebugEvent[];
+  state: {
+    enabled: boolean;
+    logLevel: LogLevel;
+    showWireframe: boolean;
+    showNormals: boolean;
+    showOverlay: boolean;
+  };
+}
+
 export interface DebugState {
   enabled: boolean;
   showOverlay: boolean;
   showWireframe: boolean;
   showNormals: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: LogLevel;
   metrics: DebugMetrics;
   timings: DebugTiming[];
+  events: DebugEvent[];
   maxTimings: number;
+  maxEvents: number;
 }
 
 type ConsoleLike = {
@@ -55,6 +81,10 @@ function getPerformance(): PerformanceLike {
   return globalThis.performance ?? { now: () => Date.now() };
 }
 
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 9);
+}
+
 const state: DebugState = {
   enabled: false,
   showOverlay: true,
@@ -69,7 +99,9 @@ const state: DebugState = {
     memoryUsage: 0,
   },
   timings: [],
+  events: [],
   maxTimings: 60,
+  maxEvents: 100,
 };
 
 export const debug = {
@@ -89,7 +121,7 @@ export const debug = {
     return state.showNormals;
   },
 
-  get logLevel(): string {
+  get logLevel(): LogLevel {
     return state.logLevel;
   },
 
@@ -101,12 +133,20 @@ export const debug = {
     return [...state.timings];
   },
 
+  get events(): DebugEvent[] {
+    return [...state.events];
+  },
+
   enable(enabled = true): void {
     state.enabled = enabled;
+    if (enabled) {
+      this.log('info', 'Debug mode enabled');
+    }
   },
 
   toggle(): boolean {
     state.enabled = !state.enabled;
+    this.log('info', state.enabled ? 'Debug mode enabled' : 'Debug mode disabled');
     return state.enabled;
   },
 
@@ -116,14 +156,17 @@ export const debug = {
 
   setShowWireframe(show: boolean): void {
     state.showWireframe = show;
+    this.log('debug', 'Wireframe mode', show ? 'enabled' : 'disabled');
   },
 
   setShowNormals(show: boolean): void {
     state.showNormals = show;
+    this.log('debug', 'Normals mode', show ? 'enabled' : 'disabled');
   },
 
-  setLogLevel(level: 'debug' | 'info' | 'warn' | 'error'): void {
+  setLogLevel(level: LogLevel): void {
     state.logLevel = level;
+    this.log('info', `Log level changed to ${level}`);
   },
 
   updateMetrics(metrics: Partial<DebugMetrics>): void {
@@ -142,6 +185,22 @@ export const debug = {
     }
   },
 
+  addEvent(name: string, payload?: unknown, source?: string): void {
+    if (!state.enabled) return;
+    const event: DebugEvent = {
+      id: generateId(),
+      name,
+      timestamp: Date.now(),
+      payload,
+      source,
+    };
+    state.events.push(event);
+    if (state.events.length > state.maxEvents) {
+      state.events.shift();
+    }
+    this.log('debug', `Event: ${name}`, payload);
+  },
+
   resetMetrics(): void {
     state.metrics = {
       fps: 0,
@@ -153,13 +212,24 @@ export const debug = {
     state.timings = [];
   },
 
+  clearEvents(): void {
+    state.events = [];
+  },
+
   assert(condition: boolean, message: string): void {
     if (state.enabled && !condition) {
       getConsole().error(`[DEBUG ASSERT] ${message}`);
     }
   },
 
-  log(level: 'debug' | 'info' | 'warn' | 'error', ...args: unknown[]): void {
+  assertWithData(condition: boolean, message: string, data?: unknown): void {
+    if (state.enabled && !condition) {
+      getConsole().error(`[DEBUG ASSERT] ${message}`, data);
+      this.addEvent('assertion_failure', { message, data }, 'assert');
+    }
+  },
+
+  log(level: LogLevel, ...args: unknown[]): void {
     if (!state.enabled) return;
     const ranks: Record<string, number> = { debug: 0, info: 1, warn: 2, error: 3 };
     if (ranks[level] < ranks[state.logLevel]) return;
@@ -169,6 +239,12 @@ export const debug = {
     else if (level === 'warn') cons.warn(tag, ...args);
     else if (level === 'info') cons.info(tag, ...args);
     else cons.debug(tag, ...args);
+  },
+
+  logIf(condition: boolean, level: LogLevel, ...args: unknown[]): void {
+    if (condition) {
+      this.log(level, ...args);
+    }
   },
 
   measure<T>(name: string, fn: () => T): T {
@@ -193,6 +269,15 @@ export const debug = {
     }
   },
 
+  time(name: string): () => void {
+    if (!state.enabled) return () => {};
+    const start = getPerformance().now();
+    return () => {
+      const duration = getPerformance().now() - start;
+      this.addTiming(name, duration);
+    };
+  },
+
   getTimingStats(name: string): { avg: number; min: number; max: number; count: number } | null {
     const filtered = state.timings.filter(t => t.name === name);
     if (filtered.length === 0) return null;
@@ -215,8 +300,45 @@ export const debug = {
     return result;
   },
 
+  snapshot(): DebugSnapshot {
+    return {
+      timestamp: getPerformance().now(),
+      metrics: { ...state.metrics },
+      timings: [...state.timings],
+      events: [...state.events],
+      state: {
+        enabled: state.enabled,
+        logLevel: state.logLevel,
+        showWireframe: state.showWireframe,
+        showNormals: state.showNormals,
+        showOverlay: state.showOverlay,
+      },
+    };
+  },
+
+  exportSnapshot(): string {
+    const snapshot = this.snapshot();
+    snapshot.timestamp = Date.now();
+    return JSON.stringify(snapshot, null, 2);
+  },
+
   toJSON(): DebugState {
-    return { ...state, timings: [...state.timings] };
+    return { ...state, timings: [...state.timings], events: [...state.events] };
+  },
+
+  getEventHistory(pattern?: string): DebugEvent[] {
+    if (!pattern) return [...state.events];
+    try {
+      const regex = new RegExp(pattern, 'i');
+      return state.events.filter(e => regex.test(e.name));
+    } catch {
+      const lower = pattern.toLowerCase();
+      return state.events.filter(e => e.name.toLowerCase().includes(lower));
+    }
+  },
+
+  getRecentEvents(count: number): DebugEvent[] {
+    return state.events.slice(-count);
   },
 };
 
