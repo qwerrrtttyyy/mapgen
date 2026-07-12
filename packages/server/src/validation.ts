@@ -11,7 +11,7 @@ function checkNumber(
   field: string,
   min: number,
   max: number,
-  errors: ValidationError[],
+  errors: ValidationError[]
 ): void {
   if (val === undefined || val === null) return;
   if (typeof val !== 'number' || !Number.isFinite(val)) {

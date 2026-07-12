@@ -11,7 +11,7 @@ vi.mock('../core/mapGenWorker.js', () => ({
 }));
 
 // Mock shared-types serialization
-vi.mock('@mapgen/shared-types', async (importOriginal) => {
+vi.mock('@mapgen/shared-types', async importOriginal => {
   const actual = await importOriginal<typeof import('@mapgen/shared-types')>();
   return {
     ...actual,

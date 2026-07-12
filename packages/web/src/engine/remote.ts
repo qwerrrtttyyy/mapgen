@@ -84,7 +84,9 @@ export class RemoteProvider implements MapGenEngine {
           };
           resolve(ok(data.result));
         } catch {
-          resolve(err({ code: 'VALIDATION_ERROR', message: 'Failed to parse SSE completed event' }));
+          resolve(
+            err({ code: 'VALIDATION_ERROR', message: 'Failed to parse SSE completed event' })
+          );
         }
       });
 

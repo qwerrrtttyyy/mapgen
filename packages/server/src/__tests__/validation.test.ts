@@ -95,7 +95,26 @@ describe('validateGenerateParams', () => {
   });
 
   it('accepts optional fields as undefined', () => {
-    const params = { seedStr: 'test', mapSize: 256, seaLevel: 0.45, plateCount: 4, octaves: 4, lacunarity: 2, persistence: 0.5, erosionIterations: 0, erosionStrength: 0, noiseType: 'perlin' as const, fbmType: 'standard' as const, mountainFold: 0, coastDetail: 0, lakeDensity: 0, tempOffset: 0, snowLine: 0.7, landmass: 0.5, seed: 1 };
+    const params = {
+      seedStr: 'test',
+      mapSize: 256,
+      seaLevel: 0.45,
+      plateCount: 4,
+      octaves: 4,
+      lacunarity: 2,
+      persistence: 0.5,
+      erosionIterations: 0,
+      erosionStrength: 0,
+      noiseType: 'perlin' as const,
+      fbmType: 'standard' as const,
+      mountainFold: 0,
+      coastDetail: 0,
+      lakeDensity: 0,
+      tempOffset: 0,
+      snowLine: 0.7,
+      landmass: 0.5,
+      seed: 1,
+    };
     const errors = validateGenerateParams(params);
     expect(errors).toEqual([]);
   });

@@ -14,7 +14,17 @@ vi.mock('../core/appState.js', () => ({
 import { clientToMapUv, mapUvToClient, mapPixelToClient } from '../map/viewport.js';
 
 function makeRect(x: number, y: number, w: number, h: number): DOMRect {
-  return { x, y, width: w, height: h, left: x, top: y, right: x + w, bottom: y + h, toJSON: () => '' };
+  return {
+    x,
+    y,
+    width: w,
+    height: h,
+    left: x,
+    top: y,
+    right: x + w,
+    bottom: y + h,
+    toJSON: () => '',
+  };
 }
 
 describe('viewport coordinate transforms', () => {
