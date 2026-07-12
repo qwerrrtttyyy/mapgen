@@ -2,10 +2,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock mapGenWorker
+// Mock mapGenWorker (includes cancel for dispose())
 vi.mock('../core/mapGenWorker.js', () => ({
   mapGenWorker: {
     generate: vi.fn(),
+    cancel: vi.fn(),
   },
 }));
 
@@ -90,7 +91,7 @@ describe('LocalProvider', () => {
   describe('getCapabilities', () => {
     it('returns local capabilities', () => {
       const caps = provider.getCapabilities();
-      expect(caps.maxResolution).toBe(4096);
+      expect(caps.maxResolution).toBe(0);
       expect(caps.supportsPersistence).toBe(true);
       expect(caps.supportsAbort).toBe(true);
     });
