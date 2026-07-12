@@ -119,6 +119,9 @@ export {
   type DebugState,
   type DebugMetrics,
   type DebugTiming,
+  type DebugEvent,
+  type DebugSnapshot,
+  type LogLevel,
 } from './debug.js';
 export {
   t,
