@@ -1,18 +1,17 @@
 import type { MapParams } from '@mapgen/shared-types';
+import { MAX_RESOLUTION } from '@mapgen/shared-types';
 
 export interface ValidationError {
   field: string;
   message: string;
 }
 
-const MAX_RESOLUTION = 4096;
-
 function checkNumber(
   val: unknown,
   field: string,
   min: number,
   max: number,
-  errors: ValidationError[]
+  errors: ValidationError[],
 ): void {
   if (val === undefined || val === null) return;
   if (typeof val !== 'number' || !Number.isFinite(val)) {
