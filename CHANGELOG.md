@@ -2,6 +2,71 @@
 
 All notable changes to the Material Map Generator.
 
+## v0.0.4-pre (2026-07-12)
+
+### 🏗️ 架构重构
+
+- **Pipeline 统一**: `generateMap` 和 `runDownstreamPipeline` 委托给共享 `pipeline/*Stage`，消除 742 行重复内联编排
+- **editor.ts 拆分**: 1245 行拆为 5 个子模块（terrainDetection / commandStack / brushes / vectorTools / plateOps），原文件改为 barrel re-export
+- **包目录重命名**: `packages/shared` → `packages/core`，与 `@mapgen/core` 对齐
+- **指令预测系统**: 多阶 n-gram + 类别转移 + 最近频率 + 周期性特征，FaMou 进化优化权重（Top-3: 85.3%）
+- **UI 响应式存储**: `uiOptimizer.ts` — 声明式 DOM 绑定（createStore / bindText / bindNumber 等）
+
+### 🐛 Bug 修复
+
+- **Worker cancel**: 模块级 `currentCancelSignal` 实现正确的生成取消
+- **侵蚀 checkpoint**: 在 `runClimateStage` 前保存冰川侵蚀前的高程
+- **Viewport Y 轴**: 修复 `mapPixelToClient` 坐标反转，统一为 GPU stretch 公式
+- **Worker 错误传播**: 传递真实错误信息而非硬编码字符串，不再静默回退到主线程
+- **Checkpoint byteOffset**: `float32ToBase64` 使用 `byteOffset/byteLength` 修复子视图数据损坏
+- **SSE JSON.parse**: 所有 SSE 事件处理器加 try/catch，防止畸形数据导致 Promise 挂死
+- **CI 修复**: `format:check` / `bun test` → `bun run test` / jsdom 环境加载
+
+### 🔒 安全加固
+
+- **参数校验**: `validation.ts` 防止 OOM/DoS（mapSize ≤ 4096, plateCount 2-64 等）
+- **SSE 进度修复**: `setImmediate` 延迟执行，让 HTTP handler 先返回 jobId
+- **全局错误处理**: `app.onError` 防止栈信息泄露
+- **localhost 绑定**: 默认绑定 `127.0.0.1`，仅本地可达
+- **可选 API key**: `MAPGEN_API_KEY` 环境变量启用鉴权
+- **non-null 消除**: `filter.tags!` → 局部变量，消除 `!` 断言
+
+### ✅ 测试
+
+- 测试数从 269 增至 **330+**
+- shared-types: 30 测试（errors / serialization / base64）
+- server: 26 测试（全部 REST 路由 + 参数校验 12 项）
+- web: 新增 checkpoint 6 项 + viewport 5 项 + uiOptimizer 22 项
+- core: 新增 debug 事件追踪/快照测试
+
+### 📦 部署
+
+- 从 GitHub Pages 迁移到 Cloudflare Pages（直连 GitHub，无需 Secrets）
+- Demo: `https://mapgen.pages.dev`
+
+### 📚 文档
+
+- 新增 6 篇 MADR 架构决策记录（FBM / D8 / Köppen / Mediator / WebGL2 / Pipeline）
+- CHANGELOG 新增「当前 main 实际值」列，与发版快照区分
+- README / AGENTS 包管理器统一为 bun
+
+### 🧹 仓库清理
+
+- `.gitignore` 新增 `.atomcode/`、`.mcp.json`、`famou-experiment/`、lock files
+- `.turbo/` 和 `.wrangler/` 位置修复
+
+### 项目结构概览
+
+| 指标            | v0.0.3-pre | v0.0.4-pre |
+| --------------- | ---------- | ---------- |
+| TypeScript 文件 | 49 个      | 140+ 个    |
+| 测试文件        | 11 个      | 30 个      |
+| 测试用例        | 72 个      | 330+ 个    |
+| 总代码行数      | ~7,878 行  | ~19,000 行 |
+| 包数            | 2          | 5          |
+
+---
+
 ## v0.0.3-pre (2026-07-06)
 
 ### 后端抽象层与模块质量提升
@@ -30,77 +95,20 @@ All notable changes to the Material Map Generator.
 
 - **版本升级**: monorepo 及所有包升级至 v0.0.3-pre
 - **包管理器迁移**: 从 npm 迁移到 Bun，删除 `package-lock.json`，使用 `bun.lock`
-- **代码质量验证**:
-  - ✅ typecheck: 3/3 通过
-  - ✅ build: 2/2 通过（web 44 modules）
-  - ✅ tests: 72/72 通过
 
 ### 视觉与高优先级修复
 
-- **启动器阻塞修复**: 移除 `await launcher.waitForHide()` 死等，启动按钮点击后正确关闭覆盖层并初始化 UI
-- **检查点入口修复**: 顶部工具栏新增“检查点”按钮，切换 `#checkpoint-popover` 显示
-- **检查点缩略图修复**: Canvas2D 回退下使用彩色地形渲染替代黑屏
-- **滑块进度指示**: 为所有 `input[type="range"]` 添加动态 `--value` 填充与渐变背景
-- **缩放/平移重构**: 从 CSS transform 迁移到渲染器内部实现，消除像素化与坐标偏差
-  - WebGL 使用 `u_zoom` / `u_pan` uniform
-  - Canvas2D / p5.js 应用对应视图变换
-  - 新增 `packages/web/src/map/viewport.ts` 统一坐标转换
-- **坐标系统一**: `MapPicker`、`MapInteraction`、`LaserController`、`EditorController`、`NameOverlay` 全部使用 `clientToMapUv` / `mapPixelToClient`
-- **名称标签可读性**: 添加半透明背景、圆角与文字阴影，复杂地形上更清晰
-- **名称显示开关同步**: 初始化时同步按钮 active 状态与 `NameOverlay.visible`
-- **撤销/重做提示**: 初始加载后调用 `updateUndoRedo()`，避免按钮长期禁用
-- **WebGL 着色器修复**: `fs-map.frag` 中 `azgaarColor` 函数改为接收 `vec2 uv` 参数，修复 GLSL 编译错误
+- **启动器阻塞修复**: 移除 `await launcher.waitForHide()` 死等
+- **检查点入口修复**: 顶部工具栏新增"检查点"按钮
+- **缩放/平移重构**: 从 CSS transform 迁移到渲染器内部实现
+- **坐标系统一**: 全部使用 `clientToMapUv` / `mapPixelToClient`
+- **WebGL 着色器修复**: `fs-map.frag` 中 `azgaarColor` 函数参数修复
 
 ### CSS 大扩展
 
-- **设计 Token 体系**: 扩展完整的 `--md-sys-*` / `--md-ref-*` 令牌，覆盖背景、文本、强调色、阴影、圆角、动效
-- **主题切换**: 支持暗色/亮色主题，`data-theme="light"` 全局生效，顶部工具栏主题按钮持久化到 localStorage
-- **全局动效系统**: overlay fade/scale 进入退出、按钮 hover/focus/active 微交互、滑块 thumb 缩放、卡片悬浮效果
-- **组件样式统一**: 统一面板、工具栏、按钮、输入框、滑块、卡片、标签、工具提示、MiniMap、检查点项样式
-- **响应式布局骨架**: 新增 1024px / 768px / 480px 断点，右侧面板在移动端抽屉化，底部工具栏折叠/横向滚动
-
-### 仓库清理
-
-- 从历史提交中移除 `.planning/` 调试截图、临时脚本与 `.turbo/cache/` 元数据文件
-- 更新 `.gitignore`，排除 `.planning/` 与 `.turbo/`
-
-### 项目结构概览
-
-> ⚠️ 下表为 v0.0.3-pre 发版时的快照；当前 main 分支实际规模已显著增长。
-> 截至 2026-07-11，实际值为：175 个 TS 文件、~24,164 行代码、25 个测试文件、269 个测试用例。
-
-| 指标            | 数值（v0.0.3-pre 发版快照） | 当前 main 实际值 |
-| --------------- | --------------------------- | ---------------- |
-| TypeScript 文件 | 49 个 (core 20 + web 29)    | 175 个           |
-| 测试文件        | 11 个                       | 25 个            |
-| 测试用例        | 72 个                       | 269 个           |
-| 总代码行数      | ~7,878 行 (不含测试)        | ~24,164 行       |
-| 测试代码行数    | 1,337 行                    | ~3,800 行        |
-
-### 核心功能模块 (@mapgen/core)
-
-1. **噪声系统** (`noise.ts`): Perlin/Simplex/Value/Worley + FBM 变体
-2. **板块构造** (`tectonic.ts`): Voronoi 板块生成、边界计算、碰撞检测
-3. **侵蚀系统** (`erosion.ts`): 水力侵蚀、湖泊生成、河流网络
-4. **气候系统** (`regions.ts`): 温度、湿度、生物群落分带
-5. **洋流系统** (`oceanCurrents.ts`): 风驱动表面流 + Ekman 漂移 + 西边界强化
-6. **冰盖系统** (`ice.ts`): 动态冰盖扩张 + 冰川侵蚀
-7. **生物群系** (`biomes.ts`): Köppen-Geiger 32 类分类
-8. **流域分析** (`watershed.ts`): D8 流向 + 排水盆地 + Strahler 河序
-9. **火山系统** (`volcanism.ts`): 热点火山链 + 板缘火山弧
-10. **季节系统** (`seasons.ts`): 4 季温度/降水变化
-11. **编辑器** (`editor.ts`): 画笔/矢量工具/撤销重做
-12. **命名系统** (`naming.ts`): 自动地名生成
-13. **纹理打包** (`texturePack.ts`): 多纹理通道编码
-14. **下游管线** (`downstream.ts`): 统一编排 9 个子系统
-
-### 前端应用 (@mapgen/web)
-
-- **WebGL2 渲染器**: GPU 加速，支持 19 种渲染风格
-- **Material Design 3 UI**: 深色主题、响应式设计
-- **Web Worker**: 后台生成不阻塞 UI
-- **检查点系统**: localStorage 保存/恢复状态
-- **LOD 名称叠加层**: 4 层缩放级别渐进显示
+- **设计 Token 体系**: 完整 `--md-sys-*` / `--md-ref-*` 令牌
+- **主题切换**: 暗色/亮色主题，持久化到 localStorage
+- **响应式布局**: 1024px / 768px / 480px 断点
 
 ---
 
@@ -108,44 +116,22 @@ All notable changes to the Material Map Generator.
 
 ### 新增：复杂世界式全局生成系统
 
-在 v0.0.1 基础架构上引入 8 个相互耦合的行星级子系统，将地图从"噪声 + 构造"提升为"地球物理仿真"。
+在 v0.0.1 基础架构上引入 8 个相互耦合的行星级子系统。
 
 #### 世界式生成 v1（行星级气候 + 冰盖）
 
-- **海岸距离场** (`coastline.ts`)：多源 BFS 带符号距离场，驱动大陆度/河口/洋流沿岸影响
-- **洋流系统** (`oceanCurrents.ts`)：风驱动表面流 + Ekman 漂移 + 西边界强化（Stommel 简化）+ 暖/寒流温度增量
-- **动态冰盖** (`ice.ts`)：极地高海拔冰盖扩张（浅冰近似流动）+ 海冰 + 冰川侵蚀（U 型谷拓宽）
-- **气候增强** (`regions.ts`)：大陆度修正 + 洋流沿岸温度 + Hadley cell 强化（ITCZ 增湿 / 副热带高压沙漠带）+ 季风
-- **惰性生成** (`lazyGen.ts`)：视野局部高分辨率重算（双线性上采样 + 高频 FBM + 局部山峰检测）
+- **海岸距离场** (`coastline.ts`)：多源 BFS 带符号距离场
+- **洋流系统** (`oceanCurrents.ts`)：风驱动表面流 + Ekman 漂移 + 西边界强化
+- **动态冰盖** (`ice.ts`)：极地高海拔冰盖扩张 + 冰川侵蚀
+- **气候增强** (`regions.ts`)：大陆度修正 + Hadley cell 强化 + 季风
+- **惰性生成** (`lazyGen.ts`)：视野局部高分辨率重算
 
-#### 世界式生成 v2（本轮新增 4 子系统）
+#### 世界式生成 v2
 
-- **Köppen-Geiger 生物群系** (`biomes.ts`)：32 类生物群系（A/B/C/D/E 五带 + 高山带 M + 特殊生态 X），替换原 15 类简单分类
-- **流域分析** (`watershed.ts`)：D8 流向 + 排水盆地划分（多源反向 BFS）+ Strahler 河序（1-7 级）+ 大陆分水岭标记 + 小盆地合并
-- **火山系统** (`volcanism.ts`)：热点火山链（板块漂移方向递减年龄）+ 板缘火山弧（汇聚/离散/转换三类边界）+ 概率场 + 破火山口环形标记
-- **季节性气候变差** (`seasons.ts`)：4 季温度/降水 delta（纬度×大陆度×海拔耦合）+ ITCZ 南北移动 + 地中海夏干冬雨 + 解码器
-
-#### 集成
-
-- **下游管线** (`downstream.ts`)：统一编排 coast → currents → climate → ice → biomes → lakes → rivers → watershed → regions → volcanism → seasons，9 个开关可独立控制
-- **纹理打包** (`texturePack.ts`)：新增 `packBiomeTex` / `packWatershedTex` / `packVolcanismTex` / `packSeasonTex`
-- **地形区检测** (`editor.ts`)：`TerrainDetectOptions` 扩展 volcanoProb/biomeId/streamOrder/basinId，火山检测从孤立山峰启发式升级为概率场驱动
-- **MapData 字段**：新增 `biomeTex` / `watershedTex` / `volcanismTex` / `seasonTex` / `volcanoSites` / `hotspots`
-- **可视化** (`fs-map.frag` + `webgl.ts`)：洋流条纹（style 17）+ 冰盖覆盖（style 18）着色器
-- **LOD 名称叠加层** (`NameOverlay.ts`)：4 层缩放级别渐进显示 + 高缩放惰性生成山峰标注
-- **检查点** (`checkpoint.ts`)：保存/恢复 currentTex / iceTex / coastDist
-- **UI 开关**：5 个世界式开关（洋流/冰盖/季风/大陆度/Hadley）
-
-### 测试
-
-- 测试用例从 44 增至 **72**（11 个测试文件）<!-- v0.0.1 → v0.0.2 增量；v0.0.3-pre 已达 269 个，见上方项目结构概览 -->
-- 新增 `biomes.test.ts` (9) / `watershed.test.ts` (6) / `volcanism.test.ts` (6) / `seasons.test.ts` (7)
-
-### 验证
-
-- typecheck: 3/3 通过
-- build: 2/2 通过（web 49 modules）
-- tests: 72/72 通过
+- **Köppen-Geiger 生物群系** (`biomes.ts`)：32 类分类
+- **流域分析** (`watershed.ts`)：D8 流向 + Strahler 河序
+- **火山系统** (`volcanism.ts`)：热点火山链 + 板缘火山弧
+- **季节性气候变差** (`seasons.ts`)：4 季温度/降水 delta
 
 ---
 
@@ -153,53 +139,16 @@ All notable changes to the Material Map Generator.
 
 ### 架构重写
 
-从旧版单体架构完全重写为 **Monorepo**（Turborepo + npm workspaces）：
+从旧版单体架构完全重写为 **Monorepo**（Turborepo + npm workspaces）。
 
-| 组件     | 旧架构         | 新架构                             |
-| -------- | -------------- | ---------------------------------- |
-| 组织方式 | 扁平目录       | `packages/shared` + `packages/web` |
-| 构建工具 | 无统一构建     | Turborepo 增量构建                 |
-| 核心引擎 | 内联 JS        | `@mapgen/core` 独立 TypeScript 包  |
-| 前端     | 原生 JS + HTML | TypeScript + Vite                  |
-| 类型安全 | 无             | 全量 TypeScript strict mode        |
-| 渲染     | 单一 Canvas2D  | WebGL2 主渲染 + Canvas2D 回退      |
-
-### 新增
-
-- **WebGL2 渲染器**：GPU 加速，支持 9 种渲染风格
-  - 地形、板块、羊皮纸、卫星、低多边形、生物群落、等高线、浮雕、Azgaar
-- **Material Design 3 UI**：CSS Custom Properties 令牌系统，深色主题
-- **启动器面板**：预设参数选择、进度条、跳过选项
-- **激光选区工具**：板块边界拖拽选择
-- **光标悬停**：板块高亮
-- **检查点系统**：localStorage 保存/恢复生成状态
-- **响应式设计**：移动端侧边栏抽屉、触摸手势支持
-- **TypeScript 全量类型安全**：`@mapgen/core` + `@mapgen/web` 均 strict mode
-
-### 改进
-
-- 噪声算法：Perlin、Simplex、Value、Worley 四种类型
-- FBM 变体：标准、山脊、膨胀、扭曲
-- 构造模拟：板块生成、边界计算、碰撞检测
-- 侵蚀系统：水力侵蚀、湖泊生成、河流网络
-- 气候系统：温度、湿度、生物群落分带
-- 构建速度：Turborepo 缓存 + 并行构建
-
-### 修复
-
-- 修复 plateTex 纹理通道错位（boundary 读取错误通道）
-- 修复 u_moistureTex uniform 命名不一致导致纹理未绑定
-- 修复 distToSegment 除零 NaN（laserStart=laserEnd=[0,0] 时画布异常）
-- 修复 u_plateTotal 未映射导致选中高亮失效
-- 修复 launcher 动画结束后内容不可见（黑屏）
-- 修复移动端 drawer 入场动画覆盖隐藏样式（挡住地图）
+- **WebGL2 渲染器**: GPU 加速，9 种渲染风格
+- **Material Design 3 UI**: CSS Custom Properties 令牌系统
+- **TypeScript 全量类型安全**: strict mode
 
 ---
 
 ## 旧版 (v0.2.8 - v0.4.3)
 
-旧版采用单体架构，支持 Canvas2D 渲染、C/S 架构等。
-
 详见 [GitHub Releases](https://github.com/qwerrrtttyyy/mapgen/releases)。
 
-> **注意**：v0.0.1 是对旧版代码库的完全重写，非增量升级。旧版源码保留在 `v0/` 目录中作为参考。
+> **注意**：v0.0.1 是对旧版代码库的完全重写，非增量升级。
