@@ -1,6 +1,6 @@
 {
   "name": "@mapgen/server",
-  "version": "0.0.3-pre",
+  "version": "0.0.4-pre",
   "description": "Map Generator - Reference backend (Hono + in-memory storage)",
   "type": "module",
   "main": "dist/index.js",
