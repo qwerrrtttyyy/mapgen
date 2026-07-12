@@ -108,7 +108,9 @@ class MapGenWorkerManager {
   generate(params: MapParams, onProgress?: ProgressCallback): Promise<GenerateResult> {
     return new Promise((resolve, reject) => {
       const runSync = (): void => {
-        console.warn('MapGen: Web Worker unavailable, falling back to main-thread generation — UI may freeze briefly.');
+        console.warn(
+          'MapGen: Web Worker unavailable, falling back to main-thread generation — UI may freeze briefly.'
+        );
         requestAnimationFrame(() => {
           setTimeout(() => {
             try {
