@@ -26,7 +26,7 @@ export class RemoteProvider implements MapGenEngine {
   private capabilities: EngineCapabilities | null = null;
 
   constructor(options: RemoteProviderOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/\/$/, '');
+    this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.fallback = options.fallback ?? true;
   }
 
@@ -84,7 +84,7 @@ export class RemoteProvider implements MapGenEngine {
           };
           resolve(ok(data.result));
         } catch {
-          resolve(err({ code: 'PARSE_ERROR', message: 'Failed to parse SSE completed event' }));
+          resolve(err({ code: 'VALIDATION_ERROR', message: 'Failed to parse SSE completed event' }));
         }
       });
 
@@ -94,7 +94,7 @@ export class RemoteProvider implements MapGenEngine {
           const data = JSON.parse(event.data as string) as { jobId: string; error: MapGenError };
           resolve(err(data.error));
         } catch {
-          resolve(err({ code: 'PARSE_ERROR', message: 'Failed to parse SSE failed event' }));
+          resolve(err({ code: 'VALIDATION_ERROR', message: 'Failed to parse SSE failed event' }));
         }
       });
 
