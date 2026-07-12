@@ -108,6 +108,9 @@ class MapGenWorkerManager {
   generate(params: MapParams, onProgress?: ProgressCallback): Promise<GenerateResult> {
     return new Promise((resolve, reject) => {
       const runSync = (): void => {
+        console.warn(
+          'MapGen: Web Worker unavailable, falling back to main-thread generation — UI may freeze briefly.'
+        );
         requestAnimationFrame(() => {
           setTimeout(() => {
             try {
@@ -129,10 +132,11 @@ class MapGenWorkerManager {
         params,
         resolve,
         reject: (_msg: string) => {
+          // Worker error: reject directly instead of silently falling back to
+          // main-thread generation (which would freeze the UI).
           this.destroyWorker();
           this.initError = null;
-          this.ensureWorker();
-          runSync();
+          reject(_msg || 'Map generation failed in worker. Please try again.');
         },
         onProgress: onProgress || null,
       };
@@ -151,6 +155,7 @@ class MapGenWorkerManager {
         this.worker.postMessage({ type: 'cancel', requestId });
       }
     }
+    this.failAll('Cancelled');
   }
 }
 
