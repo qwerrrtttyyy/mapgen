@@ -18,6 +18,7 @@ export interface Job {
   error?: MapGenError;
   createdAt: number;
   completedAt?: number;
+  progressHistory: GenerationProgress[];
   onProgress?: (progress: GenerationProgress) => void;
   onComplete?: (result: GenerationResult) => void;
   onFail?: (error: MapGenError) => void;
@@ -50,11 +51,16 @@ class JobQueue {
       progress: 0,
       phase: 'queued',
       createdAt: Date.now(),
+      progressHistory: [],
     };
     this.jobs.set(id, job);
     this.queue.push(id);
     this.cleanupOldJobs();
-    void this.process();
+    // Defer execution so the HTTP handler can return jobId before
+    // the executor starts (fixes SSE progress events never arriving).
+    if (this.activeCount === 0) {
+      setImmediate(() => this.process());
+    }
     return id;
   }
 
@@ -98,7 +104,7 @@ class JobQueue {
       if (!job) continue;
       job.status = 'running';
       this.activeCount++;
-      this.executeJob(job);
+      await this.executeJob(job);
     }
   }
 
@@ -136,7 +142,7 @@ class JobQueue {
       completedJobs.length - this.maxHistory + this.jobs.size - this.maxHistory
     );
     for (const job of toRemove) {
-      this.jobs.delete(job.id);
+      this.jobs.delete(job);
     }
   }
 }
