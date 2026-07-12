@@ -1,0 +1,15 @@
+# Code Owners — automatically request reviews from these users.
+#
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: all changes require review from the repo owner
+* @qwerrrtttyyy
+
+# Core engine: require review for algorithm changes
+packages/core/src/ @qwerrrtttyyy
+
+# Server: require review for security-sensitive changes
+packages/server/src/ @qwerrrtttyyy
+
+# Shared types: require review for API contract changes
+packages/shared-types/ @qwerrrtttyyy
