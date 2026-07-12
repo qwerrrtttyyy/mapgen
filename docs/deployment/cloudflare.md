@@ -1,6 +1,8 @@
-# Cloudflare Workers 部署指南
+# Cloudflare Pages 部署指南
 
 通过 **Cloudflare Dashboard 直连 GitHub** 部署。无需 GitHub Secrets。
+
+当前部署地址：<https://mapgen-d9g.pages.dev/>
 
 ## 步骤
 
@@ -9,11 +11,11 @@
 3. 配置：
    - Project name: `mapgen`
    - Production branch: `main`
-   - Framework preset: `Vite`
-   - Build command: `bun run build`（失败则改 `npm install && npm run build`）
+   - Framework preset: `None`（手动填 build 配置）
+   - Build command: `npm install && npm run build`
    - Build output directory: `packages/web/dist`
 4. Save and Deploy
-5. 获得 `https://mapgen.<subdomain>.workers.dev` 地址
+5. 获得 `https://mapgen-<random>.pages.dev` 地址
 
 后续 push to main 自动部署，PR 分支自动生成预览 URL。
 
