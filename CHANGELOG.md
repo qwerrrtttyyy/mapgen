@@ -2,6 +2,47 @@
 
 All notable changes to the Material Map Generator.
 
+## v0.0.4-dev (2026-07-12)
+
+> 🚧 开发中版本。以下为自 v0.0.3-pre 以来的已合并变更。
+
+### 架构重构
+
+- **Pipeline 统一**: `generateMap` 和 `runDownstreamPipeline` 委托给共享 `pipeline/*Stage`，消除 742 行重复内联编排
+- **editor.ts 拆分**: 1245 行拆为 5 个子模块（terrainDetection / commandStack / brushes / vectorTools / plateOps），原文件改为 barrel re-export
+- **包目录重命名**: `packages/shared` → `packages/core`，与 `@mapgen/core` 对齐
+- **指令预测系统**: 多阶 n-gram + 类别转移 + 最近频率 + 周期性特征，FaMou 进化优化权重
+- **UI 响应式存储**: `uiOptimizer.ts` — 声明式 DOM 绑定（createStore / bindText / bindNumber 等）
+
+### Bug 修复
+
+- **Worker cancel**: 模块级 `currentCancelSignal` 实现正确的生成取消
+- **侵蚀 checkpoint**: 在 `runClimateStage` 前保存冰川侵蚀前的高程
+- **Viewport Y 轴**: 修复 `mapPixelToClient` 坐标反转
+- **Worker 错误传播**: 传递真实错误信息而非硬编码字符串
+- **CI 修复**: `format:check` / `bun test` → `bun run test` / jsdom 环境加载
+
+### 测试
+
+- 测试数从 269 增至 **310+**
+- shared-types: 1 → 30 测试（errors / serialization / base64）
+- server: 2 → 14 测试（全部 REST 路由覆盖）
+- web: 新增 uiOptimizer 22 个测试
+- core: 新增 debug 事件追踪/快照测试
+
+### 文档
+
+- 新增 6 篇 MADR 架构决策记录（FBM / D8 / Köppen / Mediator / WebGL2 / Pipeline）
+- CHANGELOG 新增「当前 main 实际值」列，与发版快照区分
+- README / AGENTS 包管理器统一为 bun
+
+### 部署
+
+- 从 GitHub Pages 迁移到 Cloudflare Pages（直连 GitHub，无需 Secrets）
+- Demo: `https://mapgen.pages.dev`
+
+---
+
 ## v0.0.3-pre (2026-07-06)
 
 ### 后端抽象层与模块质量提升
@@ -38,7 +79,7 @@ All notable changes to the Material Map Generator.
 ### 视觉与高优先级修复
 
 - **启动器阻塞修复**: 移除 `await launcher.waitForHide()` 死等，启动按钮点击后正确关闭覆盖层并初始化 UI
-- **检查点入口修复**: 顶部工具栏新增“检查点”按钮，切换 `#checkpoint-popover` 显示
+- **检查点入口修复**: 顶部工具栏新增"检查点"按钮，切换 `#checkpoint-popover` 显示
 - **检查点缩略图修复**: Canvas2D 回退下使用彩色地形渲染替代黑屏
 - **滑块进度指示**: 为所有 `input[type="range"]` 添加动态 `--value` 填充与渐变背景
 - **缩放/平移重构**: 从 CSS transform 迁移到渲染器内部实现，消除像素化与坐标偏差
@@ -67,15 +108,15 @@ All notable changes to the Material Map Generator.
 ### 项目结构概览
 
 > ⚠️ 下表为 v0.0.3-pre 发版时的快照；当前 main 分支实际规模已显著增长。
-> 截至 2026-07-11，实际值为：175 个 TS 文件、~24,164 行代码、25 个测试文件、269 个测试用例。
+> 截至 2026-07-12，实际值为：180+ 个 TS 文件、~26,000 行代码、28 个测试文件、310+ 个测试用例。
 
 | 指标            | 数值（v0.0.3-pre 发版快照） | 当前 main 实际值 |
 | --------------- | --------------------------- | ---------------- |
-| TypeScript 文件 | 49 个 (core 20 + web 29)    | 175 个           |
-| 测试文件        | 11 个                       | 25 个            |
-| 测试用例        | 72 个                       | 269 个           |
-| 总代码行数      | ~7,878 行 (不含测试)        | ~24,164 行       |
-| 测试代码行数    | 1,337 行                    | ~3,800 行        |
+| TypeScript 文件 | 49 个 (core 20 + web 29)    | 180+ 个          |
+| 测试文件        | 11 个                       | 28 个            |
+| 测试用例        | 72 个                       | 310+ 个          |
+| 总代码行数      | ~7,878 行 (不含测试)        | ~26,000 行       |
+| 测试代码行数    | 1,337 行                    | ~4,200 行        |
 
 ### 核心功能模块 (@mapgen/core)
 
