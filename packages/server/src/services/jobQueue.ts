@@ -58,7 +58,7 @@ class JobQueue {
     this.cleanupOldJobs();
     // Defer execution so the HTTP handler can return jobId before
     // the executor starts (fixes SSE progress events never arriving).
-    if (this.activeCount === 0) {
+    if (this.activeCount < this.maxConcurrent) {
       setImmediate(() => this.process());
     }
     return id;
@@ -142,7 +142,7 @@ class JobQueue {
       completedJobs.length - this.maxHistory + this.jobs.size - this.maxHistory
     );
     for (const job of toRemove) {
-      this.jobs.delete(job);
+      this.jobs.delete(job.id);
     }
   }
 }
