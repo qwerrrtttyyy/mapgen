@@ -22,10 +22,7 @@ const app = new Hono();
 // Global error handler: prevent stack trace exposure
 app.onError((err, c) => {
   console.error(err);
-  return c.json(
-    { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
-    500,
-  );
+  return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, 500);
 });
 
 app.use('*', cors({ origin: config.corsOrigins }));
@@ -36,7 +33,7 @@ if (config.apiKey) {
     if (c.req.header('X-API-Key') !== config.apiKey) {
       return c.json(
         { error: { code: 'UNAUTHORIZED', message: 'Invalid or missing API key' } },
-        401,
+        401
       );
     }
     await next();

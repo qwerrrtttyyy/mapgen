@@ -11,7 +11,7 @@ export function createGenerateRoute(): Hono {
     if (errors.length > 0) {
       return c.json(
         { error: { code: 'VALIDATION_ERROR', message: errors[0].message, details: { errors } } },
-        400,
+        400
       );
     }
     const jobId = jobQueue.create(body.params);
