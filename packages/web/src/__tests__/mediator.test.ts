@@ -3,27 +3,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies
-vi.mock('./logger.js', () => ({
+vi.mock('../core/logger.js', () => ({
   logger: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('./eventBus.js', () => ({
+vi.mock('../core/eventBus.js', () => ({
   bus: { emit: vi.fn(), on: vi.fn(() => vi.fn()) },
   setMediatorBridge: vi.fn(),
 }));
 
-import { AppMediator, Colleague } from '../core/mediator.js';
+import { AppMediator, Colleague, type ColleagueName } from '../core/mediator.js';
 
-// Concrete test colleague
+// Concrete test colleague — uses only public/protected setMediator
 class TestColleague extends Colleague {
   public receivedEvents: Array<{ event: string; payload: unknown }> = [];
 
-  constructor(name: Parameters<typeof Colleague.prototype.constructor>[0]) {
+  constructor(name: ColleagueName) {
     super(name);
-  }
-
-  onEvent(event: string, handler: (payload: unknown) => void): void {
-    this.subscribe(event as Parameters<typeof Colleague.prototype.subscribe>[0], handler);
   }
 }
 
