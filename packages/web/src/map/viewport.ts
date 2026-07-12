@@ -1,24 +1,5 @@
 import { state } from '../core/appState.js';
 
-export interface Viewport {
-  baseScale: number;
-  dW: number;
-  dH: number;
-  centerX: number;
-  centerY: number;
-}
-
-export function getViewport(rect: DOMRect, mapW: number, mapH: number): Viewport {
-  const baseScale = Math.min(rect.width / mapW, rect.height / mapH);
-  return {
-    baseScale,
-    dW: mapW * baseScale,
-    dH: mapH * baseScale,
-    centerX: rect.width / 2,
-    centerY: rect.height / 2,
-  };
-}
-
 export function clientToMapUv(
   clientX: number,
   clientY: number,
