@@ -53,9 +53,10 @@ export class MapStorage {
     }
 
     if (filter?.tags && filter.tags.length > 0) {
+      const filterTags = filter.tags;
       rows = rows.filter(r => {
         const tags = JSON.parse(r.tags || '[]') as string[];
-        return filter.tags!.every(t => tags.includes(t));
+        return filterTags.every(t => tags.includes(t));
       });
     }
 

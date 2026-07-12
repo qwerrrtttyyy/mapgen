@@ -26,7 +26,7 @@ export class RemoteProvider implements MapGenEngine {
   private capabilities: EngineCapabilities | null = null;
 
   constructor(options: RemoteProviderOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/$/, '');
+    this.baseUrl = options.baseUrl.replace(/\/\/$/, '');
     this.fallback = options.fallback ?? true;
   }
 
@@ -67,23 +67,35 @@ export class RemoteProvider implements MapGenEngine {
       }
 
       es.addEventListener('progress', event => {
-        const data = JSON.parse(event.data as string) as GenerationProgress;
-        if (onProgress) onProgress(data);
+        try {
+          const data = JSON.parse(event.data as string) as GenerationProgress;
+          if (onProgress) onProgress(data);
+        } catch {
+          // Ignore malformed progress events
+        }
       });
 
       es.addEventListener('completed', event => {
         es.close();
-        const data = JSON.parse(event.data as string) as {
-          jobId: string;
-          result: GenerationResult;
-        };
-        resolve(ok(data.result));
+        try {
+          const data = JSON.parse(event.data as string) as {
+            jobId: string;
+            result: GenerationResult;
+          };
+          resolve(ok(data.result));
+        } catch {
+          resolve(err({ code: 'PARSE_ERROR', message: 'Failed to parse SSE completed event' }));
+        }
       });
 
       es.addEventListener('failed', event => {
         es.close();
-        const data = JSON.parse(event.data as string) as { jobId: string; error: MapGenError };
-        resolve(err(data.error));
+        try {
+          const data = JSON.parse(event.data as string) as { jobId: string; error: MapGenError };
+          resolve(err(data.error));
+        } catch {
+          resolve(err({ code: 'PARSE_ERROR', message: 'Failed to parse SSE failed event' }));
+        }
       });
 
       es.addEventListener('error', () => {
