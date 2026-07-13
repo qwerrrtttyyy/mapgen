@@ -24,6 +24,7 @@ import { exportDialog } from './export/exportDialog.js';
 import { exportManager } from './export/exportManager.js';
 import { buildRenderParams } from './ui/renderHelper.js';
 import { drawMinimap, markMinimapDirty } from './ui/minimap.js';
+import { initElevationHistogram } from './ui/elevationHistogram.js';
 import { setGeneratingStatus, setProgress } from './ui/statusBar.js';
 import { buildPresetGrid, initPresetGrid } from './ui/presetGrid.js';
 import {
@@ -348,6 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   syncUIFromParams();
   bindEventBus();
   bindSizeHandle();
+  initElevationHistogram();
 
   try {
     const savedTheme = localStorage.getItem('mapgen:theme');
@@ -527,7 +529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindSliderEx('seaLevel', 'seaLevel', {
     toParam: raw => raw / 100,
     toDisplay: raw => (raw / 100).toFixed(2),
-    autoGen: true,
   });
   bindSliderEx('erosionStrength', 'erosionStrength', {
     toParam: raw => raw / 100,

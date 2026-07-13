@@ -26,7 +26,9 @@ export type BrushKind =
   | 'noise'
   | 'set'
   | 'river'
-  | 'lake';
+  | 'lake'
+  | 'flatten'
+  | 'harden';
 
 export interface EditorToolParams {
   brushRadius: number;
@@ -385,7 +387,12 @@ export class EditorController extends Colleague {
             case 'sea':
               after = before * (1 - fall) + (seaLevel - 0.3) * fall;
               break;
-            case 'land':
+            case 'land': {
+              // 成陆：将高程抬升到陆地目标值
+              const LAND_TARGET = 0.2;
+              after = before * (1 - fall) + LAND_TARGET * fall;
+              break;
+            }
             case 'smooth': {
               // 平滑：3x3 邻域均值
               let sum = 0,
@@ -415,14 +422,25 @@ export class EditorController extends Colleague {
               after = before - 0.15 * fall;
               break;
             }
-            case 'lake':
-              {
-                const lakeFloor = Math.max(seaLevel - 0.1, before - this.tool.lakeDepth);
-                after = Math.min(before, lakeFloor + (before - lakeFloor) * (1 - fall));
-                break;
-              }
-              after = before * (1 - fall) + 0.2 * fall;
+            case 'lake': {
+              const lakeFloor = Math.max(seaLevel - 0.1, before - this.tool.lakeDepth);
+              after = Math.min(before, lakeFloor + (before - lakeFloor) * (1 - fall));
               break;
+            }
+            case 'flatten': {
+              // 统一高程：将区域拉平到画笔中心的高程
+              const centerElev = md.elevTex[(y * md.width + x) * 4];
+              after = before + (centerElev - before) * str * fall;
+              break;
+            }
+            case 'harden': {
+              // 固化：增强对比度，让高地更高、低地更低（相对海平面）
+              const mid = seaLevel;
+              const diff = before - mid;
+              after = mid + diff * (1 + str * fall * 0.5);
+              after = Math.max(-1, Math.min(1, after));
+              break;
+            }
           }
           md.elevTex[i4] = after;
         }
