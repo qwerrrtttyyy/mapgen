@@ -80,10 +80,9 @@ export class Shortcuts extends Colleague {
   }
 
   private closeDrawer(): void {
-    const drawer = document.getElementById('drawer');
-    const backdrop = document.getElementById('drawer-backdrop');
-    drawer?.classList.remove('open');
-    backdrop?.classList.remove('open');
+    const panel = document.getElementById('panel');
+    panel?.classList.remove('panel-open');
+    panel?.classList.add('panel-closed');
   }
 
   destroy(): void {

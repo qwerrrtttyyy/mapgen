@@ -382,6 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const checkpointPopover = $('checkpoint-popover');
   $('btn-panel-toggle')?.addEventListener('click', () => {
     panel?.classList.toggle('panel-open');
+    panel?.classList.toggle('panel-closed');
   });
   $('btn-checkpoint')?.addEventListener('click', () => {
     checkpointPopover?.classList.toggle('show');

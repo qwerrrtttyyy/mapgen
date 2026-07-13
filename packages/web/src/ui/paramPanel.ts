@@ -146,9 +146,9 @@ export class ParamPanel extends Colleague {
     display.classList.add('changed');
   }
 
-  // 关键：限定到 #drawer 内，避免误绑启动器/检查点面板等外部 input
+  // 关键：限定到 #panel 内，避免误绑启动器/检查点面板等外部 input
   private drawerScope(): ParentNode {
-    return document.getElementById('drawer') ?? document;
+    return document.getElementById('panel') ?? document;
   }
 
   private bindRanges(useMediator: boolean): void {

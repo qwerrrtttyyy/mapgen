@@ -307,11 +307,13 @@ export class WebGLRenderer {
       this.setUniform(key, value);
     }
 
-    if (this.wireframeMode) {
-      (gl as unknown as { polygonMode: (face: number, mode: number) => void }).polygonMode(
-        gl.FRONT_AND_BACK,
-        0x1b01
-      );
+    // WebGL2 不支持 polygonMode（需要 WEBGL_polygon_mode 扩展，几乎无浏览器支持）。
+    // 仅在扩展可用时启用线框模式，否则静默跳过。
+    const polygonExt = this.wireframeMode
+      ? gl.getExtension('WEBGL_polygon_mode')
+      : null;
+    if (polygonExt) {
+      polygonExt.polygonModeWEBGL(gl.FRONT_AND_BACK, gl.LINE_WEBGL);
     }
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -319,11 +321,8 @@ export class WebGLRenderer {
 
     gl.bindVertexArray(null);
 
-    if (this.wireframeMode) {
-      (gl as unknown as { polygonMode: (face: number, mode: number) => void }).polygonMode(
-        gl.FRONT_AND_BACK,
-        0x1b02
-      );
+    if (polygonExt) {
+      polygonExt.polygonModeWEBGL(gl.FRONT_AND_BACK, gl.FILL_WEBGL);
     }
 
     bus.emit('render.frame', {
