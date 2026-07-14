@@ -2,6 +2,9 @@ export type NoiseType = 'perlin' | 'simplex' | 'value' | 'worley';
 export type FbmType = 'standard' | 'ridged' | 'billowy' | 'warped';
 export type GenMode = 'procedural' | 'blank';
 
+/** Maximum allowed map resolution (width or height) in pixels. */
+export const MAX_RESOLUTION = 4096;
+
 export interface MapParams {
   seedStr: string;
   mapAspect?: string;
@@ -37,4 +40,5 @@ export interface MapParams {
   enableWatershed?: boolean;
   enableVolcanism?: boolean;
   enableSeasons?: boolean;
+  cancelSignal?: { aborted: boolean };
 }

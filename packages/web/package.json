@@ -1,6 +1,6 @@
 {
   "name": "@mapgen/web",
-  "version": "0.0.3-pre",
+  "version": "0.0.4-pre",
   "description": "Map Generator - Web Frontend (TypeScript + Vite)",
   "type": "module",
   "scripts": {

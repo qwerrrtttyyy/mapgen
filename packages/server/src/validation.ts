@@ -1,11 +1,10 @@
 import type { MapParams } from '@mapgen/shared-types';
+import { MAX_RESOLUTION } from '@mapgen/shared-types';
 
 export interface ValidationError {
   field: string;
   message: string;
 }
-
-const MAX_RESOLUTION = 4096;
 
 function checkNumber(
   val: unknown,

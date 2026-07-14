@@ -45,7 +45,7 @@ export class Storage {
     const state: ManagerState = {
       schemaVersion: SCHEMA_VERSION,
       initializedAt: Date.now(),
-      mapgenVersion: '0.0.3-pre',
+      mapgenVersion: '0.0.4-pre',
       configs: [],
       versions: {
         current: 'initial',
@@ -67,7 +67,11 @@ export class Storage {
   async readState(): Promise<ManagerState> {
     const filePath = join(this.mapgenDir, STATE_FILE);
     const raw = await readFile(filePath, 'utf-8');
-    return JSON.parse(raw) as ManagerState;
+    try {
+      return JSON.parse(raw) as ManagerState;
+    } catch {
+      throw new Error(`Corrupted state file: ${filePath}`);
+    }
   }
 
   /** Write the full manager state */
@@ -109,7 +113,11 @@ export class Storage {
   async readConfigFile(id: string): Promise<unknown> {
     const filePath = join(this.mapgenDir, CONFIGS_DIR, `${id}.json`);
     const raw = await readFile(filePath, 'utf-8');
-    return JSON.parse(raw) as unknown;
+    try {
+      return JSON.parse(raw) as unknown;
+    } catch {
+      throw new Error(`Corrupted config file: ${filePath}`);
+    }
   }
 
   /** Write a single config file */

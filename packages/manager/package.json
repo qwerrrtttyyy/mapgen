@@ -1,6 +1,6 @@
 {
   "name": "@mapgen/manager",
-  "version": "0.0.3-pre",
+  "version": "0.0.4-pre",
   "description": "Map Generator - CLI manager for installation, CRUD operations, and version management",
   "type": "module",
   "main": "dist/index.js",
