@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "mapgen-monorepo",
@@ -17,7 +16,7 @@
         "prettier": "^3.2.5",
         "puppeteer-core": "^25.2.1",
         "turbo": "^2.0.0",
-        "wrangler": "^4",
+        "wrangler": "^4.110.0",
       },
     },
     "packages/core": {
